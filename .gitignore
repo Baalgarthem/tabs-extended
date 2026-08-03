@@ -3,11 +3,15 @@ data.json
 
 # Developer documentation & logs
 docs/
+GEMINI.md
 
 # Local Obsidian Vault testing files
 .obsidian/
 .backup/
 .check/
+.references/
+REFERENCES/
+references/
 
 # Dependencies & Build artifacts
 node_modules/

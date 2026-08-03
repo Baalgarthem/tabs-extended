@@ -199,6 +199,7 @@ var bs = {
     "\u6807\u7B7E\u9875\u5185\u5BB9\u6700\u5927\u9AD8\u5EA6",
   "settings.tabsContentsMaxHeight.desc":
     "\u5982\u679C\u8BBE\u7F6E\u4E86\u6709\u6548\u7684 CSS \u5C3A\u5BF8\uFF0C\u4F8B\u5982 250px\u300115em \u6216 50vh\uFF0C\u5F53\u6807\u7B7E\u9875\u9AD8\u5EA6\u8FBE\u5230\u8BE5\u503C\u65F6\uFF0C\u8D85\u51FA\u7684\u90E8\u5206\u53EF\u4EE5\u6EDA\u52A8\u3002\u8BF7\u4E0D\u8981\u5C06\u8BE5\u503C\u8BBE\u7F6E\u5F97\u8FC7\u5C0F\uFF0C\u5426\u5219\u6807\u7B7E\u9875\u53EF\u80FD\u65E0\u6CD5\u6B63\u5E38\u663E\u793A\u3002",
+  "menu.editTab": "Editar Bloque (Modal)",
   "menu.addNewTab": "\u65B0\u5EFA\u6807\u7B7E\u9875",
   "menu.deleteTab": "\u5220\u9664\u6807\u7B7E\u9875",
   "menu.copyTab": "\u590D\u5236\u6807\u7B7E\u9875",
@@ -223,13 +224,87 @@ var bs = {
   "notice.invalidActionButtonType":
     "\u65E0\u6548\u7684\u64CD\u4F5C\u6309\u94AE\u7C7B\u578B\u3002\u5DF2\u8BBE\u4E3A\u201C\u65E0\u201D\u3002",
 };
-var IO = { en: zr, zh: bs, "zh-cn": bs, "zh-tw": bs };
+var zr_es = {
+  "settings.separator.name": "Palabra del Separador",
+  "settings.separator.desc": "La palabra utilizada para dividir cada pestaña.",
+  "settings.defaultTabTitle.name": "Título predeterminado",
+  "settings.defaultTabTitle.desc": "Título predeterminado para una nueva pestaña.",
+  "settings.defaultTabsContent.name": "Contenido predeterminado",
+  "settings.defaultTabsContent.desc": "Contenido predeterminado para una nueva pestaña.",
+  "settings.actionButton.name": "Botón de acción",
+  "settings.actionButton.desc": "Función del botón superior derecho.",
+  "settings.actionButton.optionNone": "Ocultar Botón",
+  "settings.actionButton.optionAdd": "Añadir Pestaña",
+  "settings.actionButton.optionEdit": "Editar Pestaña",
+  "settings.ignoreNotice.name": "Ocultar Alertas Menores",
+  "settings.ignoreNotice.desc": "Desactiva las notificaciones emergentes al añadir, eliminar o copiar pestañas.",
+  "settings.autorefreshMarkdownView.name": "Auto-refrescar Documento",
+  "settings.autorefreshMarkdownView.desc": "Refresca automáticamente los archivos abiertos al cerrar este panel de ajustes.",
+  "settings.dragAndDrop.name": "Arrastrar y Soltar",
+  "settings.dragAndDrop.desc": "Permite reordenar pestañas arrastrándolas.",
+  "settings.editor.heading": "Editor Modal",
+  "settings.doubleClickToEdit.name": "Doble clic para editar",
+  "settings.doubleClickToEdit.desc": "Haz doble clic en la pestaña para abrir el editor modal.",
+  "settings.showToolbar.name": "Barra de Herramientas de Formato",
+  "settings.showToolbar.desc": "Muestra la barra de formato en el editor.",
+  "settings.tabSize.name": "Tamaño de Tabulación",
+  "settings.tabSize.desc": "Espacios equivalentes a una pulsación de Tab.",
+  "settings.autoSaveInterval.name": "Intervalo de Autoguardado",
+  "settings.autoSaveInterval.desc": "Milisegundos de inactividad antes de autoguardar.",
+  "settings.appearance.heading": "Apariencia",
+  "settings.resetToDefault": "Restablecer por defecto",
+  "settings.tabsBorder.name": "Bordes del Contenedor",
+  "settings.tabsBorder.desc": "Muestra el borde de las pestañas al pasar el cursor o siempre.",
+  "settings.tabsBorder.optionNone": "Nunca Visibles",
+  "settings.tabsBorder.optionHover": "Visibles al pasar el cursor",
+  "settings.tabsBorder.optionAlways": "Siempre Visibles",
+  "settings.tabsBorderColor.name": "Color de los bordes",
+  "settings.tabsBorderColor.desc": "Afecta cuando el borde está en 'Visibles al pasar el cursor' o 'Siempre Visibles'.",
+  "settings.hideTabsEditBlockButton.name": "Ocultar Botón Flotante de Edición",
+  "settings.hideTabsEditBlockButton.desc": "Oculta el icono de lápiz flotante de la esquina de los bloques de pestañas.",
+  "settings.tabsNavPosition.name": "Ubicación de los Títulos",
+  "settings.tabsNavPosition.desc": "Muestra la navegación de pestañas arriba, abajo, a la izquierda o a la derecha.",
+  "settings.tabsNavPosition.optionTop": "Arriba",
+  "settings.tabsNavPosition.optionBottom": "Abajo",
+  "settings.tabsNavPosition.optionLeft": "Izquierda",
+  "settings.tabsNavPosition.optionRight": "Derecha",
+  "settings.tabsNavLineClamp.name": "Comportamiento de Títulos Largos",
+  "settings.tabsNavLineClamp.desc": "Muestra los títulos en una sola línea o en múltiples líneas.",
+  "settings.tabsNavLineClamp.optionOne": "Una Sola Línea (Truncar)",
+  "settings.tabsNavLineClamp.optionMulti": "Múltiples Líneas (Saltar)",
+  "settings.limitTabTitleWidth.name": "Limitar Ancho Máximo",
+  "settings.limitTabTitleWidth.desc": "Restringe el ancho del título de la pestaña al ancho del contenedor.",
+  "settings.tabsContentsPadding.name": "Espaciado Interno (Padding)",
+  "settings.tabsContentsPadding.desc": "El relleno del contenido de las pestañas. Puedes definir de 1 a 4 valores CSS (ej. '0', '10px', '10px 20px'). Soporta unidades como px, em y rem.",
+  "settings.tabsContentsMaxHeight.name": "Altura Máxima",
+  "settings.tabsContentsMaxHeight.desc": "Si estableces un tamaño CSS válido (ej. 250px, 15em, 50vh), el contenido mostrará barra de desplazamiento al superar esa altura.",
+  "menu.editTab": "Editar Bloque (Modal)",
+  "menu.addNewTab": "Añadir nueva pestaña",
+  "menu.deleteTab": "Eliminar pestaña",
+  "menu.copyTab": "Copiar pestaña",
+  "menu.pasteTab": "Pegar pestaña",
+  "commands.convertToTabs": "Convertir texto seleccionado a pestañas",
+  "commands.refreshAllTabs": "Refrescar todas las pestañas en archivos abiertos",
+  "notice.addNewTabSuccess": "\u{1F7E2} Pestaña añadida con éxito",
+  "notice.deleteTabSuccess": "\u{1F7E2} {0} eliminado con éxito",
+  "notice.invalidTab": "\u{1F534} Pestaña no válida.",
+  "notice.copyTabSuccess": "\u{1F7E2} Copiado al portapapeles con éxito.",
+  "notice.copyTabFailed": "\u{1F534} Error al copiar al portapapeles",
+  "notice.noClipboardContent": "\u{1F7E0} Sin contenido en el portapapeles.",
+  "notice.pasteTabFailed": "\u{1F534} Error al pegar desde el portapapeles",
+  "notice.invalidActionButtonType": "Tipo de botón no válido. Establecido en 'Ninguno'."
+};
+var IO = { en: zr, es: zr_es, zh: bs, "zh-cn": bs, "zh-tw": bs };
 function $(s, ...t) {
   var r, o;
-  let e = "en",
-    i = IO[e],
-    n =
-      (o = (r = i == null ? void 0 : i[s]) != null ? r : zr[s]) != null ? o : s;
+  let e = "es";
+  try {
+    if (window.app && window.app.plugins && window.app.plugins.plugins["tabs-extended"]) {
+      e = window.app.plugins.plugins["tabs-extended"].settings.language || "es";
+    }
+  } catch (err) {}
+  let i = IO[e] || IO["es"];
+  let n = (o = (r = i == null ? void 0 : i[s]) != null ? r : zr_es[s]) != null ? o : (zr[s] || s);
   return (
     t.length > 0 &&
       t.forEach((a, l) => {
@@ -954,6 +1029,8 @@ PluginLocales = {
             }
         }
         
+        this.sampleTabs = new Dl(this.plugin, this, t.createDiv());
+
         new U.Setting(t).setName(_("heading_info")).setHeading();
         new U.Setting(t)
           .setName(_("changelog_name"))
@@ -965,8 +1042,6 @@ PluginLocales = {
                 new ChangelogModal(this.app).open();
               })
           );
-          
-        this.sampleTabs = new Dl(this.plugin, this, t.createDiv());
         
         // Restore scroll position
         setTimeout(() => { t.scrollTop = prevScroll; }, 0);
@@ -1028,7 +1103,7 @@ PluginLocales = {
         ));
       let t = this.containerEl.createDiv("edit-block-button");
       (t.setAttribute("aria-label", "Edit this block"),
-        (0, U.setIcon)(t, "lucide-code-2"));
+        (0, U.setIcon)(t, "code"));
     }
     createSampleTabNav() {
       this.tabsnavEl.className = "tabs-nav";
@@ -1061,7 +1136,7 @@ PluginLocales = {
           this.plugin.settings.actionButtonType === "action-add"
             ? (0, U.setIcon)(i, "plus")
             : this.plugin.settings.actionButtonType === "action-edit" &&
-              (0, U.setIcon)(i, "lucide-pencil"));
+              (0, U.setIcon)(i, "pencil"));
       }
     }
     createSampleTabContent() {
@@ -1675,7 +1750,7 @@ var qr = te(require("obsidian")),
         (e.className = "tabs-nav-button"),
         t === "action-add"
           ? (0, qr.setIcon)(e, "plus")
-          : t === "action-edit" && (0, qr.setIcon)(e, "lucide-pencil"),
+          : t === "action-edit" && ((0, qr.setIcon)(e, "pencil"), e.firstElementChild || (0, qr.setIcon)(e, "lucide-pencil")),
         e
       );
     }
@@ -28187,25 +28262,28 @@ var Zl = class {
                  }
                  
                  if (current && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && info === "") {
-                     let depth = fenceStack.filter(f => f.type === "tabs").length;
-                     let popped = fenceStack.pop();
-                     if (popped.type === "tabs") {
-                         let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "end of nested tab";
-                         let endText = baseEnd + (popped.isVertical ? " (vertical end)" : "");
-                         i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
-                         i.push(q.widget({ widget: new this.DepthWidget(endText, depth), side: 1 }).range(line.to));
-                     }
+                      let depth = fenceStack.filter(f => f.type === "tabs").length;
+                      let popped = fenceStack.pop();
+                      if (popped.type === "tabs") {
+                          let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nested tab end";
+                          let rawEnd = baseEnd.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
+                          let endText = rawEnd + (popped.isVertical ? " (vertical)" : " (horizontal)");
+                          i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
+                          i.push(q.widget({ widget: new this.DepthWidget(endText, depth), side: 1 }).range(line.to));
+                      }
                  } else {
                       let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
                       let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
                       let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
                       if (openTagRegex.test(info.toLowerCase())) {
-                          let isVertical = info.toLowerCase().endsWith("-v");
-                          fenceStack.push({ fence: fenceStr, type: "tabs", isVertical });
-                          let depth = fenceStack.filter(f => f.type === "tabs").length;
-                          let startText = t.settings.nestedTabsDelimiterTextStart + (isVertical ? " (vertical)" : "");
-                          i.push(q.line({ class: "cm-nested-tab-start" }).range(line.from));
-                          i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
+                           let isVertical = info.toLowerCase().endsWith("-v");
+                           fenceStack.push({ fence: fenceStr, type: "tabs", isVertical });
+                           let depth = fenceStack.filter(f => f.type === "tabs").length;
+                           let baseStart = t.settings.nestedTabsDelimiterTextStart || "nested tab start";
+                           let rawStart = baseStart.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
+                           let startText = rawStart + (isVertical ? " (vertical)" : " (horizontal)");
+                           i.push(q.line({ class: "cm-nested-tab-start" }).range(line.from));
+                           i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
                       } else {
                          if (current || baseDepth === 1) {
                              fenceStack.push({ fence: fenceStr, type: "code" });
@@ -28744,9 +28822,9 @@ var Zl = class {
   }
   initParagraphTool() {
     this.paragraphTools = [
-      this.addButton("lucide-list", "Unordered List", "unordered-list-button"),
+      this.addButton("list", "Unordered List", "unordered-list-button"),
       this.addButton(
-        "lucide-list-ordered",
+        "list-ordered",
         "Ordered List",
         "ordered-list-button",
       ),
@@ -28756,7 +28834,7 @@ var Zl = class {
   initInsertTool() {
     this.insertTools = [
       this.addButton("code", "Code", "code-button"),
-      this.addButton("lucide-quote", "Callout", "callout-button"),
+      this.addButton("quote", "Callout", "callout-button"),
       this.addButton("table", "Table", "table-button"),
     ];
   }
