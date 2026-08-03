@@ -1,1 +1,23 @@
+# Obsidian plugin runtime settings
+data.json
+
+# Developer documentation & logs
 docs/
+
+# Local Obsidian Vault testing files
+.obsidian/
+.backup/
+.check/
+
+# Dependencies & Build artifacts
+node_modules/
+dist/
+build/
+*.tmp
+*.log
+
+# IDE & OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
