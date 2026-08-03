@@ -1,239 +1,241 @@
 # 📑 Tabs Extended for Obsidian
 
 <p align="center">
-  <b>El sistema definitivo para organizar tus notas con pestañas horizontales, verticales y anidadas en Obsidian.</b><br>
-  <i>The definitive system to organize your Obsidian notes with horizontal, vertical, and nested tabs.</i>
+  <b>La forma más fácil y elegante de organizar tu información en pestañas dentro de Obsidian.</b><br>
+  <i>The easiest and most elegant way to organize your information in tabs inside Obsidian.</i>
 </p>
 
 ---
 
-## 📑 Tabla de Contenidos / Table of Contents
+## 📑 Índice / Table of Contents
 
 - [Español 🇪🇸](#español-)
-  - [¿Por qué Tabs Extended? (Ventajas Únicas)](#-por-qué-tabs-extended-ventajas-únicas)
-  - [Características Principales](#características-principales)
-  - [Guía de Sintaxis y Ejemplos](#guía-de-sintaxis-y-ejemplos)
-    - [1. Pestañas Horizontales Básicas](#1-pestañas-horizontales-básicas)
-    - [2. Pestañas Verticales (`-v`)](#2-pestañas-verticales--v)
-    - [3. Pestañas Anidadas (Nested Tabs)](#3-pestañas-anidadas-nested-tabs)
-  - [Editor Modal Interactivo](#editor-modal-interactivo)
-  - [Compatibilidad con la Comunidad (Execute Code & Callouts)](#compatibilidad-con-la-comunidad-execute-code--callouts)
-  - [Configuración de Palabra Clave (`tabsKeyword`)](#configuración-de-palabra-clave-tabskeyword)
+  - [¿Qué hace especial a Tabs Extended?](#qué-hace-especial-a-tabs-extended)
+  - [¿Qué puedes hacer con este plugin?](#qué-puedes-hacer-con-este-plugin)
+  - [Cómo usarlo (Ejemplos sencillos)](#cómo-usarlo-ejemplos-sencillos)
+    - [1. Pestañas Horizontales](#1-pestañas-horizontales)
+    - [2. Pestañas Verticales](#2-pestañas-verticales)
+    - [3. Pestañas dentro de Pestañas (Anidadas)](#3-pestañas-dentro-de-pestañas-anidadas)
+  - [Editor Visual de Pestañas](#editor-visual-de-pestañas)
+  - [Funciona de maravilla con tus otros plugins](#funciona-de-maravilla-con-tus-otros-plugins)
+  - [Cambia la palabra clave a tu gusto](#cambia-la-palabra-clave-a-tu-gusto)
 - [English 🇬🇧](#english-)
-  - [Why Tabs Extended? (Key Advantages)](#why-tabs-extended-key-advantages)
-  - [Key Features](#key-features)
-  - [Syntax Guide & Examples](#syntax-guide--examples)
-    - [1. Basic Horizontal Tabs](#1-basic-horizontal-tabs)
-    - [2. Vertical Tabs (`-v`)](#2-vertical-tabs--v)
-    - [3. Nested Tabs](#3-nested-tabs)
-  - [Interactive Modal Editor](#interactive-modal-editor)
-  - [Ecosystem Compatibility (Execute Code & Callouts)](#ecosystem-compatibility-execute-code--callouts)
-  - [Custom Keyword Configuration (`tabsKeyword`)](#custom-keyword-configuration-tabskeyword)
+  - [What makes Tabs Extended special?](#what-makes-tabs-extended-special)
+  - [What can you do with this plugin?](#what-can-you-do-with-this-plugin)
+  - [How to use it (Simple examples)](#how-to-use-it-simple-examples)
+    - [1. Horizontal Tabs](#1-horizontal-tabs)
+    - [2. Vertical Tabs](#2-vertical-tabs)
+    - [3. Tabs inside Tabs (Nested)](#3-tabs-inside-tabs-nested)
+  - [Visual Tab Editor](#visual-tab-editor)
+  - [Works seamlessly with your other plugins](#works-seamlessly-with-your-other-plugins)
+  - [Customize your tab trigger word](#customize-your-tab-trigger-word)
 - [Licencia / License](#licencia--license)
 
 ---
 
 ## Español 🇪🇸
 
-### 🚀 ¿Por qué Tabs Extended? (Ventajas Únicas)
+### 🌟 ¿Qué hace especial a Tabs Extended?
 
-A diferencia de otras extensiones de pestañas convencionales en Obsidian, **Tabs Extended** fue diseñado para ofrecer una experiencia limpia, fluida y robusta sin romper la estructura sintáctica de Markdown:
+Si tus notas en Obsidian son muy largas o contienen mucha información, **Tabs Extended** te ayuda a ordenarlas en pestañas limpias e interactivas.
 
-1. **Anidamiento Infinito Atómico**: Puedes insertar bloques de pestañas dentro de otras pestañas sin riesgo de que la cerca exterior se rompa o colapse.
-2. **Editor Modal WYSIWYG Integrado**: Edita el contenido de tus pestañas en tiempo real con una interfaz visual intuitiva, botones dedicados para pestañas anidadas (horizontales y verticales) y controles de eliminación por pestaña.
-3. **Compatibilidad Total con Ejecución de Código (`execute-code`)**: Renderiza botones "Run" independientes para todas las celdas de código consecutivas (Python, JS, Bash, etc.) dentro de cualquier pestaña.
-4. **Armonía Visual con Callouts**: Respeta al 100% los temas nativos y la personalización de *Callout Manager* sin interferencias de CSS ni pérdida de colores.
-5. **Palabra Clave Personalizable**: Permite cambiar la palabra desencadenante (`tabs`) por cualquier término de tu preferencia (`pestanas`, `tab`, `secciones`).
+A diferencia de otras opciones, este plugin te ofrece:
 
----
-
-### ✨ Características Principales
-
-* ↔️ **Pestañas Horizontales**: Diseño elegante estilo navegador para alternar información rápidamente.
-* ↕️ **Pestañas Verticales (`-v`)**: Distribución de panel lateral ideal para notas extensas, documentación o wikis.
-* 🪆 **Anidamiento Jerárquico Seguro**: Sistema dinámico de virgulillas (`~~~`) para delimitar bloques internos sin conflictos sintácticos.
-* 🛠️ **Caja de Herramientas Modal**: Formato rápido (negrita, cursiva, resaltado, listas, tablas, callouts y bloques de pestañas anidadas).
-* 🛡️ **Protección de Estructura**: Inmunidad de cercas de código contra borrados accidentales del cursor durante la edición.
-* 🎨 **Diseño Moderno & Glassmorphism**: Estilos limpios adaptados al modo claro y oscuro de Obsidian.
+1. **Pestañas dentro de otras Pestañas**: Puedes crear sub-niveles de información sin que tus notas se rompan o pierdan el formato.
+2. **Editor Visual Intuitivo**: No necesitas recordar comandos difíciles. Haz clic en el botón de editar y modifica tus pestañas cómodamente en una ventana dedicada.
+3. **Compatibilidad Total**: Tus notas con bloques de código ejecutable y cajas destacadas (callouts) mantendrán siempre sus colores y funciones intactos.
+4. **Personalizable**: Tú eliges cómo llamar a tus bloques de pestañas en la configuración.
 
 ---
 
-### 📖 Guía de Sintaxis y Ejemplos
+### ✨ ¿Qué puedes hacer con este plugin?
 
-#### 1. Pestañas Horizontales Básicas
-Utiliza el bloque de código `tabs` y separa los encabezados de cada pestaña con `==` (o el delimitador configurado):
+* ↔️ **Pestañas Horizontales**: Como las pestañas de tu navegador de internet. Ideales para resumir temas en una sola mirada.
+* ↕️ **Pestañas Verticales**: Un menú lateral perfecto para guías, documentación, cursos o manuales paso a paso.
+* 🪆 **Organización por Niveles**: Agrupa pestañas dentro de otras pestañas para proyectos complejos.
+* 🛠️ **Herramientas de Formato Fáciles**: Agrega negritas, listas, tablas o nuevas pestañas con un solo clic.
+
+---
+
+### 📖 Cómo usarlo (Ejemplos sencillos)
+
+#### 1. Pestañas Horizontales
+Escribe un bloque `tabs` y usa `==` antes del nombre de cada pestaña:
 
 ```markdown
 ```tabs
-== 📌 Descripción
-Esta es la primera pestaña con información general de la nota.
+== 📌 Resumen
+Aquí va la presentación general de tu tema.
 
 == ⚙️ Requisitos
-- Obsidian v1.0.0+
-- Plugin Tabs Extended activo.
+- Tener Obsidian instalado.
+- Activar el plugin Tabs Extended.
 ```
 ```
 
-#### 2. Pestañas Verticales (`-v`)
-Añade `-v` a la palabra clave para cambiar a orientación vertical:
+#### 2. Pestañas Verticales
+Añade `-v` al nombre para ver las pestañas en forma de menú vertical a la izquierda:
 
 ```markdown
 ```tabs-v
-== 📁 Módulo 1
-Contenido del primer módulo explicativo.
+== 📗 Tema 1
+Explicación de la primera lección.
 
-== 📁 Módulo 2
-Contenido del segundo módulo explicativo.
+== 📘 Tema 2
+Explicación de la segunda lección.
 ```
 ```
 
-#### 3. Pestañas Anidadas (Nested Tabs)
-Para crear pestañas dentro de pestañas, el bloque hijo utiliza virgulillas (`~~~`):
+#### 3. Pestañas dentro de Pestañas (Anidadas)
+Para poner pestañas dentro de otra pestaña, usa tres virgulillas (`~~~`):
 
 ```markdown
 ```tabs
-== 🌐 Pestaña Principal
+== 🌐 Tema Principal
 
 ~~~tabs
-== 🔹 Sub-Pestaña A
-Contenido interno A.
+== 🔹 Subtema A
+Información detallada A.
 
-== 🔹 Sub-Pestaña B
-Contenido interno B.
+== 🔹 Subtema B
+Información detallada B.
 ~~~
 
-== 📊 Estadísticas
-Información adicional fuera del bloque hijo.
+== 📊 Conclusión
+Texto final del tema principal.
 ```
 ```
 
 ---
 
-### 🎨 Editor Modal Interactivo
+### 🎨 Editor Visual de Pestañas
 
-Al pasar el cursor sobre un bloque de pestañas en la vista de lectura o edición de Obsidian, verás el icono de edición (✏️). Al hacer clic se abrirá el **Editor Modal de Tabs Extended**:
+Cuando pases el cursor sobre cualquier conjunto de pestañas, verás un icono de lápiz (✏️). Al tocarlo se abrirá una ventana interactiva donde podrás:
 
-- **Barra de Herramientas**: Inserta rápidamente pestañas anidadas horizontales (📌) y verticales (↕️).
-- **Control por Pestaña**: Reordena, cambia títulos o elimina pestañas individuales con el botón 🗑️.
-- **Historial Integrado**: Soporte para Deshacer (`Ctrl+Z`) y Rehacer (`Ctrl+Shift+Z`) directo en el editor.
-
----
-
-### 🔌 Compatibilidad con la Comunidad (Execute Code & Callouts)
-
-* **Execute Code Plugin**: Todos los bloques de código consecutivos dentro de celdas de pestañas cuentan con envoltorios aislados (`.tabs-codeblock-wrapper`), garantizando que los botones de ejecución ("Run") aparezcan y funcionen de forma independiente.
-* **Callout Manager**: Soporte completo para callouts nativos y personalizados. Los colores, íconos y bordes configurados en Callout Manager se mantienen 100% idénticos dentro de las pestañas.
+- Agregar nuevas pestañas horizontales o verticales con botones dedicados.
+- Cambiar títulos de pestañas fácilmente.
+- Eliminar o reordenar pestañas con el icono del bote de basura (🗑️).
+- Deshacer cambios rápidamente con `Ctrl+Z`.
 
 ---
 
-### ⚙️ Configuración de Palabra Clave (`tabsKeyword`)
+### 🔌 Funciona de maravilla con tus otros plugins
 
-1. Abre **Ajustes** -> **Tabs Extended**.
-2. Dirígete a la sección **Pestañas Estándar**.
-3. En **Palabra Clave del Bloque de Pestañas**, ingresa tu palabra deseada (ejemplo: `pestanas`).
-4. ¡Listo! Ahora podrás usar ```` ```pestanas ```` para pestañas horizontales y ```` ```pestanas-v ```` para pestañas verticales.
+- **Bloques de código interactivo (Execute Code)**: Si ejecutas código directamente en tus notas, cada bloque dentro de una pestaña conservará su botón para correr el código independientemente.
+- **Cajas destacadas (Callouts y Callout Manager)**: Tus notas de aviso, consejos o advertencias conservarán todos sus colores, iconos y bordes originales dentro de las pestañas.
+
+---
+
+### ⚙️ Cambia la palabra clave a tu gusto
+
+Si prefieres usar una palabra en español como `pestanas` o `secciones` en lugar de `tabs`:
+
+1. Ve a **Ajustes de Obsidian** -> **Tabs Extended**.
+2. En la opción **Palabra Clave del Bloque de Pestañas**, escribe tu palabra favorita (por ejemplo: `pestanas`).
+3. ¡Listo! Ahora podrás crear pestañas escribiendo ```` ```pestanas ```` o ```` ```pestanas-v ````.
 
 ---
 
 ## English 🇬🇧
 
-### 🚀 Why Tabs Extended? (Key Advantages)
+### 🌟 What makes Tabs Extended special?
 
-Unlike conventional tab plugins in Obsidian, **Tabs Extended** was architected to deliver a smooth, powerful, and robust experience without breaking Markdown syntax:
+If your Obsidian notes are long or detailed, **Tabs Extended** helps you organize them into clean, interactive tabs.
 
-1. **Atomic Infinite Nesting**: Embed tab blocks inside other tabs seamlessly without premature closure or fence syntax breakdown.
-2. **Integrated WYSIWYG Modal Editor**: Edit your tab content in real-time with an intuitive visual interface, dedicated nested tab buttons (horizontal and vertical), and per-tab deletion controls.
-3. **Full Multi-Execution Compatibility (`execute-code`)**: Renders independent "Run" buttons for all consecutive code blocks (Python, JS, Bash, etc.) inside any tab body.
-4. **Seamless Callout Integration**: 100% visual harmony with Obsidian native callouts and *Callout Manager* without CSS interference or color wiping.
-5. **Customizable Trigger Keyword**: Customize the triggering keyword (`tabs`) to any term you prefer (`pestanas`, `tab`, `sections`).
+Unlike other options, this plugin provides:
 
----
-
-### ✨ Key Features
-
-* ↔️ **Horizontal Tabs**: Sleek browser-style tabs for quick context switching.
-* ↕️ **Vertical Tabs (`-v`)**: Sidebar layout ideal for extensive notes, documentation, or wikis.
-* 🪆 **Safe Hierarchical Nesting**: Dynamic tilde fence (`~~~`) system to isolate inner tab blocks safely.
-* 🛠️ **Modal Toolbox**: Rich formatting toolbar (bold, italic, highlight, lists, tables, callouts, and nested tabs).
-* 🛡️ **Fence Shielding**: Structural immunity for code fences against accidental cursor deletion during edits.
-* 🎨 **Modern & Responsive Design**: Tailored glassmorphism aesthetics supporting both light and dark Obsidian themes.
+1. **Tabs inside Tabs**: Create sub-levels of information without breaking your note layout.
+2. **Intuitive Visual Editor**: No need to memorize complex markup. Simply click the edit button and manage your tabs in a dedicated window.
+3. **Full Compatibility**: Your code blocks and callout boxes will keep their colors, icons, and features fully working inside tabs.
+4. **Customizable**: Choose your own trigger keyword in the settings menu.
 
 ---
 
-### 📖 Syntax Guide & Examples
+### ✨ What can you do with this plugin?
 
-#### 1. Basic Horizontal Tabs
-Use the `tabs` code block and separate tab headers with `==` (or your configured delimiter):
+* ↔️ **Horizontal Tabs**: Browser-style tabs to switch between topics seamlessly.
+* ↕️ **Vertical Tabs**: Sidebar navigation menu tailored for guides, documentation, or study units.
+* 🪆 **Multi-Level Structure**: Group tabs inside other tabs for complex projects.
+* 🛠️ **Easy Formatting Tools**: Add bold text, lists, tables, or new tabs with a single click.
+
+---
+
+### 📖 How to use it (Simple examples)
+
+#### 1. Horizontal Tabs
+Write a `tabs` code block and use `==` before each tab title:
 
 ```markdown
 ```tabs
 == 📌 Overview
-This is the first tab containing general note information.
+General summary of your note.
 
 == ⚙️ Requirements
-- Obsidian v1.0.0+
+- Obsidian installed.
 - Tabs Extended plugin enabled.
 ```
 ```
 
-#### 2. Vertical Tabs (`-v`)
-Append `-v` to the keyword for vertical layout:
+#### 2. Vertical Tabs
+Add `-v` to the keyword to switch to a vertical sidebar layout:
 
 ```markdown
 ```tabs-v
-== 📁 Module 1
-Content of the first module.
+== 📁 Topic 1
+Explanation of the first lesson.
 
-== 📁 Module 2
-Content of the second module.
+== 📁 Topic 2
+Explanation of the second lesson.
 ```
 ```
 
-#### 3. Nested Tabs
-To embed tabs inside another tab, the nested block uses tildes (`~~~`):
+#### 3. Tabs inside Tabs (Nested)
+To place tabs inside an existing tab, use three tildes (`~~~`):
 
 ```markdown
 ```tabs
-== 🌐 Main Tab
+== 🌐 Main Topic
 
 ~~~tabs
-== 🔹 Sub-Tab A
-Inner content A.
+== 🔹 Sub-topic A
+Detailed sub-topic A info.
 
-== 🔹 Sub-Tab B
-Inner content B.
+== 🔹 Sub-topic B
+Detailed sub-topic B info.
 ~~~
 
-== 📊 Metrics
-Additional content outside the nested block.
+== 📊 Summary
+Closing summary of the main topic.
 ```
 ```
 
 ---
 
-### 🎨 Interactive Modal Editor
+### 🎨 Visual Tab Editor
 
-Hover over any tab block in Obsidian and click the edit icon (✏️) to launch the **Tabs Extended Modal Editor**:
+Hover over any tab block in your note and click the edit icon (✏️) to open a visual editor window where you can:
 
-- **Toolbar Controls**: Instantly insert Horizontal (📌) and Vertical (↕️) nested tabs.
-- **Tab Management**: Rename, reorganize, or delete individual tabs using the 🗑️ button.
-- **History Undo/Redo**: Full Undo (`Ctrl+Z`) and Redo (`Ctrl+Shift+Z`) support directly inside the modal.
-
----
-
-### 🔌 Ecosystem Compatibility (Execute Code & Callouts)
-
-* **Execute Code Plugin**: All consecutive code blocks inside tab containers receive isolated wrapper elements (`.tabs-codeblock-wrapper`), ensuring "Run" buttons attach cleanly to every code block.
-* **Callout Manager**: Native & custom callouts render flawlessly with intact colors, icons, and theme borders.
+- Add new horizontal or vertical tabs with dedicated toolbar buttons.
+- Rename tabs effortlessly.
+- Delete or organize tabs using the trash button (🗑️).
+- Undo edits anytime with `Ctrl+Z`.
 
 ---
 
-### ⚙️ Custom Keyword Configuration (`tabsKeyword`)
+### 🔌 Works seamlessly with your other plugins
 
-1. Go to **Settings** -> **Tabs Extended**.
-2. Locate the **Standard Tabs** section.
-3. In **Tab Block Keyword**, enter your preferred keyword (e.g., `sections`).
-4. Done! You can now use ```` ```sections ```` for horizontal tabs and ```` ```sections-v ```` for vertical tabs.
+- **Executable Code Blocks (Execute Code)**: If you run code inside your notes, each code block inside a tab maintains its independent "Run" button.
+- **Callouts & Callout Manager**: Warning boxes, tips, and custom callouts preserve their original colors, icons, and theme borders inside tabs.
+
+---
+
+### ⚙️ Customize your tab trigger word
+
+If you prefer using a custom word like `sections` or `table` instead of `tabs`:
+
+1. Go to **Obsidian Settings** -> **Tabs Extended**.
+2. Under **Tab Block Keyword**, type your preferred word (e.g., `sections`).
+3. Done! You can now create tabs using ```` ```sections ```` or ```` ```sections-v ````.
 
 ---
 
