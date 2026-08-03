@@ -1,0 +1,21 @@
+{
+  "split": "tema:",
+  "defaultTabNavItem": " pestaña",
+  "defaultTabContent": "New tab content",
+  "actionButtonType": "action-edit",
+  "ignoreNotice": false,
+  "autorefreshMarkdownView": true,
+  "dragAndDrop": true,
+  "doubleClickToEdit": false,
+  "showToolbar": true,
+  "tabSize": 1,
+  "editorAutoSaveInterval": 0,
+  "defaultTabsBorder": "border-always",
+  "defaultTabsBorderColor": "#c6b8b8",
+  "hideTabsEditBlockButton": false,
+  "defaultTitleLineClamp": "one",
+  "defaultTitlePosition": "top",
+  "defaultTitleLimited": false,
+  "defaultTabsContentsPadding": "1em 2em",
+  "defaultTabsContentsMaxHeight": "none"
+}
