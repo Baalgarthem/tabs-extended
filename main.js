@@ -242,6 +242,7 @@ function $(s, ...t) {
     tabsKeyword: "tabs",
     split: "tab: ",
     defaultTabNavItem: "New tab",
+    defaultTabNavItemVertical: "New vertical tab",
     defaultTabContent: "New tab content",
     actionButtonType: "action-add",
     ignoreNotice: !1,
@@ -334,8 +335,10 @@ PluginLocales = {
     heading_standard_desc: "Control the layout, structure, and default values for standard tab blocks.",
     tabs_keyword_name: "Code Block Keyword",
     tabs_keyword_desc: "The main keyword to trigger tab blocks (default: 'tabs'). Horizontal tabs use this keyword (e.g. `~~~tabs`). Append '-v' for vertical tabs (e.g. `~~~tabs-v` or `~~~<custom_keyword>-v`).",
-    default_title_name: "Default Tab Title",
-    default_title_desc: "The default name assigned to newly created tabs (e.g. 'New Tab').",
+    default_title_name: "Default Horizontal Tab Title",
+    default_title_desc: "The default name assigned to newly created horizontal tabs (e.g. 'New tab').",
+    default_title_vertical_name: "Default Vertical Tab Title",
+    default_title_vertical_desc: "The default name assigned to newly created vertical tabs (e.g. 'New vertical tab').",
     default_content_name: "Default Tab Content",
     default_content_desc: "The default content assigned to newly created tabs.",
     action_button_name: "Corner Action Button",
@@ -448,8 +451,10 @@ PluginLocales = {
     heading_standard_desc: "Controla la apariencia, estructura y los valores iniciales de los bloques de pestañas convencionales.",
     tabs_keyword_name: "Palabra Clave del Bloque de Pestañas",
     tabs_keyword_desc: "La palabra clave principal para activar bloques de pestañas (por defecto 'tabs'). Las pestañas serán horizontales por defecto. Añada '-v' a la palabra clave (ej. 'tabs-v' o '<palabra>-v') para usar pestañas verticales.",
-    default_title_name: "Título Inicial para Pestañas Nuevas",
-    default_title_desc: "El texto predeterminado que aparecerá como título cuando agregues una nueva pestaña (ej. 'Nueva Pestaña').",
+    default_title_name: "Título Inicial para Pestañas Horizontales",
+    default_title_desc: "El texto predeterminado que aparecerá como título cuando agregues una nueva pestaña horizontal (ej. 'Nueva pestaña').",
+    default_title_vertical_name: "Título Inicial para Pestañas Verticales",
+    default_title_vertical_desc: "El texto predeterminado que aparecerá como título cuando agregues una nueva pestaña vertical (ej. 'Nueva pestaña vertical').",
     default_content_name: "Contenido Inicial para Pestañas Nuevas",
     default_content_desc: "El texto predeterminado que se inyectará en el cuerpo cuando agregues una nueva pestaña.",
     action_button_name: "Botón de Acción Superior",
@@ -661,12 +666,22 @@ PluginLocales = {
           .setName(_("default_title_name"))
           .setDesc(_("default_title_desc"))
           .addText((e) =>
-            e.setValue(this.plugin.settings.defaultTabNavItem).setPlaceholder("New tab").onChange((i) => {
+            e.setValue(this.plugin.settings.defaultTabNavItem || "New tab").setPlaceholder("New tab").onChange((i) => {
                 i == "" && (i = "New tab");
                 this.plugin.settings.defaultTabNavItem = i;
                 this.plugin.saveSettings();
             })
           ).then((e) => this.addResetButton(e, "defaultTabNavItem"));
+        new U.Setting(t)
+          .setName(_("default_title_vertical_name"))
+          .setDesc(_("default_title_vertical_desc"))
+          .addText((e) =>
+            e.setValue(this.plugin.settings.defaultTabNavItemVertical || "New vertical tab").setPlaceholder("New vertical tab").onChange((i) => {
+                i == "" && (i = "New vertical tab");
+                this.plugin.settings.defaultTabNavItemVertical = i;
+                this.plugin.saveSettings();
+            })
+          ).then((e) => this.addResetButton(e, "defaultTabNavItemVertical"));
         new U.Setting(t)
           .setName(_("default_content_name"))
           .setDesc(_("default_content_desc"))
@@ -1422,7 +1437,7 @@ var Yr = class extends Dt.Menu {
             r.setLine(
               t.sectionInfo.lineEnd,
               t.split +
-                t.plugin.settings.defaultTabNavItem +
+                (t.isVertical ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (t.plugin.settings.defaultTabNavItem || "New tab")) +
                 `
 ` +
                 t.plugin.settings.defaultTabContent +
@@ -1541,7 +1556,7 @@ var Yr = class extends Dt.Menu {
                   return;
                 }
                 let r =
-                    t.plugin.settings.defaultTabNavItem +
+                    (t.isVertical ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (t.plugin.settings.defaultTabNavItem || "New tab")) +
                     `
 `,
                   o = n.trim();
@@ -1947,9 +1962,12 @@ var Gr = class extends U.MarkdownRenderChild {
         ((this.tabsType = "innertabs"),
         this.tabsEl.classList.add("tabs-innertabs"),
         this.plugin.settings.nestedTabsNoBorders && this.tabsEl.classList.add("tabs-innertabs-no-borders")));
+    let defaultTitle = isVertical
+      ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
+      : (this.plugin.settings.defaultTabNavItem || "New tab");
     let [o, a] = this.parseTabs(
       t,
-      this.plugin.settings.defaultTabNavItem,
+      defaultTitle,
       this.plugin.settings.defaultTabContent,
     );
     this.tabsConfig = new Nr(a[0], this.tabsEl, this.plugin.settings, isVertical);
@@ -2133,7 +2151,7 @@ var Gr = class extends U.MarkdownRenderChild {
               t.setLine(
                 this.sectionInfo.lineEnd,
                 this.split +
-                  this.plugin.settings.defaultTabNavItem +
+                  (this.isVertical ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (this.plugin.settings.defaultTabNavItem || "New tab")) +
                   `
 ` +
                   this.plugin.settings.defaultTabContent +
@@ -28172,8 +28190,10 @@ var Zl = class {
                      let depth = fenceStack.filter(f => f.type === "tabs").length;
                      let popped = fenceStack.pop();
                      if (popped.type === "tabs") {
+                         let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "end of nested tab";
+                         let endText = baseEnd + (popped.isVertical ? " (vertical end)" : "");
                          i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
-                         i.push(q.widget({ widget: new this.DepthWidget(t.settings.nestedTabsDelimiterTextEnd, depth), side: 1 }).range(line.to));
+                         i.push(q.widget({ widget: new this.DepthWidget(endText, depth), side: 1 }).range(line.to));
                      }
                  } else {
                       let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
