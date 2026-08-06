@@ -1817,6 +1817,22 @@ var qr = te(require("obsidian")),
     }
   };
 var Zi = te(require("obsidian"));
+function cleanVirtualLinksFromElement(el) {
+  if (!el) return;
+  try {
+    const virtualLinks = el.querySelectorAll(".virtual-link, .virtual-link-a, .virtual-link-span, .glossary-entry");
+    if (virtualLinks && virtualLinks.length > 0) {
+      virtualLinks.forEach((vl) => {
+        const icon = vl.querySelector(".linker-suffix-icon, sup");
+        if (icon) icon.remove();
+        const textNode = document.createTextNode(vl.textContent || "");
+        vl.replaceWith(textNode);
+      });
+      el.normalize();
+    }
+  } catch (err) {}
+}
+
 var On = class {
   constructor(t, e, i, n = !0) {
     this.isActiveed = !1;
@@ -1828,7 +1844,7 @@ var On = class {
       (this.tabitemEl.className = "tabs-nav-item"),
       n && this.tabitemEl.setAttr("draggable", "true"),
       (this.tabitemMDEl = this.tabitemEl.createDiv()),
-      (this.tabitemMDEl.className = "tabs-nav-item-md"));
+      (this.tabitemMDEl.className = "tabs-nav-item-md no-virtual-link virtual-linker-ignore"));
     let r = new Zi.MarkdownRenderChild(this.tabitemMDEl);
     Zi.MarkdownRenderer.render(
       this.tabs.app,
@@ -1836,10 +1852,44 @@ var On = class {
       this.tabitemMDEl,
       this.tabs.context.sourcePath,
       r,
-    );
+    ).then(() => {
+      cleanVirtualLinksFromElement(this.tabitemMDEl);
+    });
     if (this.tabs && this.tabs.context && typeof this.tabs.context.addChild === 'function') {
       this.tabs.context.addChild(r);
     }
+    this.setupVirtualLinkExemption();
+  }
+  setupVirtualLinkExemption() {
+    if (!this.tabitemMDEl) return;
+    cleanVirtualLinksFromElement(this.tabitemMDEl);
+    try {
+      const observer = new MutationObserver((mutations) => {
+        let needsClean = false;
+        for (const m of mutations) {
+          for (const added of Array.from(m.addedNodes)) {
+            if (added.nodeType === 1) {
+              const el = added;
+              if (
+                el.classList.contains("virtual-link") ||
+                el.classList.contains("virtual-link-a") ||
+                el.classList.contains("virtual-link-span") ||
+                el.classList.contains("glossary-entry") ||
+                el.querySelector(".virtual-link, .virtual-link-a, .glossary-entry")
+              ) {
+                needsClean = true;
+                break;
+              }
+            }
+          }
+          if (needsClean) break;
+        }
+        if (needsClean) {
+          cleanVirtualLinksFromElement(this.tabitemMDEl);
+        }
+      });
+      observer.observe(this.tabitemMDEl, { childList: true, subtree: true });
+    } catch (e) {}
   }
   registerdndEvents() {
     (this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragstart", (t) => {

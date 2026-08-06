@@ -35,3 +35,14 @@ body.theme-dark .tabs-editor-modal {
 .tabs-delete-button { opacity: 0; transition: opacity 0.2s ease, color 0.2s ease; margin-left: 6px; }
 .cm-nested-tab-ghost-text:hover .tabs-delete-button { opacity: 0.6; }
 .tabs-delete-button:hover { opacity: 1 !important; filter: drop-shadow(0 0 2px red); }
+
+.tabs-nav-item .virtual-link, .tabs-nav-item .virtual-link-a, .tabs-nav-item .virtual-link-span, .tabs-nav-item .glossary-entry {
+    color: inherit !important;
+    text-decoration: none !important;
+    border: none !important;
+    background: none !important;
+    pointer-events: none !important;
+}
+.tabs-nav-item .linker-suffix-icon, .tabs-nav-item .virtual-link-a sup, .tabs-nav-item .multiple-files-indicator {
+    display: none !important;
+}
