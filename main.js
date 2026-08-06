@@ -1502,169 +1502,230 @@ var Dt = te(require("obsidian"));
 var Yr = class extends Dt.Menu {
   constructor(t, e) {
     super();
-    (this.addItem((i) => {
-      (i.setTitle($("menu.addNewTab")),
-        i.setIcon("plus"),
-        i.onClick(() => {
-          let n = t.app.workspace.getActiveViewOfType(Dt.MarkdownView),
-            r = n == null ? void 0 : n.editor;
-          (r &&
-            r.setLine(
-              t.sectionInfo.lineEnd,
-              t.split +
-                (t.isVertical ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (t.plugin.settings.defaultTabNavItem || "New tab")) +
-                `
-` +
-                t.plugin.settings.defaultTabContent +
-                `
-` +
-                r.getLine(t.sectionInfo.lineEnd),
-            ),
-            t.plugin.settings.ignoreNotice ||
-              new Dt.Notice($("notice.addNewTabSuccess")));
-        }));
-    }),
-      this.addItem((i) => {
-        (i.setTitle($("menu.deleteTab")),
-          i.setIcon("trash"),
-          i.onClick(() => {
-            var a, l;
-            let n = -1;
-            for (let h = 0; h < t.tabsNav.navItems.length; h++)
-              if (t.tabsNav.navItems[h].tabitemEl === e.target) {
-                n = h;
-                break;
-              }
-            if (n === -1) {
-              t.plugin.settings.ignoreNotice ||
-                new Dt.Notice($("notice.invalidTab"));
-              return;
-            }
-            let r = t.tabsNav.navItems[n].title,
+    this.addItem((i) => {
+      i.setTitle($("menu.addNewTab"));
+      i.setIcon("plus");
+      i.onClick(() => {
+        let newTitle = t.isVertical
+          ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
+          : (t.plugin.settings.defaultTabNavItem || "New tab");
+        let newContent = t.plugin.settings.defaultTabContent || "New tab content";
+        Yr.updateBlockWithNewTab(t, newTitle, newContent);
+      });
+    });
+    this.addItem((i) => {
+      i.setTitle($("menu.deleteTab"));
+      i.setIcon("trash");
+      i.onClick(() => {
+        let tabIndex = -1;
+        for (let h = 0; h < t.tabsNav.navItems.length; h++) {
+          let itemEl = t.tabsNav.navItems[h].tabitemEl;
+          if (itemEl === e.target || (e.target && itemEl.contains(e.target))) {
+            tabIndex = h;
+            break;
+          }
+        }
+        if (tabIndex === -1) {
+          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
+          return;
+        }
+        let deletedTitle = t.tabsNav.navItems[tabIndex].title;
+        Yr.removeTabFromBlock(t, tabIndex, deletedTitle);
+      });
+    });
+    this.addItem((i) => {
+      i.setTitle($("menu.copyTab"));
+      i.setIcon("copy");
+      i.onClick(() => {
+        let tabIndex = -1, r = "";
+        for (let o = 0; o < t.tabsNav.navItems.length; o++) {
+          let itemEl = t.tabsNav.navItems[o].tabitemEl;
+          if (itemEl === e.target || (e.target && itemEl.contains(e.target))) {
+            tabIndex = o;
+            r = t.split + t.tabsNav.navItems[o].title + "\n" + t.tabsContents.tabcontents[o].content;
+            break;
+          }
+        }
+        if (tabIndex === -1) {
+          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
+          return;
+        }
+        navigator.clipboard.writeText(r).then(() => {
+          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabSuccess"));
+        }).catch((err) => {
+          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabFailed"));
+          console.error(err);
+        });
+      });
+    });
+    this.addItem((i) => {
+      i.setTitle($("menu.pasteTab"));
+      i.setIcon("paste");
+      i.onClick(() => {
+        navigator.clipboard.readText().then((n) => {
+          if (!n || n.trim() === "" || n.trim() === t.split) {
+            if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.noClipboardContent"));
+            return;
+          }
+          let r = t.isVertical
+            ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
+            : (t.plugin.settings.defaultTabNavItem || "New tab");
+          let o = n.trim();
+          if (n.startsWith(t.split)) {
+            let nlIdx = n.indexOf("\n");
+            if (nlIdx !== -1) {
+              r = n.substring(t.split.length, nlIdx).trim();
+              o = n.substring(nlIdx + 1).trim();
+            } else {
+              r = n.substring(t.split.length).trim();
               o = "";
-              for (let h = 0; h < t.tabsNav.navItems.length; h++) {
-                if (h !== n) {
-                  o +=
-                    t.split +
-                    t.tabsNav.navItems[h].title +
-                    "\n" +
-                    t.tabsContents.tabcontents[h].content.replace(/[\r\n]+$/, "") +
-                    "\n\n";
-                }
-              }
-              // Force exactly one blank line before closing backticks
-              o = o.replace(/[\r\n]+$/, "") + "\n\n";
-              
-              o =
-                t.backquote.repeat(t.backquoteCount) +
-                `tabs\n` +
-                (t.tabsConfig.rawConfig ? t.tabsConfig.rawConfig + `\n` : "") +
-                o +
-                t.backquote.repeat(t.backquoteCount);
-            
-            setTimeout(() => {
-                let l, a;
-                if ((l = t.activeView) != null) {
-                    l.editor.replaceRange(
-                        o,
-                        { line: t.sectionInfo.lineStart, ch: 0 },
-                        {
-                            line: t.sectionInfo.lineEnd,
-                            ch: (a = t.activeView) == null
-                                ? void 0
-                                : a.editor.getLine(t.sectionInfo.lineEnd).length,
-                        }
-                    );
-                }
-                if (!t.plugin.settings.ignoreNotice) {
-                    new Dt.Notice($("notice.deleteTabSuccess", r));
-                }
-            }, 10);
-          }));
-      }),
-      this.addItem((i) => {
-        (i.setTitle($("menu.copyTab")),
-          i.setIcon("copy"),
-          i.onClick(() => {
-            let n = -1,
-              r = "";
-            for (let o = 0; o < t.tabsNav.navItems.length; o++)
-              if (t.tabsNav.navItems[o].tabitemEl == e.target) {
-                ((n = o),
-                  (r =
-                    t.split +
-                    t.tabsNav.navItems[o].title +
-                    `
-` +
-                    t.tabsContents.tabcontents[o].content));
-                break;
-              }
-            if (n === -1) {
-              t.plugin.settings.ignoreNotice ||
-                new Dt.Notice($("notice.invalidTab"));
-              return;
             }
-            navigator.clipboard
-              .writeText(r)
-              .then(() => {
-                t.plugin.settings.ignoreNotice ||
-                  new Dt.Notice($("notice.copyTabSuccess"));
-              })
-              .catch((o) => {
-                (t.plugin.settings.ignoreNotice ||
-                  new Dt.Notice($("notice.copyTabFailed")),
-                  console.error(o));
-              });
-          }));
-      }),
-      this.addItem((i) => {
-        (i.setTitle($("menu.pasteTab")),
-          i.setIcon("paste"),
-          i.onClick(() => {
-            navigator.clipboard
-              .readText()
-              .then((n) => {
-                var l;
-                if (!n || n.trim() === "" || n.trim() == t.split) {
-                  t.plugin.settings.ignoreNotice ||
-                    new Dt.Notice($("notice.noClipboardContent"));
-                  return;
+          }
+          Yr.updateBlockWithNewTab(t, r, o);
+        }).catch((err) => {
+          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.pasteTabFailed"));
+          console.error(err);
+        });
+      });
+    });
+  }
+
+  static getActualBlockRange(editor, sectionInfo) {
+    let lineStart = sectionInfo.lineStart;
+    let lineEnd = sectionInfo.lineEnd;
+    try {
+      const startLineText = (editor.getLine(lineStart) || "").trim();
+      const startMatch = startLineText.match(/^(`{3,}|~{3,})/);
+      if (startMatch) {
+        const fenceChar = startMatch[1][0];
+        const fenceLen = startMatch[1].length;
+        let stack = 0;
+        const totalLines = typeof editor.lineCount === "function" ? editor.lineCount() : 999999;
+        
+        for (let p = lineStart; p < totalLines; p++) {
+          const lineText = (editor.getLine(p) || "").trim();
+          const m = lineText.match(/^(`{3,}|~{3,})(.*)/);
+          if (m) {
+            const char = m[1][0];
+            const len = m[1].length;
+            const info = m[2].trim();
+            if (char === fenceChar && len >= fenceLen) {
+              if (info.length > 0) {
+                stack++;
+              } else {
+                stack--;
+                if (stack === 0 || p > lineStart) {
+                  lineEnd = p;
+                  break;
                 }
-                let r =
-                    (t.isVertical ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (t.plugin.settings.defaultTabNavItem || "New tab")) +
-                    `
-`,
-                  o = n.trim();
-                n.startsWith(t.split) &&
-                  ((r = n.substring(
-                    t.split.length,
-                    n.indexOf(`
-`),
-                  )),
-                  (o = o.substring(
-                    n.indexOf(`
-`),
-                  )));
-                let a = (l = t.activeView) == null ? void 0 : l.editor;
-                a.setLine(
-                  t.sectionInfo.lineEnd,
-                  t.split +
-                    r.trim() +
-                    `
-` +
-                    o.trim() +
-                    `
-` +
-                    a.getLine(t.sectionInfo.lineEnd),
-                );
-              })
-              .catch((n) => {
-                (t.plugin.settings.ignoreNotice ||
-                  new Dt.Notice($("notice.pasteTabFailed")),
-                  console.error(n));
-              });
-          }));
-      }));
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {}
+    return { lineStart, lineEnd };
+  }
+
+  static updateBlockWithNewTab(t, newTitle, newContent) {
+    let fullTabsStr = "";
+    if (t.tabsNav && t.tabsNav.navItems) {
+      for (let h = 0; h < t.tabsNav.navItems.length; h++) {
+        let title = t.tabsNav.navItems[h].title;
+        let content = t.tabsContents && t.tabsContents.tabcontents && t.tabsContents.tabcontents[h]
+          ? t.tabsContents.tabcontents[h].content.replace(/[\r\n]+$/, "")
+          : "";
+        fullTabsStr += t.split + title + "\n" + content + "\n\n";
+      }
+    }
+    fullTabsStr += t.split + newTitle + "\n" + newContent + "\n\n";
+    fullTabsStr = fullTabsStr.replace(/[\r\n]+$/, "") + "\n\n";
+
+    let fenceChar = (t.backquote || "`");
+    let fenceCount = t.backquoteCount || 3;
+    let fence = fenceChar.repeat(fenceCount);
+    let kw = (t.tabsKeyword || "tabs") + (t.isVertical ? "-v" : "");
+    let config = (t.tabsConfig && t.tabsConfig.rawConfig) ? (t.tabsConfig.rawConfig + "\n") : "";
+
+    let fullNewBlock = fence + kw + "\n" + config + fullTabsStr + fence;
+
+    const modal = t.plugin ? t.plugin.tabsEditorModal : null;
+    const isModalEditingThis = modal && modal.tabs === t && modal.isOpen;
+
+    const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
+    if (activeView && activeView.editor && t.sectionInfo) {
+      let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
+      let endLineText = activeView.editor.getLine(lineEnd) || "";
+      activeView.editor.replaceRange(
+        fullNewBlock,
+        { line: lineStart, ch: 0 },
+        { line: lineEnd, ch: endLineText.length }
+      );
+      t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+    }
+
+    if (isModalEditingThis) {
+      setTimeout(() => {
+        if (modal.isOpen) {
+          modal.startEditing(t);
+        }
+      }, 50);
+    }
+
+    if (!t.plugin.settings.ignoreNotice) {
+      new Dt.Notice($("notice.addNewTabSuccess"));
+    }
+  }
+
+  static removeTabFromBlock(t, tabIndex, deletedTitle) {
+    let fullTabsStr = "";
+    if (t.tabsNav && t.tabsNav.navItems) {
+      for (let h = 0; h < t.tabsNav.navItems.length; h++) {
+        if (h !== tabIndex) {
+          let title = t.tabsNav.navItems[h].title;
+          let content = t.tabsContents && t.tabsContents.tabcontents && t.tabsContents.tabcontents[h]
+            ? t.tabsContents.tabcontents[h].content.replace(/[\r\n]+$/, "")
+            : "";
+          fullTabsStr += t.split + title + "\n" + content + "\n\n";
+        }
+      }
+    }
+    fullTabsStr = fullTabsStr.replace(/[\r\n]+$/, "") + "\n\n";
+
+    let fenceChar = (t.backquote || "`");
+    let fenceCount = t.backquoteCount || 3;
+    let fence = fenceChar.repeat(fenceCount);
+    let kw = (t.tabsKeyword || "tabs") + (t.isVertical ? "-v" : "");
+    let config = (t.tabsConfig && t.tabsConfig.rawConfig) ? (t.tabsConfig.rawConfig + "\n") : "";
+
+    let fullNewBlock = fence + kw + "\n" + config + fullTabsStr + fence;
+
+    const modal = t.plugin ? t.plugin.tabsEditorModal : null;
+    const isModalEditingThis = modal && modal.tabs === t && modal.isOpen;
+
+    const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
+    if (activeView && activeView.editor && t.sectionInfo) {
+      let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
+      let endLineText = activeView.editor.getLine(lineEnd) || "";
+      activeView.editor.replaceRange(
+        fullNewBlock,
+        { line: lineStart, ch: 0 },
+        { line: lineEnd, ch: endLineText.length }
+      );
+      t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+    }
+
+    if (isModalEditingThis) {
+      setTimeout(() => {
+        if (modal.isOpen) {
+          modal.startEditing(t);
+        }
+      }, 50);
+    }
+
+    if (!t.plugin.settings.ignoreNotice) {
+      new Dt.Notice($("notice.deleteTabSuccess", deletedTitle));
+    }
   }
 };
 var Nr = class {
@@ -2218,22 +2279,12 @@ var Gr = class extends U.MarkdownRenderChild {
             this.tabsNav.tabsButton.buttonEl,
             "click",
             () => {
-              var e;
-              this.plugin.lastTabsCache[
-                this.tabsId
-              ] = this.tabsNav.navItems.length;
-              let t = (e = this.activeView) == null ? void 0 : e.editor;
-              t.setLine(
-                this.sectionInfo.lineEnd,
-                this.split +
-                  (this.isVertical ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab") : (this.plugin.settings.defaultTabNavItem || "New tab")) +
-                  `
-` +
-                  this.plugin.settings.defaultTabContent +
-                  `
-` +
-                  t.getLine(this.sectionInfo.lineEnd),
-              );
+              this.plugin.lastTabsCache[this.tabsId] = this.tabsNav.navItems.length;
+              let title = this.isVertical
+                ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
+                : (this.plugin.settings.defaultTabNavItem || "New tab");
+              let content = this.plugin.settings.defaultTabContent || "New tab content";
+              Yr.updateBlockWithNewTab(this, title, content);
             },
           );
         break;
