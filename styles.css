@@ -46,3 +46,37 @@ body.theme-dark .tabs-editor-modal {
 .tabs-nav-item .linker-suffix-icon, .tabs-nav-item .virtual-link-a sup, .tabs-nav-item .multiple-files-indicator {
     display: none !important;
 }
+
+/* Column layouts for vertical tabs */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav {
+    max-width: 35%;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav > .tabs-nav-item-wrapper {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav {
+    max-width: 50%;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav > .tabs-nav-item-wrapper {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+/* Hover title carousel animation for long titles */
+@keyframes title-hover-scroll-anim {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--title-scroll-offset, 0px)); }
+}
+
+.tabs-nav-item-md.is-scrolling-title {
+    display: inline-block;
+    white-space: nowrap !important;
+    animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate;
+}
+

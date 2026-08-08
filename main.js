@@ -268,6 +268,13 @@ var zr_es = {
   "settings.tabsNavPosition.optionBottom": "Abajo",
   "settings.tabsNavPosition.optionLeft": "Izquierda",
   "settings.tabsNavPosition.optionRight": "Derecha",
+  "settings.verticalTabsColumns.name": "Disposición de Columnas (Pestañas Verticales)",
+  "settings.verticalTabsColumns.desc": "Muestra los títulos de pestañas verticales en 1, 2 o 3 columnas.",
+  "settings.verticalTabsColumns.option1": "1 Columna (Lista Vertical)",
+  "settings.verticalTabsColumns.option2": "2 Columnas",
+  "settings.verticalTabsColumns.option3": "3 Columnas",
+  "settings.verticalTabsHoverScroll.name": "Desplazamiento de Título al Pasar el Cursor (Hover Title Scroll)",
+  "settings.verticalTabsHoverScroll.desc": "En pestañas de 1 columna, los títulos largos que sobrepasen el ancho realizarán un desplazamiento en carrusel al pasar el ratón para poder leer el título completo.",
   "settings.tabsNavLineClamp.name": "Comportamiento de Títulos Largos",
   "settings.tabsNavLineClamp.desc": "Muestra los títulos en una sola línea o en múltiples líneas.",
   "settings.tabsNavLineClamp.optionOne": "Una Sola Línea (Truncar)",
@@ -318,6 +325,8 @@ function $(s, ...t) {
     split: "tab: ",
     defaultTabNavItem: "New tab",
     defaultTabNavItemVertical: "New vertical tab",
+    verticalTabsColumns: "1",
+    verticalTabsHoverScroll: !0,
     defaultTabContent: "New tab content",
     actionButtonType: "action-add",
     ignoreNotice: !1,
@@ -798,6 +807,34 @@ PluginLocales = {
                 this.needRefresh = !0;
               })
           ).then((e) => this.addResetButton(e, "defaultTitlePosition"));
+        new U.Setting(t)
+          .setName(_("settings.verticalTabsColumns.name"))
+          .setDesc(_("settings.verticalTabsColumns.desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("1", _("settings.verticalTabsColumns.option1"))
+              .addOption("2", _("settings.verticalTabsColumns.option2"))
+              .addOption("3", _("settings.verticalTabsColumns.option3"))
+              .setValue(this.plugin.settings.verticalTabsColumns || "1")
+              .onChange((i) => {
+                this.plugin.settings.verticalTabsColumns = i;
+                this.plugin.saveSettings();
+                this.needRefresh = !0;
+                this.display();
+              })
+          ).then((e) => this.addResetButton(e, "verticalTabsColumns"));
+        new U.Setting(t)
+          .setName(_("settings.verticalTabsHoverScroll.name"))
+          .setDesc(_("settings.verticalTabsHoverScroll.desc"))
+          .addToggle((e) =>
+            e
+              .setValue(this.plugin.settings.verticalTabsHoverScroll !== false)
+              .onChange((i) => {
+                this.plugin.settings.verticalTabsHoverScroll = i;
+                this.plugin.saveSettings();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "verticalTabsHoverScroll"));
         new U.Setting(t)
           .setName(_("title_wrap_name"))
           .setDesc(_("title_wrap_desc"))
@@ -1740,6 +1777,8 @@ var Nr = class {
       (this.titleLimited = i.defaultTitleLimited),
       (this.tabsMaxHeight = i.defaultTabsContentsMaxHeight),
       (this.tabsContentsPadding = i.defaultTabsContentsPadding),
+      (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
+      (this.verticalTabsHoverScroll = i.verticalTabsHoverScroll !== false),
       this.parseConfig(t));
   }
   parseConfig(t) {
@@ -1779,6 +1818,24 @@ var Nr = class {
             case "multi":
               this.titleLineClamp = "multi";
               break;
+            case "cols-1":
+            case "col-1":
+              this.verticalTabsColumns = "1";
+              break;
+            case "cols-2":
+            case "col-2":
+              this.verticalTabsColumns = "2";
+              break;
+            case "cols-3":
+            case "col-3":
+              this.verticalTabsColumns = "3";
+              break;
+            case "hover-scroll":
+              this.verticalTabsHoverScroll = true;
+              break;
+            case "no-hover-scroll":
+              this.verticalTabsHoverScroll = false;
+              break;
             default:
               break;
           }
@@ -1795,6 +1852,12 @@ var Nr = class {
       t.classList.add("tabs-nav-" + (this.titleLineClamp || "one")),
       this.titleLimited && e.classList.add("tabs-nav-title-limited"),
       i.style.setProperty("--tabs-contents-padding", this.tabsContentsPadding));
+    if (this.titlePosition === "left" || this.titlePosition === "right") {
+      t.classList.add("tabs-nav-v-cols-" + (this.verticalTabsColumns || "1"));
+      if (this.verticalTabsHoverScroll !== false) {
+        t.classList.add("tabs-nav-v-hover-scroll");
+      }
+    }
   }
 };
 var qr = te(require("obsidian")),
@@ -1859,6 +1922,32 @@ var On = class {
       this.tabs.context.addChild(r);
     }
     this.setupVirtualLinkExemption();
+    this.setupTitleHoverScroll();
+  }
+  setupTitleHoverScroll() {
+    if (!this.tabitemEl || !this.tabitemMDEl) return;
+    this.tabitemEl.addEventListener("mouseenter", () => {
+      let container = this.tabs ? this.tabs.tabsEl : null;
+      if (container && container.classList.contains("tabs-nav-v-cols-1") && !container.classList.contains("tabs-nav-v-hover-scroll")) {
+        return;
+      }
+      const mdEl = this.tabitemMDEl;
+      if (!mdEl) return;
+      const overflow = mdEl.scrollWidth - mdEl.clientWidth;
+      if (overflow > 3) {
+        mdEl.style.setProperty("--title-scroll-offset", `-${overflow + 14}px`);
+        const duration = Math.max(2.5, Math.min(8, overflow / 25));
+        mdEl.style.setProperty("--title-scroll-duration", `${duration}s`);
+        mdEl.classList.add("is-scrolling-title");
+      }
+    });
+    this.tabitemEl.addEventListener("mouseleave", () => {
+      if (this.tabitemMDEl) {
+        this.tabitemMDEl.classList.remove("is-scrolling-title");
+        this.tabitemMDEl.style.removeProperty("--title-scroll-offset");
+        this.tabitemMDEl.style.removeProperty("--title-scroll-duration");
+      }
+    });
   }
   setupVirtualLinkExemption() {
     if (!this.tabitemMDEl) return;
