@@ -117,6 +117,13 @@ var zr = {
   "notice.pasteTabFailed": "\u{1F534} Failed to paste from clipboard",
   "notice.invalidActionButtonType":
     "Invalid action button type. Set to 'None'.",
+  "delete_spacing_name": "Delete Button Spacing",
+  "delete_spacing_desc": "Horizontal spacing in pixels (px) between the separator title and the delete button.",
+  "delete_icon_name": "Delete Icon Style",
+  "delete_icon_desc": "Appearance of the delete button on tab separators and blocks.",
+  "delete_icon_opt_trash": "Trash Can (🗑️)",
+  "delete_icon_opt_x": "An X (✕)",
+  "delete_icon_opt_text": "Bold Text (Delete)",
 };
 var bs = {
   "settings.separator.name": "\u5206\u9694\u7B26",
@@ -299,7 +306,14 @@ var zr_es = {
   "notice.copyTabFailed": "\u{1F534} Error al copiar al portapapeles",
   "notice.noClipboardContent": "\u{1F7E0} Sin contenido en el portapapeles.",
   "notice.pasteTabFailed": "\u{1F534} Error al pegar desde el portapapeles",
-  "notice.invalidActionButtonType": "Tipo de botón no válido. Establecido en 'Ninguno'."
+  "notice.invalidActionButtonType": "Tipo de botón no válido. Establecido en 'Ninguno'.",
+  "delete_spacing_name": "Separación Horizontal del Botón de Eliminar",
+  "delete_spacing_desc": "Separación horizontal en píxeles (px) entre el título del separador y el botón de borrar.",
+  "delete_icon_name": "Estilo del Icono de Borrar",
+  "delete_icon_desc": "Elige la apariencia del botón de eliminación en los separadores y bloques de pestañas.",
+  "delete_icon_opt_trash": "Bote de Basura (🗑️)",
+  "delete_icon_opt_x": "Una Equis (✕)",
+  "delete_icon_opt_text": "Texto en Negritas (Delete)",
 };
 var IO = { en: zr, es: zr_es, zh: bs, "zh-cn": bs, "zh-tw": bs };
 function $(s, ...t) {
@@ -364,6 +378,8 @@ function $(s, ...t) {
     hideTabsSeparator: !1,
     tabsSeparatorFontSize: 14,
     tabsSeparatorBgOpacity: 30,
+    deleteButtonSpacing: 12,
+    deleteIconStyle: "trash",
   },
   ChangelogModal = class extends U.Modal {
     constructor(app) {
@@ -389,6 +405,35 @@ function $(s, ...t) {
           </ul>
       </div>
       `;
+    }
+    onClose() {
+      this.contentEl.empty();
+    }
+  },
+  ConfirmDeleteModal = class extends U.Modal {
+    constructor(app, message, onConfirm) {
+      super(app);
+      this.message = message;
+      this.onConfirm = onConfirm;
+    }
+    onOpen() {
+      let { contentEl } = this;
+      contentEl.empty();
+      contentEl.createEl("h3", { text: "Confirmación de eliminación" });
+      let msgEl = contentEl.createEl("p", { text: this.message, cls: "tabs-confirm-modal-message" });
+      msgEl.style.whiteSpace = "pre-wrap";
+      let btnContainer = contentEl.createDiv({ cls: "modal-button-container" });
+      btnContainer.style.marginTop = "1.5em";
+      btnContainer.style.display = "flex";
+      btnContainer.style.justifyContent = "flex-end";
+      btnContainer.style.gap = "10px";
+      let cancelBtn = btnContainer.createEl("button", { text: "Cancelar" });
+      cancelBtn.addEventListener("click", () => this.close());
+      let confirmBtn = btnContainer.createEl("button", { text: "Eliminar", cls: "mod-warning" });
+      confirmBtn.addEventListener("click", () => {
+        this.close();
+        this.onConfirm();
+      });
     }
     onClose() {
       this.contentEl.empty();
@@ -1567,7 +1612,9 @@ var Yr = class extends Dt.Menu {
           return;
         }
         let deletedTitle = t.tabsNav.navItems[tabIndex].title;
-        Yr.removeTabFromBlock(t, tabIndex, deletedTitle);
+        new ConfirmDeleteModal(t.app, `¿Estás seguro de que deseas eliminar la pestaña "${deletedTitle}"?`, () => {
+          Yr.removeTabFromBlock(t, tabIndex, deletedTitle);
+        }).open();
       });
     });
     this.addItem((i) => {
@@ -29622,7 +29669,9 @@ var Xl = class extends Br.Plugin {
                 let endPos = doc.line(lineNo).to;
                 if (lineNo < doc.lines) endPos = doc.line(lineNo + 1).from;
                 
+                let confirmMessage = "";
                 if (type === "block") {
+                    let blockEndLine = doc.lines;
                     let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})/);
                     if (match) {
                         let fChar = match[0][0];
@@ -29632,11 +29681,37 @@ var Xl = class extends Br.Plugin {
                             let m = lText.match(/^(`{3,}|~{3,})/);
                             if (m && lText.startsWith(fChar) && m[0].length >= cLen) {
                                 endPos = p < doc.lines ? doc.line(p + 1).from : doc.length;
+                                blockEndLine = p;
                                 break;
                             }
                         }
                     }
+                    
+                    let tabTitles = [];
+                    for (let p = lineNo + 1; p < blockEndLine; p++) {
+                        let lineRaw = doc.line(p).text;
+                        let sIdx = lineRaw.indexOf(splitStr);
+                        if (sIdx !== -1) {
+                            let prefix = lineRaw.substring(0, sIdx).trim();
+                            if (prefix === "") {
+                                let tTitle = lineRaw.substring(sIdx + splitStr.length).trim();
+                                tabTitles.push(tTitle || "sin título");
+                            }
+                        }
+                    }
+                    
+                    confirmMessage = "¿Estás seguro de que deseas eliminar este bloque de pestañas?";
+                    if (tabTitles.length > 0) {
+                        confirmMessage += "\n\nPestañas por eliminar que contiene el bloque:\n" + tabTitles.map(t => `• "${t}"`).join("\n");
+                    }
                 } else if (type === "tab") {
+                    let lineRaw = doc.line(lineNo).text;
+                    let sIdx = lineRaw.indexOf(splitStr);
+                    let tabTitle = sIdx !== -1 ? lineRaw.substring(sIdx + splitStr.length).trim() : lineRaw.trim();
+                    if (!tabTitle) tabTitle = "sin título";
+                    
+                    confirmMessage = `¿Estás seguro de que deseas eliminar la pestaña "${tabTitle}"?`;
+                    
                     let fs = [];
                     let targetDepth = -1;
                     for (let p = 1; p <= doc.lines; p++) {
@@ -29678,10 +29753,12 @@ var Xl = class extends Br.Plugin {
                         if (p === doc.lines && targetDepth !== -1) endPos = doc.length;
                     }
                 }
-                
-                window.isTabsExtAuthorizedDelete = true;
-                view.dispatch({ changes: { from: startPos, to: endPos }, userEvent: "delete", scrollIntoView: true });
-                window.isTabsExtAuthorizedDelete = false;
+
+                new ConfirmDeleteModal(this.app, confirmMessage, () => {
+                  window.isTabsExtAuthorizedDelete = true;
+                  view.dispatch({ changes: { from: startPos, to: endPos }, userEvent: "delete", scrollIntoView: true });
+                  window.isTabsExtAuthorizedDelete = false;
+                }).open();
             } catch (err) {
                 window.isTabsExtAuthorizedDelete = false;
                 try {
