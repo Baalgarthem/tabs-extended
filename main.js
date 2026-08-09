@@ -126,6 +126,12 @@ var zr = {
   "delete_icon_opt_text": "Bold Text (Delete)",
   "vertical_left_spacing_name": "Vertical Separator Left Spacing",
   "vertical_left_spacing_desc": "Adjust spacing in pixels (px) between the block's left border and vertical separator titles (0 is flush against border).",
+  "vertical_right_spacing_name": "Vertical Separator Right Spacing",
+  "vertical_right_spacing_desc": "Adjust spacing in pixels (px) between vertical separator titles and the content panel.",
+  "horizontal_tab_font_size_name": "Tab Title Font Size (Horizontal Tabs)",
+  "horizontal_tab_font_size_desc": "Set the font size (8px to 30px) for tab titles/headers in top or bottom horizontal tab blocks.",
+  "vertical_tab_font_size_name": "Tab Title Font Size (Vertical Tabs)",
+  "vertical_tab_font_size_desc": "Set the font size (8px to 30px) for tab titles/headers in side vertical tab blocks.",
 };
 var bs = {
   "settings.separator.name": "\u5206\u9694\u7B26",
@@ -286,10 +292,10 @@ var zr_es = {
   "vertical_left_spacing_desc": "Ajusta el margen izquierdo entre el contenedor y los títulos (0px a 50px). Selecciona 0px para pegarlos totalmente al borde.",
   "vertical_right_spacing_name": "Sangría Derecha hacia el Contenido (Pestañas Verticales)",
   "vertical_right_spacing_desc": "Ajusta el margen de separación entre los títulos de pestañas verticales y el panel de contenido (0px a 50px).",
-  "horizontal_tab_font_size_name": "Tamaño de Fuente de Títulos (Pestañas Horizontales)",
-  "horizontal_tab_font_size_desc": "Define el tamaño de texto de los títulos en pestañas horizontales superiores o inferiores (8px a 30px).",
-  "vertical_tab_font_size_name": "Tamaño de Fuente de Títulos (Pestañas Verticales)",
-  "vertical_tab_font_size_desc": "Define el tamaño de texto de los títulos en pestañas verticales laterales (8px a 30px).",
+  "horizontal_tab_font_size_name": "Tamaño de Letra de Separadores (Pestañas Horizontales)",
+  "horizontal_tab_font_size_desc": "Ajusta el tamaño de fuente (8px a 30px) para los títulos/separadores en bloques de pestañas horizontales superiores o inferiores.",
+  "vertical_tab_font_size_name": "Tamaño de Letra de Separadores (Pestañas Verticales)",
+  "vertical_tab_font_size_desc": "Ajusta el tamaño de fuente (8px a 30px) para los títulos/separadores en bloques de pestañas verticales laterales.",
   "title_wrap_name": "Comportamiento de Títulos Largos (Pestañas Horizontales)",
   "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
   "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
@@ -511,6 +517,10 @@ PluginLocales = {
     opt_v_shrink: "Shrink title (Reduce font size to fit without overflow)",
     opt_single_line: "Single line (Truncate with ellipsis ...)",
     opt_multi_line: "Multi-line (Wrap text automatically)",
+    horizontal_tab_font_size_name: "Tab Title Font Size (Horizontal Tabs)",
+    horizontal_tab_font_size_desc: "Set the font size (8px to 30px) for tab titles/headers in top or bottom horizontal tab blocks.",
+    vertical_tab_font_size_name: "Tab Title Font Size (Vertical Tabs)",
+    vertical_tab_font_size_desc: "Set the font size (8px to 30px) for tab titles/headers in side vertical tab blocks.",
     limit_width_name: "Limit Maximum Title Width",
     limit_width_desc: "Restrict maximum title width to prevent a single tab from taking up full document width.",
 
@@ -649,6 +659,10 @@ PluginLocales = {
     opt_v_shrink: "Encoger título (Shrink - Reducir tamaño para evitar desbordamiento)",
     opt_single_line: "Una sola línea (Recortar con puntos suspensivos ...)",
     opt_multi_line: "Múltiples líneas (Ajustar texto automáticamente)",
+    horizontal_tab_font_size_name: "Tamaño de Fuente de Separadores (Pestañas Horizontales)",
+    horizontal_tab_font_size_desc: "Ajusta el tamaño de fuente (8px a 30px) para los títulos/separadores en bloques de pestañas horizontales superiores o inferiores.",
+    vertical_tab_font_size_name: "Tamaño de Fuente de Separadores (Pestañas Verticales)",
+    vertical_tab_font_size_desc: "Ajusta el tamaño de fuente (8px a 30px) para los títulos/separadores en bloques de pestañas verticales laterales.",
     limit_width_name: "Restringir Ancho Máximo de Títulos",
     limit_width_desc: "Limita la anchura máxima de los títulos para evitar que una sola pestaña ocupe todo el ancho del documento.",
 
@@ -2252,6 +2266,44 @@ var On = class {
       mdEl.classList.remove("is-scrolling-title");
       mdEl.style.removeProperty("--title-scroll-offset");
       mdEl.style.removeProperty("--title-scroll-duration");
+
+      mdEl.style.whiteSpace = "nowrap";
+      let childNodes = mdEl.querySelectorAll("*");
+      childNodes.forEach((el) => (el.style.whiteSpace = "nowrap"));
+
+      const singleLineWidth = mdEl.scrollWidth;
+
+      let availWidth = this.tabitemEl ? this.tabitemEl.clientWidth : 0;
+      if (!availWidth || availWidth < 20) {
+        let tabNav = this.tabs && this.tabs.tabsEl ? this.tabs.tabsEl.querySelector(".tabs-nav") : null;
+        availWidth = tabNav ? tabNav.clientWidth : 0;
+      }
+      if (!availWidth || availWidth < 20) {
+        const containerWidth = container.clientWidth || 800;
+        availWidth = Math.floor(containerWidth * 0.2);
+      }
+
+      const maxAllowedWidth = Math.max(30, availWidth - 8);
+
+      if (singleLineWidth > maxAllowedWidth) {
+        mdEl.style.whiteSpace = "normal";
+        mdEl.style.wordBreak = "break-word";
+        mdEl.style.overflowWrap = "anywhere";
+        childNodes.forEach((el) => {
+          el.style.whiteSpace = "normal";
+          el.style.wordBreak = "break-word";
+          el.style.overflowWrap = "anywhere";
+        });
+      } else {
+        mdEl.style.whiteSpace = "nowrap";
+        mdEl.style.wordBreak = "normal";
+        mdEl.style.overflowWrap = "normal";
+        childNodes.forEach((el) => {
+          el.style.whiteSpace = "nowrap";
+          el.style.wordBreak = "normal";
+          el.style.overflowWrap = "normal";
+        });
+      }
     } else {
       mdEl.style.transform = "none";
     }
@@ -30168,6 +30220,8 @@ var Xl = class extends Br.Plugin {
     document.body.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
     document.body.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
     document.body.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
+    document.documentElement.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
+    document.documentElement.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
     document.body.style.setProperty("--tabs-contents-padding", padding);
     document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
     document.body.style.setProperty("--tabs-max-height", maxHeight);

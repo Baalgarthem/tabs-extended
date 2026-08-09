@@ -118,11 +118,8 @@ body.theme-dark .tabs-editor-modal {
     animation-play-state: running !important;
 }
 
-/* 3. Multi-línea: Muestra el título en tantas líneas como sean necesarias para evitar el desbordamiento */
+/* 3. Multi-línea inteligente: Mantiene el título en 1 sola línea por defecto y solo permite envolver cuando el título supera el ancho disponible */
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item {
-    white-space: normal !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
     overflow: visible !important;
     text-overflow: unset !important;
     line-height: 1.35 !important;
@@ -136,10 +133,6 @@ body.theme-dark .tabs-editor-modal {
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item .tabs-nav-item-md,
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item .tabs-nav-item-md *,
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item .tabs-nav-item-md p {
-    white-space: normal !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-    display: inline !important;
     margin: 0 !important;
     padding: 0 !important;
     max-width: 100% !important;
@@ -357,15 +350,16 @@ hr.tabs-settings-divider {
 }
 
 /* Independent Tab Title Font Sizes (Horizontal & Vertical) */
+.tabs-container:is(.tabs-nav-top, .tabs-nav-bottom, .tabs-nav-button, .tabs-nav-multi) .tabs-nav-item,
+.tabs-container:is(.tabs-nav-top, .tabs-nav-bottom, .tabs-nav-button, .tabs-nav-multi) .tabs-nav-item *,
 .tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item,
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item .tabs-nav-item-md p {
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item * {
     font-size: var(--horizontal-tab-font-size, 13px) !important;
 }
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md p {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item * {
     font-size: var(--vertical-tab-font-size, 13px) !important;
 }
+
 
