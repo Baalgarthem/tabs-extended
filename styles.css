@@ -73,23 +73,7 @@ body.theme-dark .tabs-editor-modal {
     0%, 15% { transform: translateX(0); }
     85%, 100% { transform: translateX(var(--title-scroll-offset, 0px)); }
 }
-
-.tabs-nav-item-md.is-scrolling-title {
-    display: inline-block;
-    white-space: nowrap !important;
-    animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate;
-}
-
-/* Compact vertical tab titles padding & left margin (configurable via slider) */
-.tabs-container.tabs-nav-left > .tabs-nav {
-    margin-left: var(--vertical-tabs-left-spacing, 4px) !important;
-    padding-left: 0 !important;
-}
-
-.tabs-container.tabs-nav-left > .tabs-nav > .tabs-nav-item-wrapper {
-    padding-left: 0 !important;
-    margin-left: 0 !important;
-}
+
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
     padding-left: 0 !important;
@@ -104,6 +88,174 @@ body.theme-dark .tabs-editor-modal {
 /* Vertical tab content top alignment without wasting space */
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-contents {
     padding-top: 0 !important;
+}
+
+
+
+/* Vertical Title Behavior Modes */
+/* 1. Desplazamiento horizontal al pasar el ratón (hover scroll) */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-hover-scroll .tabs-nav-item {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 2. Desplazamiento horizontal automático */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item-md.is-scrolling-title {
+    display: inline-block;
+    white-space: nowrap !important;
+    animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate !important;
+}
+
+/* 3. Multi-línea: Muestra el título en tantas líneas como sean necesarias para evitar el desbordamiento */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.3 !important;
+}
+
+/* 4. Encoger título (Shrink): Reduce el tamaño del texto para encajarlo perfectamente sin desbordamiento */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-shrink .tabs-nav-item {
+    white-space: nowrap !important;
+    font-size: clamp(9px, 85%, 15px) !important;
+    letter-spacing: -0.2px !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-shrink .tabs-nav-item .tabs-nav-item-md {
+    display: inline-block !important;
+    max-width: 100% !important;
+    transform: scale(0.9) !important;
+    transform-origin: left center !important;
+}
+
+.tabs-editor-modal {
+    --nested-tab-delimiter-color: var(--nested-tab-delimiter-color-light);
+    --nested-tab-item-color: var(--nested-tab-item-color-light);
+}
+body.theme-dark .tabs-editor-modal {
+    --nested-tab-delimiter-color: var(--nested-tab-delimiter-color-dark);
+    --nested-tab-item-color: var(--nested-tab-item-color-dark);
+}
+.cm-nested-tab-start, .cm-nested-tab-end {
+    color: var(--nested-tab-delimiter-color);
+    user-select: none !important;
+    pointer-events: none !important;
+}
+.cm-nested-tab-start .tabs-delete-button, .cm-nested-tab-end .tabs-delete-button {
+    pointer-events: auto !important;
+    user-select: auto !important;
+}
+.cm-nested-tab-item {
+    font-weight: var(--nested-tab-item-font-weight, normal);
+    text-decoration-line: underline;
+    text-decoration-style: var(--nested-tab-item-underline-style, solid);
+    text-decoration-color: color-mix(in srgb, var(--nested-tab-item-color) var(--nested-tab-item-underline-opacity, 100%), transparent);
+    text-decoration-thickness: var(--nested-tab-item-underline-thickness, 2px);
+    text-underline-offset: var(--nested-tab-item-underline-offset, 2px);
+}
+
+.tabs-container.tabs-innertabs.tabs-innertabs-no-borders { box-shadow: none !important; border: none !important; background-color: transparent !important; }
+.tabs-container.tabs-innertabs.tabs-innertabs-no-borders:hover { box-shadow: none !important; }
+
+.tabs-container :is(.callout, pre, .tabs-codeblock-wrapper) { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+.tabs-editor-modal :is(.callout, pre, .tabs-codeblock-wrapper) { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+.tabs-codeblock-wrapper > pre { margin-top: 0 !important; margin-bottom: 0 !important; }
+
+.tabs-delete-button { opacity: 0; transition: opacity 0.2s ease, color 0.2s ease; margin-left: 6px; }
+.cm-nested-tab-ghost-text:hover .tabs-delete-button { opacity: 0.6; }
+.tabs-delete-button:hover { opacity: 1 !important; filter: drop-shadow(0 0 2px red); }
+
+.tabs-nav-item .virtual-link, .tabs-nav-item .virtual-link-a, .tabs-nav-item .virtual-link-span, .tabs-nav-item .glossary-entry {
+    color: inherit !important;
+    text-decoration: none !important;
+    border: none !important;
+    background: none !important;
+    pointer-events: none !important;
+}
+.tabs-nav-item .linker-suffix-icon, .tabs-nav-item .virtual-link-a sup, .tabs-nav-item .multiple-files-indicator {
+    display: none !important;
+}
+
+/* Column layouts for vertical tabs */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav {
+    max-width: 35%;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav > .tabs-nav-item-wrapper {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav {
+    max-width: 50%;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav > .tabs-nav-item-wrapper {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+/* Hover title carousel animation for long titles */
+@keyframes title-hover-scroll-anim {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--title-scroll-offset, 0px)); }
+}
+
+.tabs-nav-item-md.is-scrolling-title {
+    display: inline-block;
+    white-space: nowrap !important;
+    animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate;
+}
+
+/* Compact vertical tab titles padding & left/right margin (configurable via sliders) */
+.tabs-container.tabs-nav-left > .tabs-nav {
+    margin-left: var(--vertical-tabs-left-spacing, 4px) !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+}
+
+.tabs-container.tabs-nav-right > .tabs-nav {
+    margin-right: var(--vertical-tabs-left-spacing, 4px) !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.tabs-container.tabs-nav-left > .tabs-nav > .tabs-nav-item-wrapper {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
+    padding-left: 0 !important;
+    padding-right: 8px !important;
+}
+
+.tabs-contents > .tabs-content > .tabs-container.tabs-nav-left,
+.tabs-contents .tabs-container.tabs-nav-left {
+    margin-left: calc(-1 * var(--tabs-contents-padding-left, 2em)) !important;
+}
+
+/* Vertical tab content top alignment & exact right spacing towards content */
+.tabs-container.tabs-nav-left > .tabs-contents {
+    padding-top: 0 !important;
+    padding-left: var(--vertical-tabs-right-spacing, 8px) !important;
+}
+
+.tabs-container.tabs-nav-right > .tabs-contents {
+    padding-top: 0 !important;
+    padding-right: var(--vertical-tabs-right-spacing, 8px) !important;
 }
 
 
@@ -129,3 +281,57 @@ body.theme-dark .tabs-editor-modal {
     white-space: nowrap !important;
     animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate !important;
 }
+
+/* Visual Dividers for Settings Sections */
+hr.tabs-settings-divider {
+    border: none !important;
+    border-top: 1px solid var(--background-modifier-border) !important;
+    margin: 28px 0 20px 0 !important;
+    opacity: 0.7;
+}
+
+/* Responsive layout for plugin settings panel when window is narrow */
+.tabs-extended-settings .setting-item {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px 16px !important;
+    padding: 14px 0 !important;
+}
+
+.tabs-extended-settings .setting-item-info {
+    flex: 1 1 220px !important;
+    min-width: 180px !important;
+    max-width: 100% !important;
+}
+
+.tabs-extended-settings .setting-item-description {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    line-height: 1.4 !important;
+}
+
+.tabs-extended-settings .setting-item-control {
+    flex: 0 1 auto !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+}
+
+.tabs-extended-settings .setting-item-control select {
+    max-width: 260px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+@media (max-width: 600px) {
+    .tabs-extended-settings .setting-item-control select {
+        max-width: 100% !important;
+    }
+}
+

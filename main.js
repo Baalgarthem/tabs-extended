@@ -234,68 +234,85 @@ var bs = {
     "\u65E0\u6548\u7684\u64CD\u4F5C\u6309\u94AE\u7C7B\u578B\u3002\u5DF2\u8BBE\u4E3A\u201C\u65E0\u201D\u3002",
 };
 var zr_es = {
-  "heading_general": "General",
-  "heading_general_desc": "Configuración global de idioma, notificaciones y comportamiento de actualización.",
-  "heading_standard": "Comportamiento de Pestañas",
-  "heading_standard_desc": "Opciones para personalizar títulos, contenido inicial, alineación y visualización.",
-  "heading_editor": "Editor Modal de Pestañas",
-  "heading_editor_desc": "Configuración del editor emergente para escribir y formatear contenido.",
-  "heading_nested": "Pestañas Anidadas (Subpestañas)",
-  "heading_nested_desc": "Ajustes de resaltado y separadores para pestañas dentro de otras pestañas.",
+  "heading_general": "⚙️ Configuración General",
+  "heading_general_desc": "Preferencias globales de idioma, notificaciones emergentes, refresco de vista e interacción.",
+  "heading_standard": "📑 Creación y Estructura de Pestañas",
+  "heading_standard_desc": "Ajustes para la palabra clave, títulos predeterminados, contenido inicial y posición principal.",
+  "heading_title_behavior": "🏷️ Gestión y Estilo de Títulos de Pestañas",
+  "heading_title_behavior_desc": "Personaliza la sangría, columnas, límite de ancho y comportamiento dinámico para títulos de pestañas largos.",
+  "heading_container": "🖼️ Estilo del Contenedor y Bordes",
+  "heading_container_desc": "Define el marco visual, bordes, color, espaciado interno (padding) y altura máxima del bloque.",
+  "heading_editor": "✏️ Editor Modal de Pestañas",
+  "heading_editor_desc": "Configuración del entorno de edición emergente para escribir y formatear tus pestañas.",
+  "heading_nested": "🪆 Pestañas Anidadas (Subpestañas)",
+  "heading_nested_desc": "Estilos visuales, resaltado y separadores para pestañas dentro de otras pestañas.",
   "language_name": "Idioma de la Interfaz",
   "language_desc": "Selecciona el idioma preferido para los menús y paneles del plugin.",
-  "ignore_notice_name": "Notificaciones de Acción",
-  "ignore_notice_desc": "Si se activa, oculta los avisos emergentes al agregar, copiar o eliminar pestañas.",
-  "auto_refresh_name": "Actualización Automática al Cerrar",
-  "auto_refresh_desc": "Refresca los archivos abiertos en cuanto cierras este panel de ajustes si hiciste cambios.",
+  "ignore_notice_name": "Ocultar Notificaciones de Acción",
+  "ignore_notice_desc": "Desactiva los avisos flotantes emergentes al agregar, copiar o eliminar pestañas.",
+  "auto_refresh_name": "Actualización Automática de Vista",
+  "auto_refresh_desc": "Actualiza automáticamente las notas abiertas al cerrar este panel de ajustes si se realizaron cambios.",
   "drag_drop_name": "Reordenar Pestañas por Arrastre",
-  "drag_drop_desc": "Permite reordenar pestañas arrastrándolas directamente con el ratón.",
+  "drag_drop_desc": "Permite cambiar el orden de las pestañas arrastrándolas directamente con el ratón.",
   "double_click_name": "Edición con Doble Clic",
   "double_click_desc": "Abre el editor modal al hacer doble clic sobre la pestaña deseada.",
-  "hide_edit_name": "Icono Flotante de Edición de Bloque",
-  "hide_edit_desc": "Muestra u oculta el botón flotante con icono de lápiz en la esquina superior del bloque.",
+  "hide_edit_name": "Boton Flotante de Edición de Bloque",
+  "hide_edit_desc": "Muestra u oculta el botón flotante en la esquina del bloque de código en modo edición.",
   "tabs_keyword_name": "Palabra Clave del Bloque (`tabs`)",
-  "tabs_keyword_desc": "Palabra reservada en los bloques de código delimitados para identificar las pestañas (ej. `tabs` o `tabs-v`).",
+  "tabs_keyword_desc": "Identificador en los bloques de código delimitados para activar el renderizado de pestañas (ej. `tabs` o `tabs-v`).",
   "default_title_name": "Título Predeterminado (Pestañas Horizontales)",
-  "default_title_desc": "Texto asignado automáticamente al agregar una nueva pestaña horizontal.",
+  "default_title_desc": "Nombre asignado automáticamente al agregar una nueva pestaña horizontal.",
   "default_title_vertical_name": "Título Predeterminado (Pestañas Verticales)",
-  "default_title_vertical_desc": "Texto asignado automáticamente al agregar una nueva pestaña vertical.",
-  "default_content_name": "Contenido Predeterminado",
-  "default_content_desc": "Texto o contenido inicial sugerido al crear una nueva pestaña.",
+  "default_title_vertical_desc": "Nombre asignado automáticamente al agregar una nueva pestaña vertical.",
+  "default_content_name": "Contenido Inicial Predeterminado",
+  "default_content_desc": "Texto o plantilla sugerida al crear una nueva pestaña.",
   "action_button_name": "Botón de Acción Rápida en la Barra",
-  "action_button_desc": "Acción que ejecutará el botón ubicado en la esquina superior de la barra de pestañas.",
+  "action_button_desc": "Función asignada al botón ubicado en la esquina de la barra de pestañas.",
   "opt_add_tab": "Añadir Nueva Pestaña (+)",
   "opt_edit_tab": "Abrir Editor Modal (✏️)",
   "opt_hide_btn": "Ocultar Botón de Acción",
-  "title_position_name": "Posición de los Títulos de Pestaña",
-  "title_position_desc": "Ubicación de los títulos dentro del contenedor: Arriba, Abajo, Izquierda o Derecha.",
+  "title_position_name": "Posición Principal de los Títulos",
+  "title_position_desc": "Ubicación de la barra de títulos respecto al contenido: Arriba, Abajo, Izquierda o Derecha.",
   "opt_top": "Arriba (Horizontal)",
   "opt_bottom": "Abajo (Horizontal)",
   "opt_left": "Izquierda (Vertical)",
   "opt_right": "Derecha (Vertical)",
-  "heading_title_behavior": "Comportamiento de Títulos Largos",
-  "heading_title_behavior_desc": "Opciones para controlar la presentación, empaquetado, columnas, sangría y desplazamiento de títulos largos tanto en pestañas horizontales como verticales.",
-  "settings.verticalTabsColumns.name": "Organización de Títulos en Columnas (Verticales)",
-  "settings.verticalTabsColumns.desc": "Permite distribuir los títulos de pestañas verticales en 1, 2 o 3 columnas paralelas. Ideal para optimizar el espacio vertical y visualizar múltiples pestañas simultáneamente.",
-  "settings.verticalTabsColumns.option1": "1 Columna (Lista Vertical)",
-  "settings.verticalTabsColumns.option2": "2 Columnas Grid",
-  "settings.verticalTabsColumns.option3": "3 Columnas Grid",
-  "vertical_left_spacing_name": "Margen de Sangría Izquierda (Verticales)",
-  "vertical_left_spacing_desc": "Ajusta la distancia en píxeles (de 0 px a 50 px) entre el borde izquierdo del contenedor y los títulos de pestañas verticales. Establece 0 px para pegarlos totalmente al borde.",
-  "title_wrap_name": "Comportamiento de Títulos Largos en Pestañas Horizontales",
-  "title_wrap_desc": "Modo de presentación para títulos extensos en pestañas horizontales: recortar en una sola línea o permitir saltos de línea múltiples.",
-  "vertical_title_behavior_name": "Comportamiento de Títulos Largos en Pestañas Verticales",
-  "vertical_title_behavior_desc": "Define cómo se comportan los títulos extensos en pestañas verticales: desplazamiento al pasar el ratón, desplazamiento automático constante, doble línea o truncado.",
-  "opt_v_hover_scroll": "Desplazamiento al pasar el ratón (Hover Scroll)",
-  "opt_v_auto_scroll": "Desplazamiento horizontal automático (Auto Scroll)",
-  "opt_v_double_line": "Doble línea / Múltiples líneas (Salto automático)",
-  "opt_v_truncate": "Una sola línea (Truncar con puntos suspensivos)",
-  "opt_single_line": "Una Sola Línea (Truncar)",
-  "opt_multi_line": "Múltiples Líneas (Salto automático)",
+  "settings.verticalTabsColumns.name": "Distribución en Columnas (Pestañas Verticales)",
+  "settings.verticalTabsColumns.desc": "Organiza los títulos de las pestañas laterales en 1, 2 o 3 columnas paralelas para optimizar el espacio.",
+  "settings.verticalTabsColumns.option1": "1 Columna (Lista vertical estándar)",
+  "settings.verticalTabsColumns.option2": "2 Columnas (Cuadrícula doble)",
+  "settings.verticalTabsColumns.option3": "3 Columnas (Cuadrícula triple)",
+  "vertical_left_spacing_name": "Sangría Izquierda del Bloque (Pestañas Verticales)",
+  "vertical_left_spacing_desc": "Ajusta el margen izquierdo entre el contenedor y los títulos (0px a 50px). Selecciona 0px para pegarlos totalmente al borde.",
+  "vertical_right_spacing_name": "Sangría Derecha hacia el Contenido (Pestañas Verticales)",
+  "vertical_right_spacing_desc": "Ajusta el margen de separación entre los títulos de pestañas verticales y el panel de contenido (0px a 50px).",
+  "title_wrap_name": "Comportamiento de Títulos Largos (Pestañas Horizontales)",
+  "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
+  "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
+  "vertical_title_behavior_desc": "Define el efecto de movimiento o recorte para títulos extensos en la barra lateral.",
+  "opt_v_hover_scroll": "Desplazamiento horizontal al pasar el ratón (hover scroll)",
+  "opt_v_auto_scroll": "Desplazamiento horizontal automático",
+  "opt_v_multi_line": "Multi-línea (Múltiples líneas sin desbordamiento)",
+  "opt_v_shrink": "Encoger título (Shrink - Reducir tamaño para evitar desbordamiento)",
+  "opt_single_line": "Una sola línea (Recortar con puntos suspensivos ...)",
+  "opt_multi_line": "Múltiples líneas (Ajustar texto automáticamente)",
+  "limit_width_name": "Restringir Ancho Máximo de Títulos",
+  "limit_width_desc": "Limita la anchura máxima de los títulos para evitar que una sola pestaña ocupe todo el ancho del documento.",
+  "container_border_name": "Visualización del Borde del Contenedor",
+  "container_border_desc": "Muestra u oculta el marco exterior alrededor del bloque de pestañas.",
+  "opt_always": "Mostrar Borde Siempre",
+  "opt_hover": "Mostrar Borde al Pasar el Ratón",
+  "opt_never": "No Mostrar Borde Nunca",
+  "border_color_name": "Color del Borde del Contenedor",
+  "border_color_desc": "Código de color CSS (Hex, RGB o HSL) para personalizar el marco del contenedor.",
+  "content_padding_name": "Espaciado Interno (Padding)",
+  "content_padding_desc": "Relleno interior del contenido de las pestañas (ej. `1em 2em` o `10px 20px`).",
+  "max_height_name": "Altura Máxima del Contenedor",
+  "max_height_desc": "Límite de altura vertical del contenedor (ej. `300px` o `50vh`). Agrega barra de desplazamiento si se supera.",
   "delete_spacing_name": "Distancia del Botón de Eliminar",
-  "delete_spacing_desc": "Espacio en píxeles (px) entre el texto del título de la pestaña y el botón de eliminación.",
-  "delete_icon_name": "Icono del Botón de Eliminar",
-  "delete_icon_desc": "Forma visual para el botón de borrado de pestañas: Papelera (🗑️), Equis (✕) o Texto.",
+  "delete_spacing_desc": "Espacio en píxeles (px) entre el texto del título y el icono de eliminación.",
+  "delete_icon_name": "Estilo del Icono de Eliminar",
+  "delete_icon_desc": "Icono visual para el botón de borrado: Papelera (🗑️), Equis (✕) o Texto.",
   "delete_icon_opt_trash": "Bote de Basura (🗑️)",
   "delete_icon_opt_x": "Una Equis (✕)",
   "delete_icon_opt_text": "Texto en Negritas (Delete)",
@@ -366,6 +383,7 @@ function $(s, ...t) {
     deleteButtonSpacing: 12,
     deleteIconStyle: "trash",
     verticalTabsLeftSpacing: 4,
+    verticalTabsRightSpacing: 8,
     verticalTitleBehavior: "hover-scroll",
   },
   ChangelogModal = class extends U.Modal {
@@ -425,250 +443,288 @@ function $(s, ...t) {
     onClose() {
       this.contentEl.empty();
     }
-  },
-  
+  };
 
-
-  
 PluginLocales = {
   en: {
-    heading_general: "General Settings",
-    heading_general_desc: "Global settings that affect how you interact with tabs and the plugin's behavior throughout Obsidian.",
-    language_name: "Language / Idioma",
-    language_desc: "Select the plugin language. You need to close and reopen the settings for the changes to apply.",
-    ignore_notice_name: "Silence Notifications",
-    ignore_notice_desc: "Disable minor plugin alerts and warnings (e.g., clipboard errors). Useful if you prefer a silent experience.",
-    auto_refresh_name: "Auto-refresh Markdown View",
-    auto_refresh_desc: "Automatically refresh the document view when closing this settings menu, applying visual changes instantly.",
+    heading_general: "⚙️ General Settings",
+    heading_general_desc: "Global preferences for language, popup notices, view refreshing, and interaction.",
+    language_name: "Interface Language",
+    language_desc: "Select the preferred language for menus and settings panels (English / Español).",
+    ignore_notice_name: "Silence Action Notifications",
+    ignore_notice_desc: "Disable popup alerts when adding, copying, or deleting tabs.",
+    auto_refresh_name: "Auto-refresh Document View",
+    auto_refresh_desc: "Automatically refresh open notes when closing this settings panel if changes were made.",
     drag_drop_name: "Enable Drag & Drop",
     drag_drop_desc: "Allow rearranging tabs by clicking and dragging their titles.",
     double_click_name: "Double-Click to Edit",
     double_click_desc: "Quickly open the modal editor by double-clicking any tab title.",
-    hide_edit_name: "Hide Edit Button",
-    hide_edit_desc: "Hide the small pencil icon that floats in the corner of the tab blocks.",
-    
-    heading_standard: "Standard Tabs",
-    heading_standard_desc: "Control the layout, structure, and default values for standard tab blocks.",
-    tabs_keyword_name: "Code Block Keyword",
-    tabs_keyword_desc: "The main keyword to trigger tab blocks (default: 'tabs'). Horizontal tabs use this keyword (e.g. `~~~tabs`). Append '-v' for vertical tabs (e.g. `~~~tabs-v` or `~~~<custom_keyword>-v`).",
+    hide_edit_name: "Hide Floating Edit Button",
+    hide_edit_desc: "Show or hide the floating edit pencil button in the corner of tab code blocks.",
+
+    heading_standard: "📑 Tab Structure & Creation",
+    heading_standard_desc: "Settings for code block keyword, default titles, initial content, and main placement.",
+    tabs_keyword_name: "Code Block Keyword (`tabs`)",
+    tabs_keyword_desc: "Keyword in code block fences to trigger tab rendering (e.g. `tabs` or `tabs-v`).",
     default_title_name: "Default Horizontal Tab Title",
-    default_title_desc: "The default name assigned to newly created horizontal tabs (e.g. 'New tab').",
+    default_title_desc: "Default name assigned when creating a new horizontal tab.",
     default_title_vertical_name: "Default Vertical Tab Title",
-    default_title_vertical_desc: "The default name assigned to newly created vertical tabs (e.g. 'New vertical tab').",
-    default_content_name: "Default Tab Content",
-    default_content_desc: "The default content assigned to newly created tabs.",
+    default_title_vertical_desc: "Default name assigned when creating a new vertical tab.",
+    default_content_name: "Default Initial Content",
+    default_content_desc: "Default text or template injected when creating a new tab.",
     action_button_name: "Corner Action Button",
-    action_button_desc: "The function of the button located in the top corner of the tab block.",
-    opt_add_tab: "Add Tab",
-    opt_edit_tab: "Edit Tab",
-    opt_hide_btn: "Hide Button",
-    title_position_name: "Navigation Position",
-    title_position_desc: "Where the tab titles should be placed relative to the content.",
-    opt_top: "Top",
-    opt_bottom: "Bottom",
-    opt_left: "Left",
-    opt_right: "Right",
-    title_wrap_name: "Long Title Wrap",
-    title_wrap_desc: "How extremely long titles should behave if they exceed the available space.",
-    opt_single_line: "Single Line (Truncate)",
-    opt_multi_line: "Multi-line (Wrap)",
-    limit_width_name: "Limit Maximum Width",
-    limit_width_desc: "Prevent tab titles from stretching indefinitely across the screen.",
-    container_border_name: "Container Borders",
-    container_border_desc: "Visibility of the borders outlining the entire tab block.",
-    opt_always: "Always Visible",
-    opt_hover: "Visible on Hover",
-    opt_never: "Never Visible",
-    vertical_left_spacing_name: "Vertical Tabs Left Border Spacing",
-    vertical_left_spacing_desc: "Sets the distance in pixels (px) between the block's left border and vertical tab titles (set to 0 px to touch the border completely).",
-    border_color_name: "Border Color",
-    border_color_desc: "The Hex code (e.g. #e0e0e0) used for drawing the container boundaries.",
-    content_padding_name: "Content Padding",
-    content_padding_desc: "Internal CSS padding applied to the text inside each tab (e.g. '1em 2em').",
-    max_height_name: "Maximum Height",
-    max_height_desc: "Maximum CSS height allowed before a scrollbar appears.",
-    
-    heading_editor: "Modal Editor",
-    heading_editor_desc: "Exclusive configurations for the writing environment where you edit your tab code.",
+    action_button_desc: "Function assigned to the permanent button located in the corner of the tab bar.",
+    opt_add_tab: "Add New Tab (+)",
+    opt_edit_tab: "Open Modal Editor (✏️)",
+    opt_hide_btn: "Hide Action Button",
+    title_position_name: "Main Title Position",
+    title_position_desc: "Location of tab title navigation relative to content: Top, Bottom, Left, or Right.",
+    opt_top: "Top (Horizontal)",
+    opt_bottom: "Bottom (Horizontal)",
+    opt_left: "Left (Vertical)",
+    opt_right: "Right (Vertical)",
+
+    heading_title_behavior: "🏷️ Tab Title Management & Styling",
+    heading_title_behavior_desc: "Customize left indent spacing, column grid, max width limits, and long title behaviors.",
+    "settings.verticalTabsColumns.name": "Column Layout (Vertical Tabs)",
+    "settings.verticalTabsColumns.desc": "Arrange sidebar vertical tab titles into 1, 2, or 3 parallel columns to optimize space.",
+    "settings.verticalTabsColumns.option1": "1 Column (Standard vertical list)",
+    "settings.verticalTabsColumns.option2": "2 Columns (Double grid)",
+    "settings.verticalTabsColumns.option3": "3 Columns (Triple grid)",
+    vertical_left_spacing_name: "Left Indent Spacing (Vertical Tabs)",
+    vertical_left_spacing_desc: "Adjust left margin between container and titles (0px to 50px). Set to 0px to touch the left edge.",
+    vertical_right_spacing_name: "Right Spacing Towards Content (Vertical Tabs)",
+    vertical_right_spacing_desc: "Adjust margin separation between vertical tab titles and the content panel (0px to 50px).",
+    title_wrap_name: "Long Titles Behavior (Horizontal Tabs)",
+    title_wrap_desc: "Define how long titles behave in top or bottom horizontal tabs.",
+    vertical_title_behavior_name: "Long Titles Behavior (Vertical Tabs)",
+    vertical_title_behavior_desc: "Define scrolling or wrapping effects for long titles in vertical sidebars.",
+    opt_v_hover_scroll: "Horizontal scroll on hover (hover scroll)",
+    opt_v_auto_scroll: "Automatic horizontal scroll",
+    opt_v_multi_line: "Multi-line (No overflow)",
+    opt_v_shrink: "Shrink title (Reduce font size to fit without overflow)",
+    opt_single_line: "Single line (Truncate with ellipsis ...)",
+    opt_multi_line: "Multi-line (Wrap text automatically)",
+    limit_width_name: "Limit Maximum Title Width",
+    limit_width_desc: "Restrict maximum title width to prevent a single tab from taking up full document width.",
+
+    heading_container: "🖼️ Container Style & Borders",
+    heading_container_desc: "Define outer frame, border colors, internal content padding, and max height.",
+    container_border_name: "Container Border Visibility",
+    container_border_desc: "Show or hide the outer boundary box framing the tab block.",
+    opt_always: "Always Show Border",
+    opt_hover: "Show Border on Hover",
+    opt_never: "Never Show Border",
+    border_color_name: "Container Border Color",
+    border_color_desc: "CSS color code (Hex, RGB, or HSL) for the container boundary.",
+    content_padding_name: "Internal Content Padding",
+    content_padding_desc: "Inner padding of tab content (e.g. `1em 2em` or `10px 20px`).",
+    max_height_name: "Maximum Container Height",
+    max_height_desc: "Max CSS height allowed (e.g. `300px` or `50vh`). Adds vertical scrollbar when exceeded.",
+
+    heading_editor: "✏️ Modal Editor",
+    heading_editor_desc: "Configuration for the writing popup window where you write and format tabs.",
     autosave_name: "Auto-save Interval",
-    autosave_desc: "Milliseconds to wait after you stop typing before automatically saving to the file.",
+    autosave_desc: "Milliseconds to wait after typing before automatically saving to note.",
     show_toolbar_name: "Formatting Toolbar",
-    show_toolbar_desc: "Display bold, italic, and other text formatting buttons in the editor.",
-    tab_size_name: "Tabulation Size",
-    tab_size_desc: "The number of empty spaces injected when pressing the Tab key.",
-    
-    heading_nested: "Nested Tabs",
-    heading_nested_desc: "Master the visual behavior of tabs injected inside other tabs, including the clean mode and decorators.",
-    separator_name: "Tab Separator Key",
-    separator_desc: "The magic word used to divide nested tab blocks. Default is 'tema:'.",
+    show_toolbar_desc: "Display text formatting buttons (bold, italic, etc.) in the modal editor.",
+    tab_size_name: "Tabulation Size (Spaces)",
+    tab_size_desc: "Number of spaces injected when pressing the Tab key in the editor.",
+
+    heading_nested: "🪆 Nested Tabs (Sub-tabs)",
+    heading_nested_desc: "Visual styling, highlighting, and separators for tabs inside other tabs.",
+    separator_name: "Sub-tab Separator Keyword",
+    separator_desc: "Keyword that splits sub-tabs inside the block (default is `tema:`).",
     protect_sep_name: "Protect Separator in Editor",
-    protect_sep_desc: "Lock the separator text to prevent accidental deletion while editing.",
+    protect_sep_desc: "Lock separator text in editor to prevent accidental deletion.",
     highlight_nested_name: "Enable Visual Highlighting",
-    highlight_nested_desc: "Visually distinguish nested tabs in Live Preview.",
+    highlight_nested_desc: "Apply visual styling and indicators to nested tabs.",
     nested_no_borders_name: "Remove Borders from Nested Tabs",
-    nested_no_borders_desc: "Remove borders from nested tabs to make them blend seamlessly.",
-    delim_style_name: "Delimiter Highlighting",
-    delim_style_desc: "How the opening and closing backticks should be visually styled.",
-    opt_color: "Use Color",
+    nested_no_borders_desc: "Remove outer borders from nested tabs to blend seamlessly.",
+    delim_style_name: "Delimiter Style",
+    delim_style_desc: "Style opening and closing backtick fences.",
+    opt_color: "Use Colors",
     opt_text: "Use Ghost Text",
     start_text_name: "Opening Ghost Text",
-    start_text_desc: "Text displayed next to the opening backticks. Leave blank to omit.",
+    start_text_desc: "Ghost text shown at opening fence. Leave blank to omit.",
     end_text_name: "Closing Ghost Text",
-    end_text_desc: "Text displayed next to the closing backticks. Leave blank to omit.",
+    end_text_desc: "Ghost text shown at closing fence. Leave blank to omit.",
     hide_sep_name: "Clean Mode (Hide Separator)",
-    hide_sep_desc: "Visually hide the separator keyword in the editor, leaving only the clean title. Forces bold titles.",
+    hide_sep_desc: "Visually hide separator word in editor to show clean title in bold.",
     sep_size_name: "Separator Font Size",
-    sep_size_desc: "The font size for the separator keyword.",
+    sep_size_desc: "Font size applied to separator keyword.",
     sep_bg_name: "Separator Background Opacity",
-    sep_bg_desc: "The opacity of the highlighted background pill surrounding the separator.",
+    sep_bg_desc: "Opacity of background pill surrounding separator.",
     bold_name: "Bold Tab Titles",
-    bold_desc: "Force tab titles to be displayed with a bold font weight.",
-    underline_style_name: "Title Underline Style",
-    underline_style_desc: "The visual decoration applied beneath (or behind) nested tab titles.",
+    bold_desc: "Force bold font weight on tab titles.",
+    underline_style_name: "Title Underline / Decoration Style",
+    underline_style_desc: "Style of decoration line beneath sub-tab titles (solid, dashed, wavy, or pill).",
     opt_solid: "Solid Line",
     opt_dashed: "Dashed Line",
     opt_dotted: "Dotted Line",
     opt_double: "Double Line",
     opt_wavy: "Wavy Line",
     opt_pill: "Pill Background",
-    underline_thick_name: "Underline Thickness",
-    underline_thick_desc: "The thickness of the underline stroke (in pixels).",
-    underline_offset_name: "Underline Offset",
-    underline_offset_desc: "The vertical distance between the text and the underline stroke (in pixels).",
-    underline_opacity_name: "Underline / Pill Opacity",
-    underline_opacity_desc: "The transparency level of the underline or the pill background.",
+    underline_thick_name: "Underline Thickness (px)",
+    underline_thick_desc: "Thickness of title underline in pixels.",
+    underline_offset_name: "Underline Offset (px)",
+    underline_offset_desc: "Vertical distance between text and underline stroke.",
+    underline_opacity_name: "Decoration Opacity (%)",
+    underline_opacity_desc: "Transparency level of underline or pill background.",
     color_light_name: "Light Theme Colors",
-    color_light_desc: "First color is for delimiters, second is for the tab underline.",
+    color_light_desc: "First color for delimiters, second color for title underline.",
     diff_dark_name: "Custom Dark Theme Colors",
-    diff_dark_desc: "Enable an exclusive color palette for dark backgrounds.",
+    diff_dark_desc: "Enable independent color palette for dark background mode.",
     color_dark_name: "Dark Theme Colors",
-    color_dark_desc: "First color is for delimiters, second is for the tab underline.",
-    
-    heading_info: "About",
-    changelog_name: "Plugin Changelog",
-    changelog_desc: "Discover the latest features and bug fixes introduced to tabs-extended.",
-    btn_changelog: "View Changelog"
+    color_dark_desc: "First color for delimiters, second color for title underline.",
+
+    heading_info: "ℹ️ About Tabs Extended",
+    changelog_name: "Changelog & Release Notes",
+    changelog_desc: "View recent updates and bug fixes for tabs-extended.",
+    btn_changelog: "View Changelog",
+    "settings.resetToDefault": "Reset to default"
   },
   es: {
-    heading_general: "Configuración General",
-    heading_general_desc: "Ajustes globales que afectan cómo interactúas con las pestañas y el comportamiento del plugin en todo Obsidian.",
-    language_name: "Idioma / Language",
-    language_desc: "Selecciona el idioma del plugin. Debes cerrar y reabrir esta ventana para aplicar los cambios por completo.",
-    ignore_notice_name: "Ocultar Alertas Menores",
-    ignore_notice_desc: "Desactiva las pequeñas notificaciones emergentes de Obsidian. Específicamente, oculta las alertas al: añadir, eliminar o copiar pestañas (tanto en éxito como en error), detectar portapapeles vacío y referencias a tabs inválidos. Útil para una experiencia silenciosa.",
-    auto_refresh_name: "Auto-refrescar Documento",
-    auto_refresh_desc: "Al activar esta opción, Obsidian refrescará el documento automáticamente cada vez que cierres este panel de configuraciones, aplicando los cambios visuales de inmediato.",
-    drag_drop_name: "Activar Arrastrar y Soltar",
-    drag_drop_desc: "Permite reordenar el orden de tus pestañas fácilmente haciendo clic sostenido sobre sus títulos y arrastrándolas de un lado a otro.",
-    double_click_name: "Doble Clic para Editar",
-    double_click_desc: "Te permite hacer doble clic sobre cualquier pestaña en la vista de lectura para abrir instantáneamente el editor modal, ahorrándote tiempo.",
-    hide_edit_name: "Ocultar Botón Flotante de Edición",
-    hide_edit_desc: "Oculta el pequeño icono de lápiz que aparece flotando en la esquina superior derecha de los bloques de pestañas cuando pasas el cursor sobre ellos.",
-    
-    heading_standard: "Pestañas Estándar",
-    heading_standard_desc: "Controla la apariencia, estructura y los valores iniciales de los bloques de pestañas convencionales.",
-    tabs_keyword_name: "Palabra Clave del Bloque de Pestañas",
-    tabs_keyword_desc: "La palabra clave principal para activar bloques de pestañas (por defecto 'tabs'). Las pestañas serán horizontales por defecto. Añada '-v' a la palabra clave (ej. 'tabs-v' o '<palabra>-v') para usar pestañas verticales.",
-    default_title_name: "Título Inicial para Pestañas Horizontales",
-    default_title_desc: "El texto predeterminado que aparecerá como título cuando agregues una nueva pestaña horizontal (ej. 'Nueva pestaña').",
-    default_title_vertical_name: "Título Inicial para Pestañas Verticales",
-    default_title_vertical_desc: "El texto predeterminado que aparecerá como título cuando agregues una nueva pestaña vertical (ej. 'Nueva pestaña vertical').",
-    default_content_name: "Contenido Inicial para Pestañas Nuevas",
-    default_content_desc: "El texto predeterminado que se inyectará en el cuerpo cuando agregues una nueva pestaña.",
-    action_button_name: "Botón de Acción Superior",
-    action_button_desc: "Define la función del botón permanente situado junto a los títulos de las pestañas.",
-    opt_add_tab: "Añadir Pestaña",
-    opt_edit_tab: "Editar Pestaña",
-    opt_hide_btn: "Ocultar Botón",
-    title_position_name: "Ubicación de los Títulos",
-    title_position_desc: "Decide en qué lado del contenido deseas que aparezcan los botones de navegación.",
-    opt_top: "Arriba",
-    opt_bottom: "Abajo",
-    opt_left: "Izquierda",
-    opt_right: "Derecha",
-    title_wrap_name: "Comportamiento de Títulos Largos",
-    title_wrap_desc: "Controla qué sucede cuando un título es demasiado largo para la pantalla: truncarlo o saltar a la siguiente línea.",
-    opt_single_line: "Una Sola Línea (Truncar)",
-    opt_multi_line: "Múltiples Líneas (Saltar)",
-    limit_width_name: "Limitar Ancho Máximo",
-    limit_width_desc: "Si está activo, restringe el ancho de las pestañas para evitar que títulos inmensos deformen la pantalla.",
-    container_border_name: "Bordes del Contenedor",
-    container_border_desc: "Determina en qué momento deben ser visibles las líneas divisorias que encuadran todo el bloque.",
-    opt_always: "Siempre Visibles",
-    opt_hover: "Visibles al pasar el cursor",
-    opt_never: "Nunca Visibles",
-    vertical_left_spacing_name: "Separación del Borde Izquierdo (Pestañas Verticales)",
-    vertical_left_spacing_desc: "Ajusta la distancia en píxeles (px) entre el borde izquierdo del bloque y los títulos de las pestañas verticales (establece 0 px para pegarlos totalmente al borde).",
-    border_color_name: "Color de los Bordes",
-    border_color_desc: "Código Hexadecimal (ej. #e0e0e0) que define de qué color se pintará el borde del bloque de pestañas.",
-    content_padding_name: "Espaciado Interno (Padding)",
-    content_padding_desc: "Reglas CSS (ej. '1em 2em') que definen cuánto espacio en blanco habrá entre el texto y los bordes del contenedor.",
-    max_height_name: "Altura Máxima",
-    max_height_desc: "Altura CSS máxima permitida (ej. '400px') antes de que el contenido comience a ocultarse y requiera barra de desplazamiento.",
-    
-    heading_editor: "Editor Modal",
-    heading_editor_desc: "Configuraciones exclusivas del entorno de escritura donde editas el código de tus pestañas.",
+    heading_general: "⚙️ Configuración General",
+    heading_general_desc: "Preferencias globales de idioma, notificaciones emergentes, refresco de vista e interacción.",
+    language_name: "Idioma de la Interfaz",
+    language_desc: "Selecciona el idioma preferido para los menús y paneles del plugin (Español / English).",
+    ignore_notice_name: "Ocultar Notificaciones de Acción",
+    ignore_notice_desc: "Desactiva los avisos flotantes emergentes al agregar, copiar o eliminar pestañas.",
+    auto_refresh_name: "Actualización Automática de Vista",
+    auto_refresh_desc: "Actualiza automáticamente las notas abiertas al cerrar este panel de ajustes si se realizaron cambios.",
+    drag_drop_name: "Reordenar Pestañas por Arrastre",
+    drag_drop_desc: "Permite cambiar el orden de las pestañas arrastrándolas directamente con el ratón.",
+    double_click_name: "Edición con Doble Clic",
+    double_click_desc: "Abre el editor modal al hacer doble clic sobre la pestaña deseada.",
+    hide_edit_name: "Botón Flotante de Edición de Bloque",
+    hide_edit_desc: "Muestra u oculta el botón flotante en la esquina del bloque de código en modo edición.",
+
+    heading_standard: "📑 Creación y Estructura de Pestañas",
+    heading_standard_desc: "Ajustes para la palabra clave del bloque, títulos predeterminados, contenido inicial y posición principal.",
+    tabs_keyword_name: "Palabra Clave del Bloque (`tabs`)",
+    tabs_keyword_desc: "Identificador en los bloques de código delimitados para activar el renderizado de pestañas (ej. `tabs` o `tabs-v`).",
+    default_title_name: "Título Predeterminado (Pestañas Horizontales)",
+    default_title_desc: "Nombre asignado automáticamente al agregar una nueva pestaña horizontal.",
+    default_title_vertical_name: "Título Predeterminado (Pestañas Verticales)",
+    default_title_vertical_desc: "Nombre asignado automáticamente al agregar una nueva pestaña vertical.",
+    default_content_name: "Contenido Inicial Predeterminado",
+    default_content_desc: "Texto o plantilla sugerida al crear una nueva pestaña.",
+    action_button_name: "Botón de Acción Rápida en la Barra",
+    action_button_desc: "Función asignada al botón ubicado en la esquina de la barra de pestañas.",
+    opt_add_tab: "Añadir Nueva Pestaña (+)",
+    opt_edit_tab: "Abrir Editor Modal (✏️)",
+    opt_hide_btn: "Ocultar Botón de Acción",
+    title_position_name: "Posición Principal de los Títulos",
+    title_position_desc: "Ubicación de la barra de títulos respecto al contenido: Arriba, Abajo, Izquierda o Derecha.",
+    opt_top: "Arriba (Horizontal)",
+    opt_bottom: "Abajo (Horizontal)",
+    opt_left: "Izquierda (Vertical)",
+    opt_right: "Derecha (Vertical)",
+
+    heading_title_behavior: "🏷️ Gestión y Estilo de Títulos de Pestañas",
+    heading_title_behavior_desc: "Personaliza la sangría, columnas, límite de ancho y comportamiento dinámico para títulos de pestañas largos.",
+    "settings.verticalTabsColumns.name": "Distribución en Columnas (Pestañas Verticales)",
+    "settings.verticalTabsColumns.desc": "Organiza los títulos de las pestañas laterales en 1, 2 o 3 columnas paralelas para optimizar el espacio.",
+    "settings.verticalTabsColumns.option1": "1 Columna (Lista vertical estándar)",
+    "settings.verticalTabsColumns.option2": "2 Columnas (Cuadrícula doble)",
+    "settings.verticalTabsColumns.option3": "3 Columnas (Cuadrícula triple)",
+    vertical_left_spacing_name: "Sangría Izquierda del Bloque (Pestañas Verticales)",
+    vertical_left_spacing_desc: "Ajusta el margen izquierdo entre el contenedor y los títulos (0px a 50px). Selecciona 0px para pegarlos totalmente al borde.",
+    vertical_right_spacing_name: "Sangría Derecha hacia el Contenido (Pestañas Verticales)",
+    vertical_right_spacing_desc: "Ajusta el margen de separación entre los títulos de pestañas verticales y el panel de contenido (0px a 50px).",
+    title_wrap_name: "Comportamiento de Títulos Largos (Pestañas Horizontales)",
+    title_wrap_desc: "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
+    vertical_title_behavior_name: "Comportamiento de Títulos Largos (Pestañas Verticales)",
+    vertical_title_behavior_desc: "Define el efecto de movimiento o recorte para títulos extensos en la barra lateral.",
+    opt_v_hover_scroll: "Desplazamiento horizontal al pasar el ratón (hover scroll)",
+    opt_v_auto_scroll: "Desplazamiento horizontal automático",
+    opt_v_multi_line: "Multi-línea (Múltiples líneas sin desbordamiento)",
+    opt_v_shrink: "Encoger título (Shrink - Reducir tamaño para evitar desbordamiento)",
+    opt_single_line: "Una sola línea (Recortar con puntos suspensivos ...)",
+    opt_multi_line: "Múltiples líneas (Ajustar texto automáticamente)",
+    limit_width_name: "Restringir Ancho Máximo de Títulos",
+    limit_width_desc: "Limita la anchura máxima de los títulos para evitar que una sola pestaña ocupe todo el ancho del documento.",
+
+    heading_container: "🖼️ Estilo del Contenedor y Bordes",
+    heading_container_desc: "Define el marco visual, bordes, color, espaciado interno (padding) y altura máxima del bloque.",
+    container_border_name: "Visualización del Borde del Contenedor",
+    container_border_desc: "Muestra u oculta el marco exterior alrededor del bloque de pestañas.",
+    opt_always: "Mostrar Borde Siempre",
+    opt_hover: "Mostrar Borde al Pasar el Ratón",
+    opt_never: "No Mostrar Borde Nunca",
+    border_color_name: "Color del Borde del Contenedor",
+    border_color_desc: "Código de color CSS (Hex, RGB o HSL) para personalizar el marco del contenedor.",
+    content_padding_name: "Espaciado Interno del Contenido (Padding)",
+    content_padding_desc: "Relleno interior del contenido de las pestañas (ej. `1em 2em` o `10px 20px`).",
+    max_height_name: "Altura Máxima del Contenedor",
+    max_height_desc: "Límite de altura vertical del contenedor (ej. `300px` o `50vh`). Agrega barra de desplazamiento si se supera.",
+
+    heading_editor: "✏️ Editor Modal de Pestañas",
+    heading_editor_desc: "Configuración del entorno de edición emergente para escribir y formatear tus pestañas.",
     autosave_name: "Intervalo de Autoguardado",
-    autosave_desc: "Milisegundos que el editor esperará pacientemente desde tu última pulsación de tecla antes de guardar los cambios.",
+    autosave_desc: "Milisegundos que el editor esperará pacientemente desde la última pulsación de tecla antes de guardar los cambios.",
     show_toolbar_name: "Barra de Herramientas de Formato",
-    show_toolbar_desc: "Despliega una cómoda botonera en la parte superior del editor con atajos para aplicar Negritas, Cursivas, etc.",
-    tab_size_name: "Tamaño de Tabulación",
-    tab_size_desc: "Define cuántos espacios vacíos equivalen a una sola pulsación de la tecla 'Tab' en tu teclado.",
-    
-    heading_nested: "Pestañas Anidadas (Estilos Avanzados)",
-    heading_nested_desc: "Domina el comportamiento visual de las pestañas inyectadas dentro de otras pestañas, incluyendo el Modo Limpio y los decoradores de color.",
-    separator_name: "Palabra del Separador",
-    separator_desc: "La palabra mágica que el plugin buscará en cada línea para dividir y detectar tus pestañas (Por defecto es 'tema:').",
+    show_toolbar_desc: "Muestra u oculta la barra superior del editor modal con botones para dar formato a los textos.",
+    tab_size_name: "Tamaño de Tabulación (Espacios)",
+    tab_size_desc: "Define la cantidad de espacios que se insertarán al presionar la tecla Tab en el editor.",
+
+    heading_nested: "🪆 Pestañas Anidadas (Subpestañas)",
+    heading_nested_desc: "Estilos visuales, resaltado y separadores para pestañas dentro de otras pestañas.",
+    separator_name: "Palabra Clave del Separador de Subpestañas",
+    separator_desc: "Término que divide las subpestañas dentro del bloque (por defecto `tema:`).",
     protect_sep_name: "Proteger Separador en el Editor",
-    protect_sep_desc: "Bloquea y protege el texto del separador en el editor para evitar que lo borres sin querer mientras escribes.",
-    highlight_nested_name: "Habilitar Resaltado Visual",
-    highlight_nested_desc: "Distingue visualmente las pestañas anidadas en Vista Previa.",
-    nested_no_borders_name: "Quitar bordes a las pestañas anidadas",
-    nested_no_borders_desc: "Quita los bordes a las pestañas anidadas para que se integren sin bordes marcados.",
+    protect_sep_desc: "Bloquea y protege el texto del separador en el editor para evitar su eliminación accidental.",
+    highlight_nested_name: "Resaltar Pestañas Anidadas",
+    highlight_nested_desc: "Aplica resaltado de estilo e indicadores visuales a las subpestañas.",
+    nested_no_borders_name: "Eliminar Bordes en Pestañas Anidadas",
+    nested_no_borders_desc: "Quita los bordes a las pestañas anidadas para integrarlas limpiamente sin marcos visuales marcados.",
     delim_style_name: "Estilo de los Delimitadores",
-    delim_style_desc: "Determina cómo deben dibujarse las tildes invertidas de apertura y cierre (```).",
+    delim_style_desc: "Determina cómo se dibujan las tildes invertidas de apertura y cierre (```).",
     opt_color: "Usar Colores",
     opt_text: "Usar Texto Fantasma",
-    start_text_name: "Texto Fantasma de Apertura",
-    start_text_desc: "Palabras mostradas junto a las tildes de apertura. Déjalo en blanco para omitir.",
-    end_text_name: "Texto Fantasma de Cierre",
-    end_text_desc: "Palabras mostradas junto a las tildes de cierre. Déjalo en blanco para omitir.",
+    start_text_name: "Texto de Inicio de Delimitador",
+    start_text_desc: "Texto fantasma visualizado al inicio del bloque de pestañas anidadas.",
+    end_text_name: "Texto de Fin de Delimitador",
+    end_text_desc: "Texto fantasma visualizado al cierre del bloque de pestañas anidadas.",
     hide_sep_name: "Modo Limpio (Ocultar Separador)",
-    hide_sep_desc: "Desaparece visualmente la palabra del separador en el editor dejándote ver solo el título limpio. Fuerzas las negritas para que sea muy legible.",
-    sep_size_name: "Tamaño de Letra del Separador",
+    hide_sep_desc: "Oculta visualmente la palabra del separador en el editor dejando ver solo el título limpio.",
+    sep_size_name: "Tamaño de Fuente del Separador",
     sep_size_desc: "El tamaño de fuente aplicado a la palabra del separador (cuando es visible).",
-    sep_bg_name: "Opacidad del Sombreado del Separador",
-    sep_bg_desc: "La intensidad de la cápsula de color semitransparente que envuelve y destaca a la palabra del separador.",
+    sep_bg_name: "Opacidad del Fondo del Separador",
+    sep_bg_desc: "La intensidad de la cápsula de color que envuelve al separador.",
     bold_name: "Títulos en Negrita",
-    bold_desc: "Fuerza el uso de fuente gruesa (Bold) en las líneas que contienen los nombres de las pestañas para mayor contraste.",
-    underline_style_name: "Estilo Decorativo de Títulos",
-    underline_style_desc: "El tipo de decoración visual aplicada debajo (o detrás) del nombre de la pestaña.",
+    bold_desc: "Fuerza el uso de fuente gruesa (Bold) en los títulos de pestañas.",
+    underline_style_name: "Estilo de Subrayado / Decoración",
+    underline_style_desc: "Estilo del trazo decorativo debajo de las subpestañas (línea sólida, punteada, ondulada o píldora).",
     opt_solid: "Línea Sólida",
     opt_dashed: "Línea Punteada",
     opt_dotted: "Línea de Puntos",
     opt_double: "Línea Doble",
     opt_wavy: "Línea Ondulada",
     opt_pill: "Cápsula de Color (Píldora)",
-    underline_thick_name: "Grosor del Subrayado",
-    underline_thick_desc: "El ancho en píxeles de la línea decorativa dibujada debajo del título.",
-    underline_offset_name: "Espaciado del Subrayado",
-    underline_offset_desc: "La separación vertical en píxeles entre las letras y la línea de subrayado.",
-    underline_opacity_name: "Transparencia del Subrayado / Cápsula",
-    underline_opacity_desc: "El nivel de opacidad (intensidad) del color utilizado para decorar el título.",
-    color_light_name: "Paleta para Tema Claro",
-    color_light_desc: "El primer selector tiñe los delimitadores. El segundo pinta el decorativo del título.",
-    diff_dark_name: "Paleta Exclusiva para Tema Oscuro",
-    diff_dark_desc: "Habilita la configuración de colores independientes para cuando uses Obsidian con un fondo oscuro.",
-    color_dark_name: "Paleta para Tema Oscuro",
-    color_dark_desc: "El primer selector tiñe los delimitadores. El segundo pinta el decorativo del título.",
-    
-    heading_info: "Acerca de",
-    changelog_name: "Historial de Cambios del Plugin",
-    changelog_desc: "Descubre las últimas funcionalidades implementadas en tabs-extended.",
-    btn_changelog: "Ver Historial"
+    underline_thick_name: "Grosor del Subrayado (px)",
+    underline_thick_desc: "Grosor del trazo decorativo en píxeles.",
+    underline_offset_name: "Separación Vertical del Subrayado (px)",
+    underline_offset_desc: "Distancia vertical entre las letras del título y la línea de subrayado.",
+    underline_opacity_name: "Opacidad de la Decoración (%)",
+    underline_opacity_desc: "Nivel de transparencia del subrayado o de la cápsula decorativa.",
+    color_light_name: "Colores para Tema Claro",
+    color_light_desc: "El primer selector define el color de los delimitadores; el segundo, el color del título.",
+    diff_dark_name: "Usar Colores Diferentes en Tema Oscuro",
+    diff_dark_desc: "Activa una paleta de colores personalizada cuando Obsidian esté en modo oscuro.",
+    color_dark_name: "Colores para Tema Oscuro",
+    color_dark_desc: "El primer selector define el color de los delimitadores; el segundo, el color del título.",
+
+    heading_info: "ℹ️ Acerca de Tabs Extended",
+    changelog_name: "Historial de Mejoras y Cambios",
+    changelog_desc: "Consulta la lista detallada de actualizaciones y arreglos del plugin.",
+    btn_changelog: "Ver Historial de Cambios",
+    "settings.resetToDefault": "Restablecer al valor por defecto"
   }
-},
-  Vr = class extends U.PluginSettingTab {
+};
+
+  var Vr = class extends U.PluginSettingTab {
     constructor(t, e) {
       super(t, e);
       this.sampleTabs = null;
@@ -689,6 +745,7 @@ PluginLocales = {
         let { containerEl: t } = this;
         let prevScroll = t.scrollTop; // Save scroll position
         t.empty();
+        t.addClass("tabs-extended-settings");
         
         let lang = this.plugin.settings.language || "es";
         if (!PluginLocales[lang]) {
@@ -764,6 +821,7 @@ PluginLocales = {
                 this.needRefresh = !0;
             })
           );
+        t.createEl("hr", { cls: "tabs-settings-divider" });
 
         // ==========================================
         // CATEGORY 2: PESTAÑAS ESTÁNDAR
@@ -843,6 +901,11 @@ PluginLocales = {
                 this.needRefresh = !0;
               })
           ).then((e) => this.addResetButton(e, "defaultTitlePosition"));
+        t.createEl("hr", { cls: "tabs-settings-divider" });
+
+        // ==========================================
+        // CATEGORY 3: TÍTULOS DE PESTAÑAS
+        // ==========================================
         new U.Setting(t).setHeading().setName(_("heading_title_behavior")).setDesc(_("heading_title_behavior_desc"));
         new U.Setting(t)
           .setName(_("settings.verticalTabsColumns.name"))
@@ -879,6 +942,24 @@ PluginLocales = {
               })
           ).then((e) => this.addResetButton(e, "verticalTabsLeftSpacing"));
         new U.Setting(t)
+          .setName(_("vertical_right_spacing_name"))
+          .setDesc(_("vertical_right_spacing_desc"))
+          .addSlider((e) =>
+            e
+              .setLimits(0, 50, 1)
+              .setValue(this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 8)
+              .setDynamicTooltip()
+              .onChange((i) => {
+                this.plugin.settings.verticalTabsRightSpacing = Math.max(0, i);
+                this.plugin.saveSettings();
+                this.plugin.updateVerticalTabsRightSpacingCss(i);
+                this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--vertical-tabs-right-spacing", i + "px");
+                }
+              })
+          ).then((e) => this.addResetButton(e, "verticalTabsRightSpacing"));
+        new U.Setting(t)
           .setName(_("title_wrap_name"))
           .setDesc(_("title_wrap_desc"))
           .addDropdown((e) =>
@@ -899,8 +980,8 @@ PluginLocales = {
             e
               .addOption("hover-scroll", _("opt_v_hover_scroll"))
               .addOption("auto-scroll", _("opt_v_auto_scroll"))
-              .addOption("double-line", _("opt_v_double_line"))
-              .addOption("truncate", _("opt_v_truncate"))
+              .addOption("multi-line", _("opt_v_multi_line"))
+              .addOption("shrink", _("opt_v_shrink"))
               .setValue(this.plugin.settings.verticalTitleBehavior || "hover-scroll")
               .onChange((i) => {
                 this.plugin.settings.verticalTitleBehavior = i;
@@ -918,6 +999,12 @@ PluginLocales = {
                 this.needRefresh = !0;
             })
           ).then((e) => this.addResetButton(e, "defaultTitleLimited"));
+        t.createEl("hr", { cls: "tabs-settings-divider" });
+
+        // ==========================================
+        // CATEGORY 4: CONTENEDOR Y BORDES
+        // ==========================================
+        new U.Setting(t).setHeading().setName(_("heading_container")).setDesc(_("heading_container_desc"));
         new U.Setting(t)
           .setName(_("container_border_name"))
           .setDesc(_("container_border_desc"))
@@ -972,9 +1059,10 @@ PluginLocales = {
                 }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsContentsMaxHeight"));
+        t.createEl("hr", { cls: "tabs-settings-divider" });
 
         // ==========================================
-        // CATEGORY 3: EDITOR MODAL
+        // CATEGORY 5: EDITOR MODAL
         // ==========================================
         new U.Setting(t).setName(_("heading_editor")).setHeading().setDesc(_("heading_editor_desc"));
         new U.Setting(t)
@@ -1004,9 +1092,10 @@ PluginLocales = {
                 this.plugin.saveSettings();
             })
           );
+        t.createEl("hr", { cls: "tabs-settings-divider" });
 
         // ==========================================
-        // CATEGORY 4: PESTAÑAS ANIDADAS
+        // CATEGORY 6: PESTAÑAS ANIDADAS
         // ==========================================
         new U.Setting(t).setName(_("heading_nested")).setHeading().setDesc(_("heading_nested_desc"));
         new U.Setting(t)
@@ -1133,9 +1222,17 @@ PluginLocales = {
                   }));
             }
         }
-        
-        this.sampleTabs = new Dl(this.plugin, this, t.createDiv());
+        t.createEl("hr", { cls: "tabs-settings-divider" });
 
+        // ==========================================
+        // CATEGORY 7: VISTA PREVIA
+        // ==========================================
+        this.sampleTabs = new Dl(this.plugin, this, t.createDiv());
+        t.createEl("hr", { cls: "tabs-settings-divider" });
+
+        // ==========================================
+        // CATEGORY 8: ACERCA DE
+        // ==========================================
         new U.Setting(t).setName(_("heading_info")).setHeading();
         new U.Setting(t)
           .setName(_("changelog_name"))
@@ -1162,6 +1259,7 @@ PluginLocales = {
               (this.needRefresh = !0),
               this.plugin.saveSettings(),
               e === "verticalTabsLeftSpacing" && this.plugin.updateVerticalTabsLeftSpacingCss(Ss[e]),
+              e === "verticalTabsRightSpacing" && this.plugin.updateVerticalTabsRightSpacingCss(Ss[e]),
               i && this.display());
           }),
       );
@@ -1210,6 +1308,10 @@ PluginLocales = {
         this.tabscontainerEl.style.setProperty(
           "--vertical-tabs-left-spacing",
           (this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 4) + "px"
+        ),
+        this.tabscontainerEl.style.setProperty(
+          "--vertical-tabs-right-spacing",
+          (this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 8) + "px"
         ));
       let t = this.containerEl.createDiv("edit-block-button");
       (t.setAttribute("aria-label", "Edit this block"),
@@ -1855,6 +1957,7 @@ var Nr = class {
       (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
       (this.verticalTabsHoverScroll = i.verticalTabsHoverScroll !== false),
       (this.verticalTabsLeftSpacing = i.verticalTabsLeftSpacing !== undefined ? i.verticalTabsLeftSpacing : 4),
+      (this.verticalTabsRightSpacing = i.verticalTabsRightSpacing !== undefined ? i.verticalTabsRightSpacing : 8),
       this.parseConfig(t));
   }
   parseConfig(t) {
@@ -1932,7 +2035,10 @@ var Nr = class {
       t.classList.add("tabs-nav-v-cols-" + (this.verticalTabsColumns || "1"));
       let vBehavior = (this.pluginSettings && this.pluginSettings.verticalTitleBehavior) || 
                       (this.verticalTitleBehavior) || 
-                      (this.verticalTabsHoverScroll !== false ? "hover-scroll" : "truncate");
+                      "hover-scroll";
+      if (vBehavior === "truncate" || vBehavior === "double-line") {
+        vBehavior = "multi-line";
+      }
       t.classList.add("tabs-nav-v-behavior-" + vBehavior);
       if (vBehavior === "hover-scroll") {
         t.classList.add("tabs-nav-v-hover-scroll");
@@ -1941,6 +2047,10 @@ var Nr = class {
         ? this.pluginSettings.verticalTabsLeftSpacing 
         : (this.verticalTabsLeftSpacing !== undefined ? this.verticalTabsLeftSpacing : 4);
       t.style.setProperty("--vertical-tabs-left-spacing", Math.max(0, currentLeftSpacing) + "px");
+      let currentRightSpacing = (this.pluginSettings && this.pluginSettings.verticalTabsRightSpacing !== undefined && this.pluginSettings.verticalTabsRightSpacing !== null) 
+        ? this.pluginSettings.verticalTabsRightSpacing 
+        : (this.verticalTabsRightSpacing !== undefined ? this.verticalTabsRightSpacing : 8);
+      t.style.setProperty("--vertical-tabs-right-spacing", Math.max(0, currentRightSpacing) + "px");
     }
   }
 };
@@ -29872,8 +29982,10 @@ var Xl = class extends Br.Plugin {
   }
   updateGlobalCssVariables() {
     let s = this.settings || {};
-    let rawSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 4;
-    let leftSpacing = Math.max(0, rawSpacing);
+    let rawLeftSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 4;
+    let leftSpacing = Math.max(0, rawLeftSpacing);
+    let rawRightSpacing = (s.verticalTabsRightSpacing !== undefined && s.verticalTabsRightSpacing !== null) ? s.verticalTabsRightSpacing : 8;
+    let rightSpacing = Math.max(0, rawRightSpacing);
     let padding = s.defaultTabsContentsPadding || "1em 2em";
     let maxHeight = s.defaultTabsContentsMaxHeight || "none";
     let borderColor = s.defaultTabsBorderColor || "#e0e0e0";
@@ -29882,6 +29994,7 @@ var Xl = class extends Br.Plugin {
     let leftPad = paddingParts.length >= 2 ? paddingParts[1] : (paddingParts[0] || "2em");
 
     document.body.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
+    document.body.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
     document.body.style.setProperty("--tabs-contents-padding", padding);
     document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
     document.body.style.setProperty("--tabs-max-height", maxHeight);
@@ -29890,6 +30003,7 @@ var Xl = class extends Br.Plugin {
     try {
       document.querySelectorAll(".tabs-container").forEach((el) => {
         el.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
+        el.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
         el.style.setProperty("--tabs-contents-padding", padding);
         el.style.setProperty("--tabs-contents-padding-left", leftPad);
         el.style.setProperty("--tabs-max-height", maxHeight);
@@ -29902,6 +30016,12 @@ var Xl = class extends Br.Plugin {
   updateVerticalTabsLeftSpacingCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabsLeftSpacing = Math.max(0, val);
+    }
+    this.updateGlobalCssVariables();
+  }
+  updateVerticalTabsRightSpacingCss(val) {
+    if (val !== undefined && val !== null && this.settings) {
+      this.settings.verticalTabsRightSpacing = Math.max(0, val);
     }
     this.updateGlobalCssVariables();
   }
