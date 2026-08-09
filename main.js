@@ -986,7 +986,24 @@ PluginLocales = {
               .onChange((i) => {
                 this.plugin.settings.verticalTitleBehavior = i;
                 this.plugin.saveSettings();
+                this.plugin.updateVerticalTitleBehaviorCss(i);
                 this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  const el = this.sampleTabs.tabscontainerEl;
+                  el.classList.remove(
+                    "tabs-nav-v-behavior-hover-scroll",
+                    "tabs-nav-v-behavior-auto-scroll",
+                    "tabs-nav-v-behavior-multi-line",
+                    "tabs-nav-v-behavior-shrink",
+                    "tabs-nav-v-behavior-truncate",
+                    "tabs-nav-v-behavior-double-line",
+                    "tabs-nav-v-hover-scroll"
+                  );
+                  el.classList.add("tabs-nav-v-behavior-" + i);
+                  if (i === "hover-scroll") {
+                    el.classList.add("tabs-nav-v-hover-scroll");
+                  }
+                }
               })
           ).then((e) => this.addResetButton(e, "verticalTitleBehavior"));
         new U.Setting(t)
@@ -1612,6 +1629,7 @@ var ys = te(require("obsidian")),
       let i = 0;
       while (i < lines.length) {
         const trimmed = lines[i].trim();
+        if (trimmed.startsWith('|')) { i++; continue; }
         const fm = trimmed.match(/^(`{3,}|~{3,})(.*)/);
         if (!fm) { i++; continue; }
         const fenceStr = fm[1], fenceChar = fenceStr[0];
@@ -1629,6 +1647,7 @@ var ys = te(require("obsidian")),
             let j = i + 1;
             while (j < lines.length && innerStack.length > 0) {
               const it = lines[j].trim();
+              if (it.startsWith('|')) { j++; continue; }
               const ifm = it.match(/^(`{3,}|~{3,})(.*)/);
               if (ifm) {
                 const ifs = ifm[1], ifc = ifs[0], ifl = ifs.length, ifi = ifm[2].trim();
@@ -1818,6 +1837,7 @@ var Yr = class extends Dt.Menu {
         
         for (let p = lineStart; p < totalLines; p++) {
           const lineText = (editor.getLine(p) || "").trim();
+          if (lineText.startsWith('|')) continue;
           const m = lineText.match(/^(`{3,}|~{3,})(.*)/);
           if (m) {
             const char = m[1][0];
@@ -1945,6 +1965,7 @@ var Yr = class extends Dt.Menu {
 var Nr = class {
   constructor(t, e, i, isVertical = false) {
     ((this.rawConfig = t.trim()),
+      (this.pluginSettings = i),
       (this.tabsborder = i.defaultTabsBorder),
       (this.tabsBorderColor = i.defaultTabsBorderColor),
       (this.hideTabsEditBlockButton = i.hideTabsEditBlockButton),
@@ -1955,6 +1976,7 @@ var Nr = class {
       (this.tabsMaxHeight = i.defaultTabsContentsMaxHeight),
       (this.tabsContentsPadding = i.defaultTabsContentsPadding),
       (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
+      (this.verticalTitleBehavior = i.verticalTitleBehavior || "hover-scroll"),
       (this.verticalTabsHoverScroll = i.verticalTabsHoverScroll !== false),
       (this.verticalTabsLeftSpacing = i.verticalTabsLeftSpacing !== undefined ? i.verticalTabsLeftSpacing : 4),
       (this.verticalTabsRightSpacing = i.verticalTabsRightSpacing !== undefined ? i.verticalTabsRightSpacing : 8),
@@ -2111,6 +2133,9 @@ var On = class {
       r,
     ).then(() => {
       cleanVirtualLinksFromElement(this.tabitemMDEl);
+      setTimeout(() => {
+        this.applyTitleBehavior();
+      }, 50);
     });
     if (this.tabs && this.tabs.context && typeof this.tabs.context.addChild === 'function') {
       this.tabs.context.addChild(r);
@@ -2118,13 +2143,58 @@ var On = class {
     this.setupVirtualLinkExemption();
     this.setupTitleHoverScroll();
   }
+  applyTitleBehavior() {
+    if (!this.tabitemEl || !this.tabitemMDEl) return;
+    let container = this.tabs ? this.tabs.tabsEl : null;
+    if (!container) return;
+
+    let mdEl = this.tabitemMDEl;
+    let isAutoScroll = container.classList.contains("tabs-nav-v-behavior-auto-scroll");
+    let isShrink = container.classList.contains("tabs-nav-v-behavior-shrink");
+    let isMultiLine = container.classList.contains("tabs-nav-v-behavior-multi-line");
+
+    if (isShrink) {
+      mdEl.classList.remove("is-scrolling-title");
+      mdEl.style.removeProperty("--title-scroll-offset");
+      mdEl.style.removeProperty("--title-scroll-duration");
+      
+      const itemWidth = this.tabitemEl.clientWidth;
+      const overflow = mdEl.scrollWidth - itemWidth;
+      if (overflow > 2 && itemWidth > 0 && mdEl.scrollWidth > 0) {
+        const scale = Math.max(0.6, (itemWidth - 8) / mdEl.scrollWidth);
+        mdEl.style.transform = `scale(${scale})`;
+        mdEl.style.transformOrigin = "left center";
+      } else {
+        mdEl.style.transform = "none";
+      }
+    } else if (isAutoScroll) {
+      mdEl.style.transform = "none";
+      const overflow = mdEl.scrollWidth - mdEl.clientWidth;
+      if (overflow > 3) {
+        mdEl.style.setProperty("--title-scroll-offset", `-${overflow + 14}px`);
+        const duration = Math.max(2.5, Math.min(8, overflow / 22));
+        mdEl.style.setProperty("--title-scroll-duration", `${duration}s`);
+        mdEl.classList.add("is-scrolling-title");
+      } else {
+        mdEl.classList.remove("is-scrolling-title");
+      }
+    } else if (isMultiLine) {
+      mdEl.style.transform = "none";
+      mdEl.classList.remove("is-scrolling-title");
+      mdEl.style.removeProperty("--title-scroll-offset");
+      mdEl.style.removeProperty("--title-scroll-duration");
+    } else {
+      mdEl.style.transform = "none";
+    }
+  }
   setupTitleHoverScroll() {
     if (!this.tabitemEl || !this.tabitemMDEl) return;
     this.tabitemEl.addEventListener("mouseenter", () => {
       let container = this.tabs ? this.tabs.tabsEl : null;
-      if (container && container.classList.contains("tabs-nav-v-cols-1") && !container.classList.contains("tabs-nav-v-hover-scroll")) {
-        return;
-      }
+      if (!container) return;
+      let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
+      if (!isHoverScroll) return;
+
       const mdEl = this.tabitemMDEl;
       if (!mdEl) return;
       const overflow = mdEl.scrollWidth - mdEl.clientWidth;
@@ -2136,7 +2206,8 @@ var On = class {
       }
     });
     this.tabitemEl.addEventListener("mouseleave", () => {
-      if (this.tabitemMDEl) {
+      let container = this.tabs ? this.tabs.tabsEl : null;
+      if (container && (container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll")) && this.tabitemMDEl) {
         this.tabitemMDEl.classList.remove("is-scrolling-title");
         this.tabitemMDEl.style.removeProperty("--title-scroll-offset");
         this.tabitemMDEl.style.removeProperty("--title-scroll-duration");
@@ -2511,7 +2582,10 @@ var Gr = class extends U.MarkdownRenderChild {
       // ── Is this a separator for the CURRENT block? ───────────────────────
       // Only when the fence stack is empty (depth === 0) and the raw line
       // (not trimmed, to respect leading whitespace rules) starts with the split string.
-      if (depth === 0 && lineStr.startsWith(this.split)) {
+      // EXCLUDE lines that are Markdown table delimiters or contain table columns ("|")
+      const isTableLine = lineStr.includes('|') || /^\s*:?-{2,}:?/.test(lineStr);
+
+      if (depth === 0 && lineStr.startsWith(this.split) && !isTableLine) {
         titles.push(currentTitle);
         contents.push(currentContent);
         currentTitle = lineStr.substring(this.split.length);
@@ -29989,6 +30063,10 @@ var Xl = class extends Br.Plugin {
     let padding = s.defaultTabsContentsPadding || "1em 2em";
     let maxHeight = s.defaultTabsContentsMaxHeight || "none";
     let borderColor = s.defaultTabsBorderColor || "#e0e0e0";
+    let vBehavior = s.verticalTitleBehavior || "hover-scroll";
+    if (vBehavior === "truncate" || vBehavior === "double-line") {
+      vBehavior = "multi-line";
+    }
 
     let paddingParts = (padding || "1em 2em").trim().split(/\s+/);
     let leftPad = paddingParts.length >= 2 ? paddingParts[1] : (paddingParts[0] || "2em");
@@ -30008,6 +30086,22 @@ var Xl = class extends Br.Plugin {
         el.style.setProperty("--tabs-contents-padding-left", leftPad);
         el.style.setProperty("--tabs-max-height", maxHeight);
         el.style.setProperty("--tabs-border-color", borderColor);
+
+        if (el.classList.contains("tabs-nav-left") || el.classList.contains("tabs-nav-right")) {
+          el.classList.remove(
+            "tabs-nav-v-behavior-hover-scroll",
+            "tabs-nav-v-behavior-auto-scroll",
+            "tabs-nav-v-behavior-multi-line",
+            "tabs-nav-v-behavior-shrink",
+            "tabs-nav-v-behavior-truncate",
+            "tabs-nav-v-behavior-double-line",
+            "tabs-nav-v-hover-scroll"
+          );
+          el.classList.add("tabs-nav-v-behavior-" + vBehavior);
+          if (vBehavior === "hover-scroll") {
+            el.classList.add("tabs-nav-v-hover-scroll");
+          }
+        }
       });
     } catch (e) {
       // Ignored if DOM query fails
@@ -30022,6 +30116,12 @@ var Xl = class extends Br.Plugin {
   updateVerticalTabsRightSpacingCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabsRightSpacing = Math.max(0, val);
+    }
+    this.updateGlobalCssVariables();
+  }
+  updateVerticalTitleBehaviorCss(val) {
+    if (val && this.settings) {
+      this.settings.verticalTitleBehavior = val;
     }
     this.updateGlobalCssVariables();
   }
