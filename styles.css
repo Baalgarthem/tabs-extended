@@ -110,10 +110,12 @@ body.theme-dark .tabs-editor-modal {
     white-space: nowrap !important;
     overflow: hidden !important;
 }
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item .tabs-nav-item-md {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item.tabs-nav-item-active .tabs-nav-item-md {
     display: inline-block !important;
     white-space: nowrap !important;
     animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate !important;
+    animation-play-state: running !important;
 }
 
 /* 3. Multi-línea: Muestra el título en tantas líneas como sean necesarias para evitar el desbordamiento */
@@ -341,5 +343,18 @@ hr.tabs-settings-divider {
     .tabs-extended-settings .setting-item-control select {
         max-width: 100% !important;
     }
+}
+
+/* Independent Tab Title Font Sizes (Horizontal & Vertical) */
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item,
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item .tabs-nav-item-md p {
+    font-size: var(--horizontal-tab-font-size, 13px) !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md p {
+    font-size: var(--vertical-tab-font-size, 13px) !important;
 }
 

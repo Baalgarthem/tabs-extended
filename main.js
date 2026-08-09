@@ -286,6 +286,10 @@ var zr_es = {
   "vertical_left_spacing_desc": "Ajusta el margen izquierdo entre el contenedor y los títulos (0px a 50px). Selecciona 0px para pegarlos totalmente al borde.",
   "vertical_right_spacing_name": "Sangría Derecha hacia el Contenido (Pestañas Verticales)",
   "vertical_right_spacing_desc": "Ajusta el margen de separación entre los títulos de pestañas verticales y el panel de contenido (0px a 50px).",
+  "horizontal_tab_font_size_name": "Tamaño de Fuente de Títulos (Pestañas Horizontales)",
+  "horizontal_tab_font_size_desc": "Define el tamaño de texto de los títulos en pestañas horizontales superiores o inferiores (8px a 30px).",
+  "vertical_tab_font_size_name": "Tamaño de Fuente de Títulos (Pestañas Verticales)",
+  "vertical_tab_font_size_desc": "Define el tamaño de texto de los títulos en pestañas verticales laterales (8px a 30px).",
   "title_wrap_name": "Comportamiento de Títulos Largos (Pestañas Horizontales)",
   "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
   "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
@@ -384,6 +388,8 @@ function $(s, ...t) {
     deleteIconStyle: "trash",
     verticalTabsLeftSpacing: 4,
     verticalTabsRightSpacing: 8,
+    horizontalTabTitleFontSize: 13,
+    verticalTabTitleFontSize: 13,
     verticalTitleBehavior: "hover-scroll",
   },
   ChangelogModal = class extends U.Modal {
@@ -960,6 +966,42 @@ PluginLocales = {
               })
           ).then((e) => this.addResetButton(e, "verticalTabsRightSpacing"));
         new U.Setting(t)
+          .setName(_("horizontal_tab_font_size_name"))
+          .setDesc(_("horizontal_tab_font_size_desc"))
+          .addSlider((e) =>
+            e
+              .setLimits(8, 30, 1)
+              .setValue(this.plugin.settings.horizontalTabTitleFontSize !== undefined ? this.plugin.settings.horizontalTabTitleFontSize : 13)
+              .setDynamicTooltip()
+              .onChange((i) => {
+                this.plugin.settings.horizontalTabTitleFontSize = Math.max(8, i);
+                this.plugin.saveSettings();
+                this.plugin.updateHorizontalTabTitleFontSizeCss(i);
+                this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--horizontal-tab-font-size", i + "px");
+                }
+              })
+          ).then((e) => this.addResetButton(e, "horizontalTabTitleFontSize"));
+        new U.Setting(t)
+          .setName(_("vertical_tab_font_size_name"))
+          .setDesc(_("vertical_tab_font_size_desc"))
+          .addSlider((e) =>
+            e
+              .setLimits(8, 30, 1)
+              .setValue(this.plugin.settings.verticalTabTitleFontSize !== undefined ? this.plugin.settings.verticalTabTitleFontSize : 13)
+              .setDynamicTooltip()
+              .onChange((i) => {
+                this.plugin.settings.verticalTabTitleFontSize = Math.max(8, i);
+                this.plugin.saveSettings();
+                this.plugin.updateVerticalTabTitleFontSizeCss(i);
+                this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--vertical-tab-font-size", i + "px");
+                }
+              })
+          ).then((e) => this.addResetButton(e, "verticalTabTitleFontSize"));
+        new U.Setting(t)
           .setName(_("title_wrap_name"))
           .setDesc(_("title_wrap_desc"))
           .addDropdown((e) =>
@@ -1277,6 +1319,8 @@ PluginLocales = {
               this.plugin.saveSettings(),
               e === "verticalTabsLeftSpacing" && this.plugin.updateVerticalTabsLeftSpacingCss(Ss[e]),
               e === "verticalTabsRightSpacing" && this.plugin.updateVerticalTabsRightSpacingCss(Ss[e]),
+              e === "horizontalTabTitleFontSize" && this.plugin.updateHorizontalTabTitleFontSizeCss(Ss[e]),
+              e === "verticalTabTitleFontSize" && this.plugin.updateVerticalTabTitleFontSizeCss(Ss[e]),
               i && this.display());
           }),
       );
@@ -1329,6 +1373,14 @@ PluginLocales = {
         this.tabscontainerEl.style.setProperty(
           "--vertical-tabs-right-spacing",
           (this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 8) + "px"
+        ),
+        this.tabscontainerEl.style.setProperty(
+          "--horizontal-tab-font-size",
+          (this.plugin.settings.horizontalTabTitleFontSize !== undefined ? this.plugin.settings.horizontalTabTitleFontSize : 13) + "px"
+        ),
+        this.tabscontainerEl.style.setProperty(
+          "--vertical-tab-font-size",
+          (this.plugin.settings.verticalTabTitleFontSize !== undefined ? this.plugin.settings.verticalTabTitleFontSize : 13) + "px"
         ));
       let t = this.containerEl.createDiv("edit-block-button");
       (t.setAttribute("aria-label", "Edit this block"),
@@ -2169,12 +2221,14 @@ var On = class {
       }
     } else if (isAutoScroll) {
       mdEl.style.transform = "none";
-      const overflow = mdEl.scrollWidth - mdEl.clientWidth;
-      if (overflow > 3) {
+      const availWidth = Math.min(mdEl.clientWidth || 9999, (this.tabitemEl.clientWidth || 8) - 4);
+      const overflow = Math.max(mdEl.scrollWidth - mdEl.clientWidth, mdEl.scrollWidth - availWidth);
+      if (overflow > 1) {
         mdEl.style.setProperty("--title-scroll-offset", `-${overflow + 14}px`);
-        const duration = Math.max(2.5, Math.min(8, overflow / 22));
+        const duration = Math.max(2.5, Math.min(8, overflow / 20));
         mdEl.style.setProperty("--title-scroll-duration", `${duration}s`);
         mdEl.classList.add("is-scrolling-title");
+        mdEl.style.animationPlayState = "running";
       } else {
         mdEl.classList.remove("is-scrolling-title");
       }
@@ -2207,7 +2261,14 @@ var On = class {
     });
     this.tabitemEl.addEventListener("mouseleave", () => {
       let container = this.tabs ? this.tabs.tabsEl : null;
-      if (container && (container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll")) && this.tabitemMDEl) {
+      if (!container) return;
+      let isAutoScroll = container.classList.contains("tabs-nav-v-behavior-auto-scroll");
+      if (isAutoScroll) {
+        this.applyTitleBehavior();
+        return;
+      }
+      let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
+      if (isHoverScroll && this.tabitemMDEl) {
         this.tabitemMDEl.classList.remove("is-scrolling-title");
         this.tabitemMDEl.style.removeProperty("--title-scroll-offset");
         this.tabitemMDEl.style.removeProperty("--title-scroll-duration");
@@ -2474,6 +2535,16 @@ var _r = class {
       (this.navItems[t].isActiveed = !0),
       this.navItems[t].tabitemEl.classList.add("tabs-nav-item-active"),
       (this.currentTab = t));
+
+    setTimeout(() => {
+      if (this.navItems && Array.isArray(this.navItems)) {
+        this.navItems.forEach((item) => {
+          if (item && typeof item.applyTitleBehavior === 'function') {
+            item.applyTitleBehavior();
+          }
+        });
+      }
+    }, 20);
   }
   registerDragEvents() {
     this.navItems.forEach((t) => {
@@ -30060,6 +30131,8 @@ var Xl = class extends Br.Plugin {
     let leftSpacing = Math.max(0, rawLeftSpacing);
     let rawRightSpacing = (s.verticalTabsRightSpacing !== undefined && s.verticalTabsRightSpacing !== null) ? s.verticalTabsRightSpacing : 8;
     let rightSpacing = Math.max(0, rawRightSpacing);
+    let horizontalFontSize = (s.horizontalTabTitleFontSize !== undefined && s.horizontalTabTitleFontSize !== null) ? s.horizontalTabTitleFontSize : 13;
+    let verticalFontSize = (s.verticalTabTitleFontSize !== undefined && s.verticalTabTitleFontSize !== null) ? s.verticalTabTitleFontSize : 13;
     let padding = s.defaultTabsContentsPadding || "1em 2em";
     let maxHeight = s.defaultTabsContentsMaxHeight || "none";
     let borderColor = s.defaultTabsBorderColor || "#e0e0e0";
@@ -30073,6 +30146,8 @@ var Xl = class extends Br.Plugin {
 
     document.body.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
     document.body.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
+    document.body.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
+    document.body.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
     document.body.style.setProperty("--tabs-contents-padding", padding);
     document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
     document.body.style.setProperty("--tabs-max-height", maxHeight);
@@ -30082,6 +30157,8 @@ var Xl = class extends Br.Plugin {
       document.querySelectorAll(".tabs-container").forEach((el) => {
         el.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
         el.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
+        el.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
+        el.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
         el.style.setProperty("--tabs-contents-padding", padding);
         el.style.setProperty("--tabs-contents-padding-left", leftPad);
         el.style.setProperty("--tabs-max-height", maxHeight);
@@ -30116,6 +30193,18 @@ var Xl = class extends Br.Plugin {
   updateVerticalTabsRightSpacingCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabsRightSpacing = Math.max(0, val);
+    }
+    this.updateGlobalCssVariables();
+  }
+  updateHorizontalTabTitleFontSizeCss(val) {
+    if (val !== undefined && val !== null && this.settings) {
+      this.settings.horizontalTabTitleFontSize = Math.max(8, val);
+    }
+    this.updateGlobalCssVariables();
+  }
+  updateVerticalTabTitleFontSizeCss(val) {
+    if (val !== undefined && val !== null && this.settings) {
+      this.settings.verticalTabTitleFontSize = Math.max(8, val);
     }
     this.updateGlobalCssVariables();
   }
