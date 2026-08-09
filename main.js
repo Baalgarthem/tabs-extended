@@ -293,11 +293,11 @@ var zr_es = {
   "title_wrap_name": "Comportamiento de Títulos Largos (Pestañas Horizontales)",
   "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
   "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
-  "vertical_title_behavior_desc": "Define el efecto de movimiento o recorte para títulos extensos en la barra lateral.",
-  "opt_v_hover_scroll": "Desplazamiento horizontal al pasar el ratón (hover scroll)",
-  "opt_v_auto_scroll": "Desplazamiento horizontal automático",
-  "opt_v_multi_line": "Multi-línea (Múltiples líneas sin desbordamiento)",
-  "opt_v_shrink": "Encoger título (Shrink - Reducir tamaño para evitar desbordamiento)",
+  "vertical_title_behavior_desc": "Elige la forma en que se gestionan los títulos extensos en las pestañas laterales:",
+  "opt_v_hover_scroll": "Hover Scroll — Se desplaza al pasar el ratón y se mantiene activo continuamente si la pestaña está seleccionada",
+  "opt_v_auto_scroll": "Auto Scroll — Todas las pestañas con títulos largos se desplazan automáticamente sin requerir interacción",
+  "opt_v_multi_line": "Multi-línea — Divide el título en múltiples líneas (2, 3 o más) para mostrar todo el texto sin recortes",
+  "opt_v_shrink": "Encoger (Shrink) — Ajusta dinámicamente el tamaño de letra para encajar el título entero en una línea",
   "opt_single_line": "Una sola línea (Recortar con puntos suspensivos ...)",
   "opt_multi_line": "Múltiples líneas (Ajustar texto automáticamente)",
   "limit_width_name": "Restringir Ancho Máximo de Títulos",
@@ -2201,6 +2201,7 @@ var On = class {
     if (!container) return;
 
     let mdEl = this.tabitemMDEl;
+    let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
     let isAutoScroll = container.classList.contains("tabs-nav-v-behavior-auto-scroll");
     let isShrink = container.classList.contains("tabs-nav-v-behavior-shrink");
     let isMultiLine = container.classList.contains("tabs-nav-v-behavior-multi-line");
@@ -2232,6 +2233,20 @@ var On = class {
       } else {
         mdEl.classList.remove("is-scrolling-title");
       }
+    } else if (isHoverScroll) {
+      mdEl.style.transform = "none";
+      const availWidth = Math.min(mdEl.clientWidth || 9999, (this.tabitemEl.clientWidth || 8) - 4);
+      const overflow = Math.max(mdEl.scrollWidth - mdEl.clientWidth, mdEl.scrollWidth - availWidth);
+      let isActive = this.isActiveed || this.tabitemEl.classList.contains("tabs-nav-item-active");
+      if (overflow > 1 && isActive) {
+        mdEl.style.setProperty("--title-scroll-offset", `-${overflow + 14}px`);
+        const duration = Math.max(2.5, Math.min(8, overflow / 20));
+        mdEl.style.setProperty("--title-scroll-duration", `${duration}s`);
+        mdEl.classList.add("is-scrolling-title");
+        mdEl.style.animationPlayState = "running";
+      } else if (!isActive) {
+        mdEl.classList.remove("is-scrolling-title");
+      }
     } else if (isMultiLine) {
       mdEl.style.transform = "none";
       mdEl.classList.remove("is-scrolling-title");
@@ -2251,12 +2266,14 @@ var On = class {
 
       const mdEl = this.tabitemMDEl;
       if (!mdEl) return;
-      const overflow = mdEl.scrollWidth - mdEl.clientWidth;
-      if (overflow > 3) {
+      const availWidth = Math.min(mdEl.clientWidth || 9999, (this.tabitemEl.clientWidth || 8) - 4);
+      const overflow = Math.max(mdEl.scrollWidth - mdEl.clientWidth, mdEl.scrollWidth - availWidth);
+      if (overflow > 1) {
         mdEl.style.setProperty("--title-scroll-offset", `-${overflow + 14}px`);
-        const duration = Math.max(2.5, Math.min(8, overflow / 25));
+        const duration = Math.max(2.5, Math.min(8, overflow / 20));
         mdEl.style.setProperty("--title-scroll-duration", `${duration}s`);
         mdEl.classList.add("is-scrolling-title");
+        mdEl.style.animationPlayState = "running";
       }
     });
     this.tabitemEl.addEventListener("mouseleave", () => {
@@ -2269,9 +2286,12 @@ var On = class {
       }
       let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
       if (isHoverScroll && this.tabitemMDEl) {
-        this.tabitemMDEl.classList.remove("is-scrolling-title");
-        this.tabitemMDEl.style.removeProperty("--title-scroll-offset");
-        this.tabitemMDEl.style.removeProperty("--title-scroll-duration");
+        let isActive = this.isActiveed || this.tabitemEl.classList.contains("tabs-nav-item-active");
+        if (!isActive) {
+          this.tabitemMDEl.classList.remove("is-scrolling-title");
+          this.tabitemMDEl.style.removeProperty("--title-scroll-offset");
+          this.tabitemMDEl.style.removeProperty("--title-scroll-duration");
+        }
       }
     });
   }
