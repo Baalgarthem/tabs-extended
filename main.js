@@ -124,6 +124,8 @@ var zr = {
   "delete_icon_opt_trash": "Trash Can (🗑️)",
   "delete_icon_opt_x": "An X (✕)",
   "delete_icon_opt_text": "Bold Text (Delete)",
+  "vertical_left_spacing_name": "Vertical Separator Left Spacing",
+  "vertical_left_spacing_desc": "Adjust spacing in pixels (px) between the block's left border and vertical separator titles (0 is flush against border).",
 };
 var bs = {
   "settings.separator.name": "\u5206\u9694\u7B26",
@@ -232,85 +234,68 @@ var bs = {
     "\u65E0\u6548\u7684\u64CD\u4F5C\u6309\u94AE\u7C7B\u578B\u3002\u5DF2\u8BBE\u4E3A\u201C\u65E0\u201D\u3002",
 };
 var zr_es = {
-  "settings.separator.name": "Palabra del Separador",
-  "settings.separator.desc": "La palabra utilizada para dividir cada pestaña.",
-  "settings.defaultTabTitle.name": "Título predeterminado",
-  "settings.defaultTabTitle.desc": "Título predeterminado para una nueva pestaña.",
-  "settings.defaultTabsContent.name": "Contenido predeterminado",
-  "settings.defaultTabsContent.desc": "Contenido predeterminado para una nueva pestaña.",
-  "settings.actionButton.name": "Botón de acción",
-  "settings.actionButton.desc": "Función del botón superior derecho.",
-  "settings.actionButton.optionNone": "Ocultar Botón",
-  "settings.actionButton.optionAdd": "Añadir Pestaña",
-  "settings.actionButton.optionEdit": "Editar Pestaña",
-  "settings.ignoreNotice.name": "Ocultar Alertas Menores",
-  "settings.ignoreNotice.desc": "Desactiva las notificaciones emergentes al añadir, eliminar o copiar pestañas.",
-  "settings.autorefreshMarkdownView.name": "Auto-refrescar Documento",
-  "settings.autorefreshMarkdownView.desc": "Refresca automáticamente los archivos abiertos al cerrar este panel de ajustes.",
-  "settings.dragAndDrop.name": "Arrastrar y Soltar",
-  "settings.dragAndDrop.desc": "Permite reordenar pestañas arrastrándolas.",
-  "settings.editor.heading": "Editor Modal",
-  "settings.doubleClickToEdit.name": "Doble clic para editar",
-  "settings.doubleClickToEdit.desc": "Haz doble clic en la pestaña para abrir el editor modal.",
-  "settings.showToolbar.name": "Barra de Herramientas de Formato",
-  "settings.showToolbar.desc": "Muestra la barra de formato en el editor.",
-  "settings.tabSize.name": "Tamaño de Tabulación",
-  "settings.tabSize.desc": "Espacios equivalentes a una pulsación de Tab.",
-  "settings.autoSaveInterval.name": "Intervalo de Autoguardado",
-  "settings.autoSaveInterval.desc": "Milisegundos de inactividad antes de autoguardar.",
-  "settings.appearance.heading": "Apariencia",
-  "settings.resetToDefault": "Restablecer por defecto",
-  "settings.tabsBorder.name": "Bordes del Contenedor",
-  "settings.tabsBorder.desc": "Muestra el borde de las pestañas al pasar el cursor o siempre.",
-  "settings.tabsBorder.optionNone": "Nunca Visibles",
-  "settings.tabsBorder.optionHover": "Visibles al pasar el cursor",
-  "settings.tabsBorder.optionAlways": "Siempre Visibles",
-  "settings.tabsBorderColor.name": "Color de los bordes",
-  "settings.tabsBorderColor.desc": "Afecta cuando el borde está en 'Visibles al pasar el cursor' o 'Siempre Visibles'.",
-  "settings.hideTabsEditBlockButton.name": "Ocultar Botón Flotante de Edición",
-  "settings.hideTabsEditBlockButton.desc": "Oculta el icono de lápiz flotante de la esquina de los bloques de pestañas.",
-  "settings.tabsNavPosition.name": "Ubicación de los Títulos",
-  "settings.tabsNavPosition.desc": "Muestra la navegación de pestañas arriba, abajo, a la izquierda o a la derecha.",
-  "settings.tabsNavPosition.optionTop": "Arriba",
-  "settings.tabsNavPosition.optionBottom": "Abajo",
-  "settings.tabsNavPosition.optionLeft": "Izquierda",
-  "settings.tabsNavPosition.optionRight": "Derecha",
-  "settings.verticalTabsColumns.name": "Disposición de Columnas (Pestañas Verticales)",
-  "settings.verticalTabsColumns.desc": "Muestra los títulos de pestañas verticales en 1, 2 o 3 columnas.",
+  "heading_general": "General",
+  "heading_general_desc": "Configuración global de idioma, notificaciones y comportamiento de actualización.",
+  "heading_standard": "Comportamiento de Pestañas",
+  "heading_standard_desc": "Opciones para personalizar títulos, contenido inicial, alineación y visualización.",
+  "heading_editor": "Editor Modal de Pestañas",
+  "heading_editor_desc": "Configuración del editor emergente para escribir y formatear contenido.",
+  "heading_nested": "Pestañas Anidadas (Subpestañas)",
+  "heading_nested_desc": "Ajustes de resaltado y separadores para pestañas dentro de otras pestañas.",
+  "language_name": "Idioma de la Interfaz",
+  "language_desc": "Selecciona el idioma preferido para los menús y paneles del plugin.",
+  "ignore_notice_name": "Notificaciones de Acción",
+  "ignore_notice_desc": "Si se activa, oculta los avisos emergentes al agregar, copiar o eliminar pestañas.",
+  "auto_refresh_name": "Actualización Automática al Cerrar",
+  "auto_refresh_desc": "Refresca los archivos abiertos en cuanto cierras este panel de ajustes si hiciste cambios.",
+  "drag_drop_name": "Reordenar Pestañas por Arrastre",
+  "drag_drop_desc": "Permite reordenar pestañas arrastrándolas directamente con el ratón.",
+  "double_click_name": "Edición con Doble Clic",
+  "double_click_desc": "Abre el editor modal al hacer doble clic sobre la pestaña deseada.",
+  "hide_edit_name": "Icono Flotante de Edición de Bloque",
+  "hide_edit_desc": "Muestra u oculta el botón flotante con icono de lápiz en la esquina superior del bloque.",
+  "tabs_keyword_name": "Palabra Clave del Bloque (`tabs`)",
+  "tabs_keyword_desc": "Palabra reservada en los bloques de código delimitados para identificar las pestañas (ej. `tabs` o `tabs-v`).",
+  "default_title_name": "Título Predeterminado (Pestañas Horizontales)",
+  "default_title_desc": "Texto asignado automáticamente al agregar una nueva pestaña horizontal.",
+  "default_title_vertical_name": "Título Predeterminado (Pestañas Verticales)",
+  "default_title_vertical_desc": "Texto asignado automáticamente al agregar una nueva pestaña vertical.",
+  "default_content_name": "Contenido Predeterminado",
+  "default_content_desc": "Texto o contenido inicial sugerido al crear una nueva pestaña.",
+  "action_button_name": "Botón de Acción Rápida en la Barra",
+  "action_button_desc": "Acción que ejecutará el botón ubicado en la esquina superior de la barra de pestañas.",
+  "opt_add_tab": "Añadir Nueva Pestaña (+)",
+  "opt_edit_tab": "Abrir Editor Modal (✏️)",
+  "opt_hide_btn": "Ocultar Botón de Acción",
+  "title_position_name": "Posición de los Títulos de Pestaña",
+  "title_position_desc": "Ubicación de los títulos dentro del contenedor: Arriba, Abajo, Izquierda o Derecha.",
+  "opt_top": "Arriba (Horizontal)",
+  "opt_bottom": "Abajo (Horizontal)",
+  "opt_left": "Izquierda (Vertical)",
+  "opt_right": "Derecha (Vertical)",
+  "heading_title_behavior": "Comportamiento de Títulos Largos",
+  "heading_title_behavior_desc": "Opciones para controlar la presentación, empaquetado, columnas, sangría y desplazamiento de títulos largos tanto en pestañas horizontales como verticales.",
+  "settings.verticalTabsColumns.name": "Organización de Títulos en Columnas (Verticales)",
+  "settings.verticalTabsColumns.desc": "Permite distribuir los títulos de pestañas verticales en 1, 2 o 3 columnas paralelas. Ideal para optimizar el espacio vertical y visualizar múltiples pestañas simultáneamente.",
   "settings.verticalTabsColumns.option1": "1 Columna (Lista Vertical)",
-  "settings.verticalTabsColumns.option2": "2 Columnas",
-  "settings.verticalTabsColumns.option3": "3 Columnas",
-  "settings.verticalTabsHoverScroll.name": "Desplazamiento de Título al Pasar el Cursor (Hover Title Scroll)",
-  "settings.verticalTabsHoverScroll.desc": "En pestañas de 1 columna, los títulos largos que sobrepasen el ancho realizarán un desplazamiento en carrusel al pasar el ratón para poder leer el título completo.",
-  "settings.tabsNavLineClamp.name": "Comportamiento de Títulos Largos",
-  "settings.tabsNavLineClamp.desc": "Muestra los títulos en una sola línea o en múltiples líneas.",
-  "settings.tabsNavLineClamp.optionOne": "Una Sola Línea (Truncar)",
-  "settings.tabsNavLineClamp.optionMulti": "Múltiples Líneas (Saltar)",
-  "settings.limitTabTitleWidth.name": "Limitar Ancho Máximo",
-  "settings.limitTabTitleWidth.desc": "Restringe el ancho del título de la pestaña al ancho del contenedor.",
-  "settings.tabsContentsPadding.name": "Espaciado Interno (Padding)",
-  "settings.tabsContentsPadding.desc": "El relleno del contenido de las pestañas. Puedes definir de 1 a 4 valores CSS (ej. '0', '10px', '10px 20px'). Soporta unidades como px, em y rem.",
-  "settings.tabsContentsMaxHeight.name": "Altura Máxima",
-  "settings.tabsContentsMaxHeight.desc": "Si estableces un tamaño CSS válido (ej. 250px, 15em, 50vh), el contenido mostrará barra de desplazamiento al superar esa altura.",
-  "menu.editTab": "Editar Bloque (Modal)",
-  "menu.addNewTab": "Añadir nueva pestaña",
-  "menu.deleteTab": "Eliminar pestaña",
-  "menu.copyTab": "Copiar pestaña",
-  "menu.pasteTab": "Pegar pestaña",
-  "commands.convertToTabs": "Convertir texto seleccionado a pestañas",
-  "commands.refreshAllTabs": "Refrescar todas las pestañas en archivos abiertos",
-  "notice.addNewTabSuccess": "\u{1F7E2} Pestaña añadida con éxito",
-  "notice.deleteTabSuccess": "\u{1F7E2} {0} eliminado con éxito",
-  "notice.invalidTab": "\u{1F534} Pestaña no válida.",
-  "notice.copyTabSuccess": "\u{1F7E2} Copiado al portapapeles con éxito.",
-  "notice.copyTabFailed": "\u{1F534} Error al copiar al portapapeles",
-  "notice.noClipboardContent": "\u{1F7E0} Sin contenido en el portapapeles.",
-  "notice.pasteTabFailed": "\u{1F534} Error al pegar desde el portapapeles",
-  "notice.invalidActionButtonType": "Tipo de botón no válido. Establecido en 'Ninguno'.",
-  "delete_spacing_name": "Separación Horizontal del Botón de Eliminar",
-  "delete_spacing_desc": "Separación horizontal en píxeles (px) entre el título del separador y el botón de borrar.",
-  "delete_icon_name": "Estilo del Icono de Borrar",
-  "delete_icon_desc": "Elige la apariencia del botón de eliminación en los separadores y bloques de pestañas.",
+  "settings.verticalTabsColumns.option2": "2 Columnas Grid",
+  "settings.verticalTabsColumns.option3": "3 Columnas Grid",
+  "vertical_left_spacing_name": "Margen de Sangría Izquierda (Verticales)",
+  "vertical_left_spacing_desc": "Ajusta la distancia en píxeles (de 0 px a 50 px) entre el borde izquierdo del contenedor y los títulos de pestañas verticales. Establece 0 px para pegarlos totalmente al borde.",
+  "title_wrap_name": "Comportamiento de Títulos Largos en Pestañas Horizontales",
+  "title_wrap_desc": "Modo de presentación para títulos extensos en pestañas horizontales: recortar en una sola línea o permitir saltos de línea múltiples.",
+  "vertical_title_behavior_name": "Comportamiento de Títulos Largos en Pestañas Verticales",
+  "vertical_title_behavior_desc": "Define cómo se comportan los títulos extensos en pestañas verticales: desplazamiento al pasar el ratón, desplazamiento automático constante, doble línea o truncado.",
+  "opt_v_hover_scroll": "Desplazamiento al pasar el ratón (Hover Scroll)",
+  "opt_v_auto_scroll": "Desplazamiento horizontal automático (Auto Scroll)",
+  "opt_v_double_line": "Doble línea / Múltiples líneas (Salto automático)",
+  "opt_v_truncate": "Una sola línea (Truncar con puntos suspensivos)",
+  "opt_single_line": "Una Sola Línea (Truncar)",
+  "opt_multi_line": "Múltiples Líneas (Salto automático)",
+  "delete_spacing_name": "Distancia del Botón de Eliminar",
+  "delete_spacing_desc": "Espacio en píxeles (px) entre el texto del título de la pestaña y el botón de eliminación.",
+  "delete_icon_name": "Icono del Botón de Eliminar",
+  "delete_icon_desc": "Forma visual para el botón de borrado de pestañas: Papelera (🗑️), Equis (✕) o Texto.",
   "delete_icon_opt_trash": "Bote de Basura (🗑️)",
   "delete_icon_opt_x": "Una Equis (✕)",
   "delete_icon_opt_text": "Texto en Negritas (Delete)",
@@ -380,6 +365,8 @@ function $(s, ...t) {
     tabsSeparatorBgOpacity: 30,
     deleteButtonSpacing: 12,
     deleteIconStyle: "trash",
+    verticalTabsLeftSpacing: 4,
+    verticalTitleBehavior: "hover-scroll",
   },
   ChangelogModal = class extends U.Modal {
     constructor(app) {
@@ -492,6 +479,8 @@ PluginLocales = {
     opt_always: "Always Visible",
     opt_hover: "Visible on Hover",
     opt_never: "Never Visible",
+    vertical_left_spacing_name: "Vertical Tabs Left Border Spacing",
+    vertical_left_spacing_desc: "Sets the distance in pixels (px) between the block's left border and vertical tab titles (set to 0 px to touch the border completely).",
     border_color_name: "Border Color",
     border_color_desc: "The Hex code (e.g. #e0e0e0) used for drawing the container boundaries.",
     content_padding_name: "Content Padding",
@@ -608,6 +597,8 @@ PluginLocales = {
     opt_always: "Siempre Visibles",
     opt_hover: "Visibles al pasar el cursor",
     opt_never: "Nunca Visibles",
+    vertical_left_spacing_name: "Separación del Borde Izquierdo (Pestañas Verticales)",
+    vertical_left_spacing_desc: "Ajusta la distancia en píxeles (px) entre el borde izquierdo del bloque y los títulos de las pestañas verticales (establece 0 px para pegarlos totalmente al borde).",
     border_color_name: "Color de los Bordes",
     border_color_desc: "Código Hexadecimal (ej. #e0e0e0) que define de qué color se pintará el borde del bloque de pestañas.",
     content_padding_name: "Espaciado Interno (Padding)",
@@ -852,6 +843,7 @@ PluginLocales = {
                 this.needRefresh = !0;
               })
           ).then((e) => this.addResetButton(e, "defaultTitlePosition"));
+        new U.Setting(t).setHeading().setName(_("heading_title_behavior")).setDesc(_("heading_title_behavior_desc"));
         new U.Setting(t)
           .setName(_("settings.verticalTabsColumns.name"))
           .setDesc(_("settings.verticalTabsColumns.desc"))
@@ -869,17 +861,23 @@ PluginLocales = {
               })
           ).then((e) => this.addResetButton(e, "verticalTabsColumns"));
         new U.Setting(t)
-          .setName(_("settings.verticalTabsHoverScroll.name"))
-          .setDesc(_("settings.verticalTabsHoverScroll.desc"))
-          .addToggle((e) =>
+          .setName(_("vertical_left_spacing_name"))
+          .setDesc(_("vertical_left_spacing_desc"))
+          .addSlider((e) =>
             e
-              .setValue(this.plugin.settings.verticalTabsHoverScroll !== false)
+              .setLimits(0, 50, 1)
+              .setValue(this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 4)
+              .setDynamicTooltip()
               .onChange((i) => {
-                this.plugin.settings.verticalTabsHoverScroll = i;
+                this.plugin.settings.verticalTabsLeftSpacing = Math.max(0, i);
                 this.plugin.saveSettings();
+                this.plugin.updateVerticalTabsLeftSpacingCss(i);
                 this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--vertical-tabs-left-spacing", i + "px");
+                }
               })
-          ).then((e) => this.addResetButton(e, "verticalTabsHoverScroll"));
+          ).then((e) => this.addResetButton(e, "verticalTabsLeftSpacing"));
         new U.Setting(t)
           .setName(_("title_wrap_name"))
           .setDesc(_("title_wrap_desc"))
@@ -887,13 +885,29 @@ PluginLocales = {
             e
               .addOption("one", _("opt_single_line"))
               .addOption("multi", _("opt_multi_line"))
-              .setValue(this.plugin.settings.defaultTitleLineClamp)
+              .setValue(this.plugin.settings.defaultTitleLineClamp || "one")
               .onChange((i) => {
                 this.plugin.settings.defaultTitleLineClamp = i;
                 this.plugin.saveSettings();
                 this.needRefresh = !0;
               })
           ).then((e) => this.addResetButton(e, "defaultTitleLineClamp"));
+        new U.Setting(t)
+          .setName(_("vertical_title_behavior_name"))
+          .setDesc(_("vertical_title_behavior_desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("hover-scroll", _("opt_v_hover_scroll"))
+              .addOption("auto-scroll", _("opt_v_auto_scroll"))
+              .addOption("double-line", _("opt_v_double_line"))
+              .addOption("truncate", _("opt_v_truncate"))
+              .setValue(this.plugin.settings.verticalTitleBehavior || "hover-scroll")
+              .onChange((i) => {
+                this.plugin.settings.verticalTitleBehavior = i;
+                this.plugin.saveSettings();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "verticalTitleBehavior"));
         new U.Setting(t)
           .setName(_("limit_width_name"))
           .setDesc(_("limit_width_desc"))
@@ -927,6 +941,9 @@ PluginLocales = {
                 this.plugin.settings.defaultTabsBorderColor = i;
                 this.plugin.saveSettings();
                 this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--tabs-border-color", i);
+                }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsBorderColor"));
         new U.Setting(t)
@@ -937,6 +954,9 @@ PluginLocales = {
                 this.plugin.settings.defaultTabsContentsPadding = i;
                 this.plugin.saveSettings();
                 this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--tabs-contents-padding", i);
+                }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsContentsPadding"));
         new U.Setting(t)
@@ -947,6 +967,9 @@ PluginLocales = {
                 this.plugin.settings.defaultTabsContentsMaxHeight = i;
                 this.plugin.saveSettings();
                 this.needRefresh = !0;
+                if (this.sampleTabs && this.sampleTabs.tabscontainerEl) {
+                  this.sampleTabs.tabscontainerEl.style.setProperty("--tabs-max-height", i);
+                }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsContentsMaxHeight"));
 
@@ -1138,6 +1161,7 @@ PluginLocales = {
             ((this.plugin.settings[e] = Ss[e]),
               (this.needRefresh = !0),
               this.plugin.saveSettings(),
+              e === "verticalTabsLeftSpacing" && this.plugin.updateVerticalTabsLeftSpacingCss(Ss[e]),
               i && this.display());
           }),
       );
@@ -1182,6 +1206,10 @@ PluginLocales = {
         this.tabscontainerEl.style.setProperty(
           "--tabs-contents-padding",
           this.plugin.settings.defaultTabsContentsPadding,
+        ),
+        this.tabscontainerEl.style.setProperty(
+          "--vertical-tabs-left-spacing",
+          (this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 4) + "px"
         ));
       let t = this.containerEl.createDiv("edit-block-button");
       (t.setAttribute("aria-label", "Edit this block"),
@@ -1826,6 +1854,7 @@ var Nr = class {
       (this.tabsContentsPadding = i.defaultTabsContentsPadding),
       (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
       (this.verticalTabsHoverScroll = i.verticalTabsHoverScroll !== false),
+      (this.verticalTabsLeftSpacing = i.verticalTabsLeftSpacing !== undefined ? i.verticalTabsLeftSpacing : 4),
       this.parseConfig(t));
   }
   parseConfig(t) {
@@ -1901,9 +1930,17 @@ var Nr = class {
       i.style.setProperty("--tabs-contents-padding", this.tabsContentsPadding));
     if (this.titlePosition === "left" || this.titlePosition === "right") {
       t.classList.add("tabs-nav-v-cols-" + (this.verticalTabsColumns || "1"));
-      if (this.verticalTabsHoverScroll !== false) {
+      let vBehavior = (this.pluginSettings && this.pluginSettings.verticalTitleBehavior) || 
+                      (this.verticalTitleBehavior) || 
+                      (this.verticalTabsHoverScroll !== false ? "hover-scroll" : "truncate");
+      t.classList.add("tabs-nav-v-behavior-" + vBehavior);
+      if (vBehavior === "hover-scroll") {
         t.classList.add("tabs-nav-v-hover-scroll");
       }
+      let currentLeftSpacing = (this.pluginSettings && this.pluginSettings.verticalTabsLeftSpacing !== undefined && this.pluginSettings.verticalTabsLeftSpacing !== null) 
+        ? this.pluginSettings.verticalTabsLeftSpacing 
+        : (this.verticalTabsLeftSpacing !== undefined ? this.verticalTabsLeftSpacing : 4);
+      t.style.setProperty("--vertical-tabs-left-spacing", Math.max(0, currentLeftSpacing) + "px");
     }
   }
 };
@@ -29827,9 +29864,46 @@ var Xl = class extends Br.Plugin {
   }
   async loadSettings() {
     this.settings = Object.assign({}, Ss, await this.loadData());
+    this.updateGlobalCssVariables();
   }
   async saveSettings() {
     await this.saveData(this.settings);
+    this.updateGlobalCssVariables();
+  }
+  updateGlobalCssVariables() {
+    let s = this.settings || {};
+    let rawSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 4;
+    let leftSpacing = Math.max(0, rawSpacing);
+    let padding = s.defaultTabsContentsPadding || "1em 2em";
+    let maxHeight = s.defaultTabsContentsMaxHeight || "none";
+    let borderColor = s.defaultTabsBorderColor || "#e0e0e0";
+
+    let paddingParts = (padding || "1em 2em").trim().split(/\s+/);
+    let leftPad = paddingParts.length >= 2 ? paddingParts[1] : (paddingParts[0] || "2em");
+
+    document.body.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
+    document.body.style.setProperty("--tabs-contents-padding", padding);
+    document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
+    document.body.style.setProperty("--tabs-max-height", maxHeight);
+    document.body.style.setProperty("--tabs-border-color", borderColor);
+
+    try {
+      document.querySelectorAll(".tabs-container").forEach((el) => {
+        el.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
+        el.style.setProperty("--tabs-contents-padding", padding);
+        el.style.setProperty("--tabs-contents-padding-left", leftPad);
+        el.style.setProperty("--tabs-max-height", maxHeight);
+        el.style.setProperty("--tabs-border-color", borderColor);
+      });
+    } catch (e) {
+      // Ignored if DOM query fails
+    }
+  }
+  updateVerticalTabsLeftSpacingCss(val) {
+    if (val !== undefined && val !== null && this.settings) {
+      this.settings.verticalTabsLeftSpacing = Math.max(0, val);
+    }
+    this.updateGlobalCssVariables();
   }
   async registerCommands() {
     (this.addCommand({

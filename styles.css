@@ -80,3 +80,52 @@ body.theme-dark .tabs-editor-modal {
     animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate;
 }
 
+/* Compact vertical tab titles padding & left margin (configurable via slider) */
+.tabs-container.tabs-nav-left > .tabs-nav {
+    margin-left: var(--vertical-tabs-left-spacing, 4px) !important;
+    padding-left: 0 !important;
+}
+
+.tabs-container.tabs-nav-left > .tabs-nav > .tabs-nav-item-wrapper {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
+    padding-left: 0 !important;
+    padding-right: 10px !important;
+}
+
+.tabs-contents > .tabs-content > .tabs-container.tabs-nav-left,
+.tabs-contents .tabs-container.tabs-nav-left {
+    margin-left: calc(-1 * var(--tabs-contents-padding-left, 2em)) !important;
+}
+
+/* Vertical tab content top alignment without wasting space */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-contents {
+    padding-top: 0 !important;
+}
+
+
+/* Vertical Title Behavior Modes */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-truncate .tabs-nav-item {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-double-line .tabs-nav-item {
+    white-space: normal !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item-md.is-scrolling-title {
+    display: inline-block;
+    white-space: nowrap !important;
+    animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate !important;
+}
