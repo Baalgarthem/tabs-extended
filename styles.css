@@ -350,16 +350,25 @@ hr.tabs-settings-divider {
 }
 
 /* Independent Tab Title Font Sizes (Horizontal & Vertical) */
-.tabs-container:is(.tabs-nav-top, .tabs-nav-bottom, .tabs-nav-button, .tabs-nav-multi) .tabs-nav-item,
-.tabs-container:is(.tabs-nav-top, .tabs-nav-bottom, .tabs-nav-button, .tabs-nav-multi) .tabs-nav-item *,
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item,
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav-item * {
+.tabs-container.tabs-nav-top .tabs-nav-item,
+.tabs-container.tabs-nav-top .tabs-nav-item *,
+.tabs-container.tabs-nav-bottom .tabs-nav-item,
+.tabs-container.tabs-nav-bottom .tabs-nav-item *,
+.tabs-container.tabs-nav-button .tabs-nav-item,
+.tabs-container.tabs-nav-button .tabs-nav-item *,
+.tabs-container.tabs-nav-one .tabs-nav-item,
+.tabs-container.tabs-nav-one .tabs-nav-item *,
+.tabs-container.tabs-nav-multi .tabs-nav-item,
+.tabs-container.tabs-nav-multi .tabs-nav-item * {
     font-size: var(--horizontal-tab-font-size, 13px) !important;
 }
 
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item * {
+.tabs-container.tabs-nav-left .tabs-nav-item,
+.tabs-container.tabs-nav-left .tabs-nav-item *,
+.tabs-container.tabs-nav-right .tabs-nav-item,
+.tabs-container.tabs-nav-right .tabs-nav-item * {
     font-size: var(--vertical-tab-font-size, 13px) !important;
 }
+
 
 
