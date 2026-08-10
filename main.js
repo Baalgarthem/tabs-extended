@@ -215,14 +215,12 @@ var bs = {
   "settings.tabsContentsMaxHeight.desc":
     "\u5982\u679C\u8BBE\u7F6E\u4E86\u6709\u6548\u7684 CSS \u5C3A\u5BF8\uFF0C\u4F8B\u5982 250px\u300115em \u6216 50vh\uFF0C\u5F53\u6807\u7B7E\u9875\u9AD8\u5EA6\u8FBE\u5230\u8BE5\u503C\u65F6\uFF0C\u8D85\u51FA\u7684\u90E8\u5206\u53EF\u4EE5\u6EDA\u52A8\u3002\u8BF7\u4E0D\u8981\u5C06\u8BE5\u503C\u8BBE\u7F6E\u5F97\u8FC7\u5C0F\uFF0C\u5426\u5219\u6807\u7B7E\u9875\u53EF\u80FD\u65E0\u6CD5\u6B63\u5E38\u663E\u793A\u3002",
   "menu.editTab": "Editar Bloque (Modal)",
-  "menu.addNewTab": "\u65B0\u5EFA\u6807\u7B7E\u9875",
-  "menu.deleteTab": "\u5220\u9664\u6807\u7B7E\u9875",
-  "menu.copyTab": "\u590D\u5236\u6807\u7B7E\u9875",
-  "menu.pasteTab": "\u7C98\u8D34\u6807\u7B7E\u9875",
-  "commands.convertToTabs":
-    "\u5C06\u9009\u4E2D\u7684\u6587\u672C\u8F6C\u6362\u4E3A\u6807\u7B7E\u9875",
-  "commands.refreshAllTabs":
-    "\u5237\u65B0\u6240\u6709\u5DF2\u6253\u5F00\u6587\u4EF6\u4E2D\u7684\u6807\u7B7E\u9875",
+  "menu.addNewTab": "Añadir nueva pestaña",
+  "menu.deleteTab": "Eliminar pestaña",
+  "menu.copyTab": "Copiar pestaña",
+  "menu.pasteTab": "Pegar pestaña",
+  "commands.convertToTabs": "Convertir texto seleccionado a pestañas",
+  "commands.refreshAllTabs": "Refrescar todas las pestañas de las notas abiertas",
   "notice.addNewTabSuccess":
     "\u{1F7E2} \u65B0\u5EFA\u6807\u7B7E\u9875\u6210\u529F",
   "notice.deleteTabSuccess": "\u{1F7E2} \u5220\u9664 {0} \u6210\u529F",
@@ -373,8 +371,8 @@ function $(s, ...t) {
     nestedTabsHighlight: !0,
     nestedTabsNoBorders: !0,
     nestedTabsDelimiterStyle: "color",
-    nestedTabsDelimiterTextStart: "nested tab start",
-    nestedTabsDelimiterTextEnd: "nested tab end",
+    nestedTabsDelimiterTextStart: "nesting start",
+    nestedTabsDelimiterTextEnd: "nesting end",
     nestedTabsDelimiterColorLight: "#808080",
     nestedTabsDelimiterColorDark: "#aaaaaa",
     nestedTabsItemColorLight: "#4CAF50",
@@ -601,6 +599,8 @@ PluginLocales = {
     "settings.resetToDefault": "Reset to default"
   },
   es: {
+    "commands.convertToTabs": "Convertir texto seleccionado a pestañas",
+    "commands.refreshAllTabs": "Refrescar todas las pestañas de las notas abiertas",
     heading_general: "⚙️ Configuración General",
     heading_general_desc: "Preferencias globales de idioma, notificaciones emergentes, refresco de vista e interacción.",
     language_name: "Idioma de la Interfaz",
@@ -1207,14 +1207,14 @@ PluginLocales = {
                 new U.Setting(t)
                   .setName(_("start_text_name"))
                   .setDesc(_("start_text_desc"))
-                  .addText((e) => e.setValue(this.plugin.settings.nestedTabsDelimiterTextStart).onChange((i) => {
+                  .addText((e) => e.setPlaceholder("nesting start").setValue(this.plugin.settings.nestedTabsDelimiterTextStart).onChange((i) => {
                       this.plugin.settings.nestedTabsDelimiterTextStart = i;
                       this.plugin.saveSettings();
                   }));
                 new U.Setting(t)
                   .setName(_("end_text_name"))
                   .setDesc(_("end_text_desc"))
-                  .addText((e) => e.setValue(this.plugin.settings.nestedTabsDelimiterTextEnd).onChange((i) => {
+                  .addText((e) => e.setPlaceholder("nesting end").setValue(this.plugin.settings.nestedTabsDelimiterTextEnd).onChange((i) => {
                       this.plugin.settings.nestedTabsDelimiterTextEnd = i;
                       this.plugin.saveSettings();
                   }));
@@ -28866,7 +28866,7 @@ var Zl = class {
                       let depth = fenceStack.filter(f => f.type === "tabs").length;
                       let popped = fenceStack.pop();
                       if (popped.type === "tabs") {
-                          let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nested tab end";
+                          let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nesting end";
                           let rawEnd = baseEnd.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                           let endText = rawEnd + (popped.isVertical ? " (vertical)" : " (horizontal)");
                           i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
@@ -28880,7 +28880,7 @@ var Zl = class {
                            let isVertical = info.toLowerCase().endsWith("-v");
                            fenceStack.push({ fence: fenceStr, type: "tabs", isVertical });
                            let depth = fenceStack.filter(f => f.type === "tabs").length;
-                           let baseStart = t.settings.nestedTabsDelimiterTextStart || "nested tab start";
+                           let baseStart = t.settings.nestedTabsDelimiterTextStart || "nesting start";
                            let rawStart = baseStart.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                            let startText = rawStart + (isVertical ? " (vertical)" : " (horizontal)");
                            i.push(q.line({ class: "cm-nested-tab-start" }).range(line.from));
@@ -30343,6 +30343,12 @@ var Xl = class extends Br.Plugin {
         let defaultContent = this.settings.defaultTabContent;
         let kw = (this.settings.tabsKeyword || "tabs").trim();
 
+        let headingConverted = this.convertHeadingTextToTabs(selection, split, kw, newFenceLen);
+        if (headingConverted) {
+          editor.replaceSelection(headingConverted);
+          return;
+        }
+
         if (selection.trim() === "") {
           editor.replaceSelection(fence + kw + "\n" + split + defaultNav + "\n" + defaultContent + "\n" + fence);
         } else if (selection.includes("`") || selection.includes("~")) {
@@ -30371,6 +30377,82 @@ var Xl = class extends Br.Plugin {
           this.refreshOpenViews();
         },
       }));
+  }
+
+  convertHeadingTextToTabs(selection, split, kw, minFenceLen = 3) {
+    if (!selection || !/^#{1,6}\s+/m.test(selection)) return null;
+
+    let lines = selection.split(/\r?\n/);
+    let root = { level: 0, title: "root", ownContent: [], children: [] };
+    let stack = [root];
+
+    for (let line of lines) {
+      let match = line.match(/^(#{1,6})\s+(.*)$/);
+      if (match) {
+        let level = match[1].length;
+        let title = match[2].trim();
+        let node = { level, title, ownContent: [], children: [] };
+
+        while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+          stack.pop();
+        }
+        stack[stack.length - 1].children.push(node);
+        stack.push(node);
+      } else {
+        stack[stack.length - 1].ownContent.push(line);
+      }
+    }
+
+    if (root.children.length === 0) return null;
+
+    function cleanLines(arr) {
+      let res = [...arr];
+      while (res.length > 0 && res[0].trim() === "") res.shift();
+      while (res.length > 0 && res[res.length - 1].trim() === "") res.pop();
+      return res;
+    }
+
+    function hasChildWithChildren(nodes) {
+      return nodes.some(n => n.children && n.children.length > 0);
+    }
+
+    function renderNodes(nodes, depth) {
+      let result = [];
+      for (let i = 0; i < nodes.length; i++) {
+        let node = nodes[i];
+        let headerLine = (split || "tema:") + node.title;
+        result.push(headerLine);
+
+        let own = cleanLines(node.ownContent);
+        if (own.length > 0) {
+          result.push(own.join("\n"));
+        }
+
+        if (node.children && node.children.length > 0) {
+          let childFenceStr = (depth === 0) ? "~~~" : "```";
+          result.push("");
+          result.push(childFenceStr + (kw || "tabs"));
+          let childContent = renderNodes(node.children, depth + 1);
+          result.push(childContent);
+          result.push(childFenceStr);
+          result.push("");
+        } else {
+          if (i < nodes.length - 1) {
+            result.push("");
+          }
+        }
+      }
+      return result.join("\n");
+    }
+
+    let requiredFenceLen = hasChildWithChildren(root.children) ? 4 : 3;
+    let outerFence = "`".repeat(Math.max(minFenceLen || 3, requiredFenceLen));
+    let body = renderNodes(root.children, 0);
+
+    let preContent = cleanLines(root.ownContent);
+    let preStr = preContent.length > 0 ? preContent.join("\n") + "\n\n" : "";
+
+    return preStr + outerFence + (kw || "tabs") + "\n" + body + "\n" + outerFence;
   }
 
   refreshOpenViews() {
