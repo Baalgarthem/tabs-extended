@@ -1,0 +1,40 @@
+{
+  "horizontal-block-layout-4f835cd787427656": {
+    "width-0": 450.19500732421875
+  },
+  "style": {
+    "themeAware": true,
+    "dividerColor": "#6aa9ff",
+    "dividerThickness": 2,
+    "dividerOpacity": 0.2,
+    "dividerStyle": "solid",
+    "blockBgColor": "#2b2b2b",
+    "blockTextColor": "#e0e0e0",
+    "titleTextColor": "#7aa2ff",
+    "alternatingShading": false,
+    "showBorders": false,
+    "borderRadius": 7,
+    "borderThickness": 2,
+    "blockPadding": 10,
+    "blockGap": 0,
+    "showToolbar": false,
+    "dividerHoverColor": "#8bbdff",
+    "dragActiveShadow": "rgba(0,0,0,0.08)"
+  },
+  "horizontal-block-layout-182e2505065c150d": {
+    "width-0": 346
+  },
+  "horizontal-block-layout-cc4f0ccfe6b6b9b7": {
+    "width-0": 418
+  },
+  "horizontal-block-layout-6f864ae8f955d48f": {
+    "width-0": 253
+  },
+  "horizontal-block-layout-c88e680f7e742464": {
+    "width-0": 561
+  },
+  "horizontal-block-layout-780edbc700568c0a": {
+    "width-0": 527
+  },
+  "previousRelease": "1.1.2"
+}

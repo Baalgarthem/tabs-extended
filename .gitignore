@@ -1,5 +1,5 @@
 # Obsidian plugin runtime settings
-data.json
+/data.json
 
 # Developer documentation & logs
 docs/
