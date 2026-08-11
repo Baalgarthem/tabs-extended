@@ -2879,6 +2879,40 @@ var Gr = class extends U.MarkdownRenderChild {
     return [titles, contents];
   }
   async registerEventHandlers() {
+    if (this.tabsEl) {
+      this.plugin.registerDomEvent(
+        this.tabsEl,
+        "wheel",
+        (ev) => {
+          let isVert =
+            this.isVertical ||
+            (this.tabsConfig &&
+              (this.tabsConfig.titlePosition === "left" ||
+                this.tabsConfig.titlePosition === "right"));
+          if (!isVert) return;
+          if (!ev.shiftKey) return;
+          if (!this.tabsNav || !this.tabsNav.navItems || this.tabsNav.navItems.length <= 1) return;
+
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          let now = Date.now();
+          if (this._lastWheelTime && now - this._lastWheelTime < 140) return;
+          this._lastWheelTime = now;
+
+          let delta = (ev.deltaY > 0 || ev.deltaX > 0) ? 1 : -1;
+          let newIndex =
+            (this.currentIndex + delta + this.tabsNav.navItems.length) %
+            this.tabsNav.navItems.length;
+
+          this.tabsNav.refreshActiveTabNav(newIndex);
+          this.tabsContents.refreshActiveTabContent(newIndex);
+          this.currentIndex = newIndex;
+          this.plugin.lastTabsCache.set(this.tabsId, newIndex);
+        },
+        { passive: false }
+      );
+    }
     switch (
       (this.tabsNav.navItems.forEach((t) => {
         this.plugin.registerDomEvent(t.tabitemEl, "click", (ev) => {
