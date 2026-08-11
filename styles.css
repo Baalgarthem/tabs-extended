@@ -370,5 +370,106 @@ hr.tabs-settings-divider {
     font-size: var(--vertical-tab-font-size, 13px) !important;
 }
 
+/* ==========================================================================
+   SCOPE ISOLATION & TEXT ALIGNMENT PARITY (LIVE PREVIEW & READING VIEW)
+   ========================================================================== */
+
+/* Strict Isolation: Guarantees tab titles are NEVER affected by content alignment or hyphenation rules */
+.tabs-container .tabs-nav,
+.tabs-container .tabs-nav-item,
+.tabs-container .tabs-nav-item .tabs-nav-item-md,
+.tabs-container .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+}
+
+/* Base resets for clean rendering across themes */
+.tabs-container,
+.tabs-container .tabs-contents,
+.tabs-container .tabs-content {
+    word-spacing: normal;
+    letter-spacing: normal;
+}
+
+/* Vertical Tab Title Alignment Rules */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md p {
+    text-align: left !important;
+    text-align-last: left !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item .tabs-nav-item-md p {
+    text-align: center !important;
+    text-align-last: center !important;
+    justify-content: center !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item .tabs-nav-item-md p {
+    text-align: right !important;
+    text-align-last: right !important;
+    justify-content: flex-end !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-soft-justify .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-soft-justify .tabs-nav-item .tabs-nav-item-md p {
+    text-align: justify !important;
+    text-align-last: left !important;
+    hyphens: auto !important;
+    -webkit-hyphens: auto !important;
+    word-spacing: -0.2px !important;
+}
+
+/* Atomic & Independent Content Alignment Rules (SOLAMENTE SOBRE EL CONTENIDO) */
+.tabs-container.tabs-content-align-left .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: left !important;
+    text-align-last: left !important;
+}
+
+.tabs-container.tabs-content-align-center .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: center !important;
+    text-align-last: center !important;
+}
+
+.tabs-container.tabs-content-align-right .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: right !important;
+    text-align-last: right !important;
+}
+
+.tabs-container.tabs-content-align-justify .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: justify !important;
+    text-align-last: auto !important;
+    text-justify: inter-word !important;
+}
+
+.tabs-container.tabs-content-align-soft-justify .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: justify !important;
+    text-align-last: left !important;
+    hyphens: auto !important;
+    -webkit-hyphens: auto !important;
+    word-spacing: -0.2px !important;
+}
+
+.tabs-container.tabs-content-align-inherit .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: inherit;
+    text-align-last: inherit;
+}
+
+/* Atomic Content Hyphenation Options (Inspired by obsidian-hyphenation) */
+.tabs-container.tabs-content-hyphens-auto .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, span, td, th) {
+    hyphens: auto !important;
+    -webkit-hyphens: auto !important;
+    -ms-hyphens: auto !important;
+}
+
+.tabs-container.tabs-content-hyphens-none .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, span, td, th) {
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+    -ms-hyphens: manual !important;
+}
+
+
+
 
 

@@ -298,6 +298,20 @@ var zr_es = {
   "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
   "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
   "vertical_title_behavior_desc": "Elige la forma en que se gestionan los títulos extensos en las pestañas laterales:",
+  "vertical_title_alignment_name": "Alineación de Títulos (Pestañas Verticales)",
+  "vertical_title_alignment_desc": "Define la alineación horizontal del texto en los títulos de las pestañas verticales.",
+  "tab_content_alignment_name": "Alineación de Contenido (Solo Contenido)",
+  "tab_content_alignment_desc": "Define la alineación horizontal (izquierda, centro, derecha, justificado o heredado) exclusivamente sobre el panel de contenido de las pestañas. No afecta a los títulos.",
+  "tab_content_hyphenation_name": "Guionizado Automático de Sílabas (Hyphenation)",
+  "tab_content_hyphenation_desc": "Inspirado en obsidian-hyphenation: Divide automáticamente las palabras en sílabas al final de línea dentro del panel de contenido para evitar huecos al justificar. Atómico e independiente.",
+  "opt_align_left": "Izquierda (Predeterminado)",
+  "opt_align_center": "Centro",
+  "opt_align_right": "Derecha",
+  "opt_align_justify": "Justificado Estricto",
+  "opt_align_soft_justify": "Justificado Inteligente (Suave con guionizado)",
+  "opt_align_inherit": "Heredar del tema de la nota",
+  "opt_hyphens_none": "Desactivado (Sin guionizado)",
+  "opt_hyphens_auto": "Automático (Separar sílabas)",
   "opt_v_hover_scroll": "Hover Scroll — Se desplaza al pasar el ratón y se mantiene activo continuamente si la pestaña está seleccionada",
   "opt_v_auto_scroll": "Auto Scroll — Todas las pestañas con títulos largos se desplazan automáticamente sin requerir interacción",
   "opt_v_multi_line": "Multi-línea — Divide el título en múltiples líneas (2, 3 o más) para mostrar todo el texto sin recortes",
@@ -395,6 +409,8 @@ function $(s, ...t) {
     horizontalTabTitleFontSize: 13,
     verticalTabTitleFontSize: 13,
     verticalTitleBehavior: "hover-scroll",
+    verticalTitleAlignment: "left",
+    tabContentAlignment: "left",
   },
   ChangelogModal = class extends U.Modal {
     constructor(app) {
@@ -509,6 +525,20 @@ PluginLocales = {
     title_wrap_desc: "Define how long titles behave in top or bottom horizontal tabs.",
     vertical_title_behavior_name: "Long Titles Behavior (Vertical Tabs)",
     vertical_title_behavior_desc: "Define scrolling or wrapping effects for long titles in vertical sidebars.",
+    vertical_title_alignment_name: "Title Text Alignment (Vertical Tabs)",
+    vertical_title_alignment_desc: "Set text alignment for title items in vertical tab sidebars.",
+    tab_content_alignment_name: "Tab Content Text Alignment (Content Only)",
+    tab_content_alignment_desc: "Set text alignment (left, center, right, justify, soft-justify, or inherit) strictly for tab content panels. Does not affect tab titles.",
+    tab_content_hyphenation_name: "Tab Content Automatic Hyphenation",
+    tab_content_hyphenation_desc: "Inspired by obsidian-hyphenation: Automatically hyphens words at line ends inside tab content panels to prevent wide gaps when justified. Atomic and independent of tab titles.",
+    opt_align_left: "Left (Default)",
+    opt_align_center: "Center",
+    opt_align_right: "Right",
+    opt_align_justify: "Strict Justify",
+    opt_align_soft_justify: "Smart Justify (Soft alignment without wide gaps)",
+    opt_align_inherit: "Inherit from note theme",
+    opt_hyphens_none: "Disabled (No hyphenation)",
+    opt_hyphens_auto: "Automatic (Hyphenate words)",
     opt_v_hover_scroll: "Horizontal scroll on hover (hover scroll)",
     opt_v_auto_scroll: "Automatic horizontal scroll",
     opt_v_multi_line: "Multi-line (No overflow)",
@@ -653,6 +683,20 @@ PluginLocales = {
     title_wrap_desc: "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
     vertical_title_behavior_name: "Comportamiento de Títulos Largos (Pestañas Verticales)",
     vertical_title_behavior_desc: "Define el efecto de movimiento o recorte para títulos extensos en la barra lateral.",
+    vertical_title_alignment_name: "Alineación de Títulos (Pestañas Verticales)",
+    vertical_title_alignment_desc: "Define la alineación horizontal del texto en los títulos de las pestañas verticales.",
+    tab_content_alignment_name: "Alineación de Contenido (Solo Contenido)",
+    tab_content_alignment_desc: "Define la alineación horizontal (izquierda, centro, derecha, justificado o heredado) exclusivamente sobre el panel de contenido de las pestañas. No afecta a los títulos.",
+    tab_content_hyphenation_name: "Guionizado Automático de Sílabas (Hyphenation)",
+    tab_content_hyphenation_desc: "Inspirado en obsidian-hyphenation: Divide automáticamente las palabras en sílabas al final de línea dentro del panel de contenido para evitar huecos al justificar. Atómico e independiente.",
+    opt_align_left: "Izquierda (Predeterminado)",
+    opt_align_center: "Centro",
+    opt_align_right: "Derecha",
+    opt_align_justify: "Justificado Estricto",
+    opt_align_soft_justify: "Justificado Inteligente (Suave con guionizado)",
+    opt_align_inherit: "Heredar del tema de la nota",
+    opt_hyphens_none: "Desactivado (Sin guionizado)",
+    opt_hyphens_auto: "Automático (Separar sílabas)",
     opt_v_hover_scroll: "Desplazamiento horizontal al pasar el ratón (hover scroll)",
     opt_v_auto_scroll: "Desplazamiento horizontal automático",
     opt_v_multi_line: "Multi-línea (Múltiples líneas sin desbordamiento)",
@@ -1063,6 +1107,23 @@ PluginLocales = {
               })
           ).then((e) => this.addResetButton(e, "verticalTitleBehavior"));
         new U.Setting(t)
+          .setName(_("vertical_title_alignment_name"))
+          .setDesc(_("vertical_title_alignment_desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("left", _("opt_align_left"))
+              .addOption("center", _("opt_align_center"))
+              .addOption("right", _("opt_align_right"))
+              .addOption("soft-justify", _("opt_align_soft_justify"))
+              .setValue(this.plugin.settings.verticalTitleAlignment || "left")
+              .onChange((i) => {
+                this.plugin.settings.verticalTitleAlignment = i;
+                this.plugin.saveSettings();
+                this.plugin.updateGlobalCssVariables();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "verticalTitleAlignment"));
+        new U.Setting(t)
           .setName(_("limit_width_name"))
           .setDesc(_("limit_width_desc"))
           .addToggle((e) =>
@@ -1132,6 +1193,40 @@ PluginLocales = {
                 }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsContentsMaxHeight"));
+        new U.Setting(t)
+          .setName(_("tab_content_alignment_name"))
+          .setDesc(_("tab_content_alignment_desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("left", _("opt_align_left"))
+              .addOption("center", _("opt_align_center"))
+              .addOption("right", _("opt_align_right"))
+              .addOption("justify", _("opt_align_justify"))
+              .addOption("soft-justify", _("opt_align_soft_justify"))
+              .addOption("inherit", _("opt_align_inherit"))
+              .setValue(this.plugin.settings.tabContentAlignment || "left")
+              .onChange((i) => {
+                this.plugin.settings.tabContentAlignment = i;
+                this.plugin.saveSettings();
+                this.plugin.updateGlobalCssVariables();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "tabContentAlignment"));
+        new U.Setting(t)
+          .setName(_("tab_content_hyphenation_name"))
+          .setDesc(_("tab_content_hyphenation_desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("none", _("opt_hyphens_none"))
+              .addOption("auto", _("opt_hyphens_auto"))
+              .setValue(this.plugin.settings.tabContentHyphenation || "none")
+              .onChange((i) => {
+                this.plugin.settings.tabContentHyphenation = i;
+                this.plugin.saveSettings();
+                this.plugin.updateGlobalCssVariables();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "tabContentHyphenation"));
         t.createEl("hr", { cls: "tabs-settings-divider" });
 
         // ==========================================
@@ -1331,10 +1426,7 @@ PluginLocales = {
             ((this.plugin.settings[e] = Ss[e]),
               (this.needRefresh = !0),
               this.plugin.saveSettings(),
-              e === "verticalTabsLeftSpacing" && this.plugin.updateVerticalTabsLeftSpacingCss(Ss[e]),
-              e === "verticalTabsRightSpacing" && this.plugin.updateVerticalTabsRightSpacingCss(Ss[e]),
-              e === "horizontalTabTitleFontSize" && this.plugin.updateHorizontalTabTitleFontSizeCss(Ss[e]),
-              e === "verticalTabTitleFontSize" && this.plugin.updateVerticalTabTitleFontSizeCss(Ss[e]),
+              this.plugin.updateGlobalCssVariables(),
               i && this.display());
           }),
       );
@@ -2119,8 +2211,18 @@ var Nr = class {
       t.classList.add("tabs-nav-" + (this.titleLineClamp || "one")),
       this.titleLimited && e.classList.add("tabs-nav-title-limited"),
       i.style.setProperty("--tabs-contents-padding", this.tabsContentsPadding));
+
+    // Content alignment & hyphenation classes
+    let cAlign = (this.pluginSettings && this.pluginSettings.tabContentAlignment) || "left";
+    let cHyphen = (this.pluginSettings && this.pluginSettings.tabContentHyphenation) || "none";
+    t.classList.add("tabs-content-align-" + cAlign);
+    t.classList.add("tabs-content-hyphens-" + cHyphen);
+
     if (this.titlePosition === "left" || this.titlePosition === "right") {
       t.classList.add("tabs-nav-v-cols-" + (this.verticalTabsColumns || "1"));
+      let vAlign = (this.pluginSettings && this.pluginSettings.verticalTitleAlignment) || "left";
+      t.classList.add("tabs-nav-v-align-" + vAlign);
+
       let vBehavior = (this.pluginSettings && this.pluginSettings.verticalTitleBehavior) || 
                       (this.verticalTitleBehavior) || 
                       "hover-scroll";
@@ -30213,6 +30315,14 @@ var Xl = class extends Br.Plugin {
       vBehavior = "multi-line";
     }
 
+    let vAlign = s.verticalTitleAlignment || "left";
+    let cAlign = s.tabContentAlignment || "left";
+    let cHyphen = s.tabContentHyphenation || "none";
+
+    let vAlignCss = vAlign === "soft-justify" ? "justify" : vAlign;
+    let vJustifyCss = vAlign === "center" ? "center" : vAlign === "right" ? "flex-end" : vAlign === "soft-justify" ? "space-between" : "flex-start";
+    let cAlignCss = cAlign === "soft-justify" ? "justify" : cAlign === "inherit" ? "inherit" : cAlign;
+
     let paddingParts = (padding || "1em 2em").trim().split(/\s+/);
     let leftPad = paddingParts.length >= 2 ? paddingParts[1] : (paddingParts[0] || "2em");
 
@@ -30226,6 +30336,9 @@ var Xl = class extends Br.Plugin {
     document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
     document.body.style.setProperty("--tabs-max-height", maxHeight);
     document.body.style.setProperty("--tabs-border-color", borderColor);
+    document.body.style.setProperty("--vertical-title-align", vAlignCss);
+    document.body.style.setProperty("--vertical-title-justify", vJustifyCss);
+    document.body.style.setProperty("--tab-content-align", cAlignCss);
 
     try {
       document.querySelectorAll(".tabs-container").forEach((el) => {
@@ -30237,9 +30350,31 @@ var Xl = class extends Br.Plugin {
         el.style.setProperty("--tabs-contents-padding-left", leftPad);
         el.style.setProperty("--tabs-max-height", maxHeight);
         el.style.setProperty("--tabs-border-color", borderColor);
+        el.style.setProperty("--vertical-title-align", vAlignCss);
+        el.style.setProperty("--vertical-title-justify", vJustifyCss);
+        el.style.setProperty("--tab-content-align", cAlignCss);
+
+        // Content alignment classes
+        el.classList.remove(
+          "tabs-content-align-left",
+          "tabs-content-align-center",
+          "tabs-content-align-right",
+          "tabs-content-align-justify",
+          "tabs-content-align-soft-justify",
+          "tabs-content-align-inherit"
+        );
+        el.classList.add("tabs-content-align-" + cAlign);
+
+        // Content hyphenation classes
+        el.classList.remove("tabs-content-hyphens-none", "tabs-content-hyphens-auto");
+        el.classList.add("tabs-content-hyphens-" + cHyphen);
 
         if (el.classList.contains("tabs-nav-left") || el.classList.contains("tabs-nav-right")) {
           el.classList.remove(
+            "tabs-nav-v-align-left",
+            "tabs-nav-v-align-center",
+            "tabs-nav-v-align-right",
+            "tabs-nav-v-align-soft-justify",
             "tabs-nav-v-behavior-hover-scroll",
             "tabs-nav-v-behavior-auto-scroll",
             "tabs-nav-v-behavior-multi-line",
@@ -30248,6 +30383,7 @@ var Xl = class extends Br.Plugin {
             "tabs-nav-v-behavior-double-line",
             "tabs-nav-v-hover-scroll"
           );
+          el.classList.add("tabs-nav-v-align-" + vAlign);
           el.classList.add("tabs-nav-v-behavior-" + vBehavior);
           if (vBehavior === "hover-scroll") {
             el.classList.add("tabs-nav-v-hover-scroll");
@@ -30382,24 +30518,57 @@ var Xl = class extends Br.Plugin {
   convertHeadingTextToTabs(selection, split, kw, minFenceLen = 3) {
     if (!selection || !/^#{1,6}\s+/m.test(selection)) return null;
 
+    // Track maximum consecutive fence char run in selection for outer fence calculation
+    let maxRun = 0, run = 0;
+    for (let ch of selection) {
+      if (ch === "`" || ch === "~") { run++; maxRun = Math.max(maxRun, run); } else run = 0;
+    }
+
     let lines = selection.split(/\r?\n/);
     let root = { level: 0, title: "root", ownContent: [], children: [] };
     let stack = [root];
 
-    for (let line of lines) {
-      let match = line.match(/^(#{1,6})\s+(.*)$/);
-      if (match) {
-        let level = match[1].length;
-        let title = match[2].trim();
-        let node = { level, title, ownContent: [], children: [] };
+    let insideCodeBlock = false;
+    let codeBlockFenceChar = null;
+    let codeBlockFenceLen = 0;
 
-        while (stack.length > 1 && stack[stack.length - 1].level >= level) {
-          stack.pop();
+    for (let line of lines) {
+      let trimmed = line.trim();
+      let fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+
+      if (!insideCodeBlock) {
+        if (fenceMatch) {
+          insideCodeBlock = true;
+          codeBlockFenceChar = fenceMatch[1][0];
+          codeBlockFenceLen = fenceMatch[1].length;
+          stack[stack.length - 1].ownContent.push(line);
+          continue;
         }
-        stack[stack.length - 1].children.push(node);
-        stack.push(node);
+
+        let match = line.match(/^(#{1,6})\s+(.*)$/);
+        if (match) {
+          let level = match[1].length;
+          let title = match[2].trim();
+          let node = { level, title, ownContent: [], children: [] };
+
+          while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+            stack.pop();
+          }
+          stack[stack.length - 1].children.push(node);
+          stack.push(node);
+          continue;
+        }
+
+        stack[stack.length - 1].ownContent.push(line);
       } else {
         stack[stack.length - 1].ownContent.push(line);
+        if (fenceMatch) {
+          let fChar = fenceMatch[1][0];
+          let fLen = fenceMatch[1].length;
+          if (fChar === codeBlockFenceChar && fLen >= codeBlockFenceLen) {
+            insideCodeBlock = false;
+          }
+        }
       }
     }
 
@@ -30446,7 +30615,8 @@ var Xl = class extends Br.Plugin {
     }
 
     let requiredFenceLen = hasChildWithChildren(root.children) ? 4 : 3;
-    let outerFence = "`".repeat(Math.max(minFenceLen || 3, requiredFenceLen));
+    let finalFenceLen = Math.max(minFenceLen || 3, requiredFenceLen, maxRun + 1);
+    let outerFence = "`".repeat(finalFenceLen);
     let body = renderNodes(root.children, 0);
 
     let preContent = cleanLines(root.ownContent);
