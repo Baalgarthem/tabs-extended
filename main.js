@@ -2878,6 +2878,26 @@ var Gr = class extends U.MarkdownRenderChild {
 
     return [titles, contents];
   }
+  lockScrollPosition(anchorEl, action) {
+    if (!anchorEl) {
+      action();
+      return;
+    }
+    let scroller = anchorEl.closest(".cm-scroller, .markdown-preview-view, .markdown-reading-view") || document.scrollingElement || document.documentElement;
+    let initialTop = anchorEl.getBoundingClientRect().top;
+
+    action();
+
+    if (scroller) {
+      requestAnimationFrame(() => {
+        let currentTop = anchorEl.getBoundingClientRect().top;
+        let diff = currentTop - initialTop;
+        if (Math.abs(diff) > 0.5) {
+          scroller.scrollTop += diff;
+        }
+      });
+    }
+  }
   async registerEventHandlers() {
     if (this.tabsEl) {
       this.plugin.registerDomEvent(
@@ -2905,27 +2925,35 @@ var Gr = class extends U.MarkdownRenderChild {
             (this.currentIndex + delta + this.tabsNav.navItems.length) %
             this.tabsNav.navItems.length;
 
-          this.tabsNav.refreshActiveTabNav(newIndex);
-          this.tabsContents.refreshActiveTabContent(newIndex);
-          this.currentIndex = newIndex;
-          this.plugin.lastTabsCache.set(this.tabsId, newIndex);
+          this.lockScrollPosition(this.tabsEl, () => {
+            this.tabsNav.refreshActiveTabNav(newIndex);
+            this.tabsContents.refreshActiveTabContent(newIndex);
+            this.currentIndex = newIndex;
+            this.plugin.lastTabsCache.set(this.tabsId, newIndex);
+          });
         },
         { passive: false }
       );
     }
     switch (
       (this.tabsNav.navItems.forEach((t) => {
+        this.plugin.registerDomEvent(t.tabitemEl, "mousedown", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+        });
         this.plugin.registerDomEvent(t.tabitemEl, "click", (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
           let e = this.tabsNav.navItems.indexOf(t);
-          (this.tabsNav.refreshActiveTabNav(e),
-            this.tabsContents.refreshActiveTabContent(e),
-            (this.currentIndex = e),
+          this.lockScrollPosition(t.tabitemEl, () => {
+            this.tabsNav.refreshActiveTabNav(e);
+            this.tabsContents.refreshActiveTabContent(e);
+            this.currentIndex = e;
             this.plugin.lastTabsCache.set(
               this.tabsId,
               e,
-            ));
+            );
+          });
         });
       }),
       this.tabsType === "outertabs" &&
