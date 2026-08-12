@@ -2884,19 +2884,30 @@ var Gr = class extends U.MarkdownRenderChild {
       return;
     }
     let scroller = anchorEl.closest(".cm-scroller, .markdown-preview-view, .markdown-reading-view") || document.scrollingElement || document.documentElement;
-    let initialTop = anchorEl.getBoundingClientRect().top;
+    let initialBoundingTop = anchorEl.getBoundingClientRect().top;
+    let initialScrollTop = scroller ? scroller.scrollTop : 0;
 
     action();
 
-    if (scroller) {
-      requestAnimationFrame(() => {
-        let currentTop = anchorEl.getBoundingClientRect().top;
-        let diff = currentTop - initialTop;
-        if (Math.abs(diff) > 0.5) {
-          scroller.scrollTop += diff;
-        }
-      });
-    }
+    if (!scroller) return;
+
+    const enforceAnchor = () => {
+      // If CodeMirror 6 or browser forcibly reset scroll to top of document (scrollTop = 0)
+      if (scroller.scrollTop === 0 && initialScrollTop > 40 && Math.abs(anchorEl.getBoundingClientRect().top - initialBoundingTop) > 30) {
+        scroller.scrollTop = initialScrollTop;
+      }
+      let currentBoundingTop = anchorEl.getBoundingClientRect().top;
+      let diff = currentBoundingTop - initialBoundingTop;
+      if (Math.abs(diff) > 0.5) {
+        scroller.scrollTop += diff;
+      }
+    };
+
+    enforceAnchor();
+    requestAnimationFrame(enforceAnchor);
+    setTimeout(enforceAnchor, 50);
+    setTimeout(enforceAnchor, 120);
+    setTimeout(enforceAnchor, 250);
   }
   async registerEventHandlers() {
     if (this.tabsEl) {
