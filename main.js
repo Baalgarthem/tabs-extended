@@ -250,6 +250,20 @@ var zr_es = {
   "heading_editor_desc": "Configuración del entorno de edición emergente para escribir y formatear tus pestañas.",
   "heading_nested": "🪆 Pestañas Anidadas (Subpestañas)",
   "heading_nested_desc": "Estilos visuales, resaltado y separadores para pestañas dentro de otras pestañas.",
+  "heading_nested_colors": "🎨 Colores de Separadores por Nivel de Anidación (Editor Modal)",
+  "heading_nested_colors_desc": "Asigna un color característico a los separadores del editor modal según su nivel de profundidad. Los niveles 0 al 4 permiten colores personalizados; a partir del nivel 5 en adelante se usará el color genérico configurado.",
+  "nested_color_level_0_name": "Color Nivel 0 (Pestañas Principales / Main Tabs)",
+  "nested_color_level_0_desc": "Color asignado a los separadores de las pestañas principales del bloque raíz en el editor modal.",
+  "nested_color_level_1_name": "Color Nivel 1 (Subpestañas Anidadas Nivel 1)",
+  "nested_color_level_1_desc": "Color asignado a los separadores contenidos en el primer nivel de anidación.",
+  "nested_color_level_2_name": "Color Nivel 2 (Subpestañas Anidadas Nivel 2)",
+  "nested_color_level_2_desc": "Color asignado a los separadores contenidos en el segundo nivel de anidación.",
+  "nested_color_level_3_name": "Color Nivel 3 (Subpestañas Anidadas Nivel 3)",
+  "nested_color_level_3_desc": "Color asignado a los separadores contenidos en el tercer nivel de anidación.",
+  "nested_color_level_4_name": "Color Nivel 4 (Subpestañas Anidadas Nivel 4)",
+  "nested_color_level_4_desc": "Color asignado a los separadores contenidos en el cuarto nivel de anidación.",
+  "nested_color_level_5plus_name": "Color Nivel 5+ (Color Genérico para Nivel 5 en adelante)",
+  "nested_color_level_5plus_desc": "Color genérico utilizado para todos los niveles de anidación profundos a partir del nivel 5 (predeterminado: gris).",
   "language_name": "Idioma de la Interfaz",
   "language_desc": "Selecciona el idioma preferido para los menús y paneles del plugin.",
   "ignore_notice_name": "Ocultar Notificaciones de Acción",
@@ -397,6 +411,12 @@ function $(s, ...t) {
     nestedTabsItemUnderlineOffset: 2,
     nestedTabsItemUnderlineStyle: "solid",
     nestedTabsItemUnderlineOpacity: 100,
+    nestedTabsColorLevel0: "#4a90e2",
+    nestedTabsColorLevel1: "#50e3c2",
+    nestedTabsColorLevel2: "#f5a623",
+    nestedTabsColorLevel3: "#b8e986",
+    nestedTabsColorLevel4: "#bd10e0",
+    nestedTabsColorLevel5Plus: "#888888",
     protectTabsSeparator: !0,
     language: "es",
     hideTabsSeparator: !1,
@@ -577,6 +597,20 @@ PluginLocales = {
 
     heading_nested: "🪆 Nested Tabs (Sub-tabs)",
     heading_nested_desc: "Visual styling, highlighting, and separators for tabs inside other tabs.",
+    heading_nested_colors: "🎨 Separator Colors by Nesting Level (Modal Editor)",
+    heading_nested_colors_desc: "Set distinct colors for modal editor tab separators based on their nesting depth. Levels 0 to 4 have individual custom colors; level 5 and beyond use a generic configurable color.",
+    nested_color_level_0_name: "Level 0 Color (Main Tabs)",
+    nested_color_level_0_desc: "Color for top-level main tab separators in the modal editor.",
+    nested_color_level_1_name: "Level 1 Color (Nested Subtabs Level 1)",
+    nested_color_level_1_desc: "Color for separators inside the first nesting level.",
+    nested_color_level_2_name: "Level 2 Color (Nested Subtabs Level 2)",
+    nested_color_level_2_desc: "Color for separators inside the second nesting level.",
+    nested_color_level_3_name: "Level 3 Color (Nested Subtabs Level 3)",
+    nested_color_level_3_desc: "Color for separators inside the third nesting level.",
+    nested_color_level_4_name: "Level 4 Color (Nested Subtabs Level 4)",
+    nested_color_level_4_desc: "Color for separators inside the fourth nesting level.",
+    nested_color_level_5plus_name: "Level 5+ Color (Generic Color for Level 5+)",
+    nested_color_level_5plus_desc: "Generic color used for deep nesting levels from level 5 upwards (defaults to gray).",
     separator_name: "Sub-tab Separator Keyword",
     separator_desc: "Keyword that splits sub-tabs inside the block (default is `tema:`).",
     protect_sep_name: "Protect Separator in Editor",
@@ -1394,6 +1428,56 @@ PluginLocales = {
                       this.plugin.saveSettings();
                   }));
             }
+
+            new U.Setting(t).setHeading().setName(_("heading_nested_colors")).setDesc(_("heading_nested_colors_desc"));
+            
+            new U.Setting(t)
+              .setName(_("nested_color_level_0_name"))
+              .setDesc(_("nested_color_level_0_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel0 || "#4a90e2").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel0 = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel0"));
+
+            new U.Setting(t)
+              .setName(_("nested_color_level_1_name"))
+              .setDesc(_("nested_color_level_1_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel1 || "#50e3c2").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel1 = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel1"));
+
+            new U.Setting(t)
+              .setName(_("nested_color_level_2_name"))
+              .setDesc(_("nested_color_level_2_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel2 || "#f5a623").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel2 = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel2"));
+
+            new U.Setting(t)
+              .setName(_("nested_color_level_3_name"))
+              .setDesc(_("nested_color_level_3_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel3 || "#b8e986").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel3 = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel3"));
+
+            new U.Setting(t)
+              .setName(_("nested_color_level_4_name"))
+              .setDesc(_("nested_color_level_4_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel4 || "#bd10e0").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel4 = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel4"));
+
+            new U.Setting(t)
+              .setName(_("nested_color_level_5plus_name"))
+              .setDesc(_("nested_color_level_5plus_desc"))
+              .addColorPicker((e) => e.setValue(this.plugin.settings.nestedTabsColorLevel5Plus || "#888888").onChange((i) => {
+                  this.plugin.settings.nestedTabsColorLevel5Plus = i;
+                  this.plugin.saveSettings();
+              })).then((e) => this.addResetButton(e, "nestedTabsColorLevel5Plus"));
         }
         t.createEl("hr", { cls: "tabs-settings-divider" });
 
@@ -28994,16 +29078,16 @@ var Zl = class {
           this.decorations = this.getDeco(view);
         }
         update(update) {
-          if (update.docChanged || update.viewportChanged) {
+          if (update.docChanged || update.viewportChanged || update.selectionSet) {
             this.decorations = this.getDeco(update.view);
           }
         }
         getDeco(view) {
           if (!t.settings.nestedTabsHighlight) return q.none;
-          
+          try {
           if (!this.DepthWidget) {
               this.DepthWidget = class extends Re {
-                  constructor(text, depth, view = null, lineNo = -1, type = null, splitStr = "", baseDepth = 0) {
+                  constructor(text, depth, view = null, lineNo = -1, type = null, splitStr = "", baseDepth = 0, isActive = false) {
                       super();
                       this.text = text;
                       this.depth = depth;
@@ -29012,19 +29096,28 @@ var Zl = class {
                       this.type = type;
                       this.splitStr = splitStr;
                       this.baseDepth = baseDepth;
+                      this.isActive = isActive;
                   }
                   eq(other) { 
                       return other.text === this.text && other.depth === this.depth && 
-                             other.lineNo === this.lineNo && other.type === this.type; 
+                             other.lineNo === this.lineNo && other.type === this.type &&
+                             other.splitStr === this.splitStr && other.baseDepth === this.baseDepth &&
+                             other.isActive === this.isActive; 
                   }
                   ignoreEvent(e) { return true; }
                   toDOM() {
                       let span = document.createElement("span");
-                      span.className = "cm-nested-tab-ghost-text";
+                      span.className = "cm-nested-tab-ghost-text" + (this.isActive ? " is-active-ghost-text" : "");
                       span.style.fontSize = "0.7em";
-                      span.style.opacity = "0.7";
+                      if (this.isActive) {
+                          span.style.fontWeight = "bold";
+                          span.style.opacity = "1";
+                          span.style.color = "var(--text-normal)";
+                      } else {
+                          span.style.opacity = "0.7";
+                          span.style.color = "var(--nested-tab-delimiter-color)";
+                      }
                       span.style.marginLeft = "1em";
-                      span.style.color = "var(--nested-tab-delimiter-color)";
                       span.innerHTML = this.text + (this.depth !== "" ? " <b>" + this.depth + "</b>" : "");
                       
                       if (this.type && this.view) {
@@ -29052,7 +29145,49 @@ var Zl = class {
           let doc = view.state.doc;
           let isModal = !!view.dom.closest('.tabs-editor-modal');
           let baseDepth = isModal ? 1 : 0;
-          
+          let cursorHead = (view.state.selection && view.state.selection.main) ? view.state.selection.main.head : 0;
+          let cursorLine = doc.lineAt(cursorHead).number;
+
+          let activeLines = new Set();
+          let scanStack = [];
+          let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
+          let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
+
+          for (let p = 1; p <= doc.lines; p++) {
+              let text = doc.line(p).text.trim();
+              let match = text.match(/^(`{3,}|~{3,})(.*)/);
+              if (!match) continue;
+              let fenceStr = match[1];
+              let info = match[2].trim();
+              let current = scanStack.length > 0 ? scanStack[scanStack.length - 1] : null;
+
+              if (current && current.type === "code") {
+                  if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
+                      scanStack.pop();
+                  }
+                  continue;
+              }
+
+              if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
+                  if (!openTagRegex.test(info.toLowerCase())) {
+                      let popped = scanStack.pop();
+                      if (cursorLine >= popped.startLine && cursorLine <= p) {
+                          activeLines.add(popped.startLine);
+                          activeLines.add(p);
+                      }
+                      continue;
+                  }
+              }
+
+              if (openTagRegex.test(info.toLowerCase())) {
+                  scanStack.push({ fence: fenceStr, type: "tabs", startLine: p });
+              } else {
+                  scanStack.push({ fence: fenceStr, type: "code" });
+              }
+          }
+
+          let decoratedLineSet = new Set();
           for (let p = 1; p <= doc.lines; p++) {
              let line = doc.line(p);
              let text = line.text.trim();
@@ -29065,51 +29200,67 @@ var Zl = class {
                  let info = match[2].trim();
                  
                  if (current && current.type === "code") {
-                     if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && info === "") {
+                     if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
                          fenceStack.pop();
                      }
                      continue;
                  }
                  
-                 if (current && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && info === "") {
+                 if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && !openTagRegex.test(info.toLowerCase())) {
                       let depth = fenceStack.filter(f => f.type === "tabs").length;
                       let popped = fenceStack.pop();
                       if (popped.type === "tabs") {
                           let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nesting end";
                           let rawEnd = baseEnd.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                           let endText = rawEnd + (popped.isVertical ? " (vertical)" : " (horizontal)");
-                          i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
-                          i.push(q.widget({ widget: new this.DepthWidget(endText, depth), side: 1 }).range(line.to));
+                          let isActiveBlock = activeLines.has(p);
+                          if (!decoratedLineSet.has(line.from)) {
+                              decoratedLineSet.add(line.from);
+                              i.push(q.line({ class: "cm-nested-tab-end" + (isActiveBlock ? " cm-nested-tab-active-fence" : "") }).range(line.from));
+                          }
+                          i.push(q.widget({ widget: new this.DepthWidget(endText, depth, view, p, "block", t.settings.split, baseDepth, isActiveBlock), side: 1 }).range(line.to));
                       }
                  } else {
-                      let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
-                      let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-                      let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
                       if (openTagRegex.test(info.toLowerCase())) {
                            let isVertical = info.toLowerCase().endsWith("-v");
-                           fenceStack.push({ fence: fenceStr, type: "tabs", isVertical });
+                           fenceStack.push({ fence: fenceStr, type: "tabs", startLine: p, isVertical });
                            let depth = fenceStack.filter(f => f.type === "tabs").length;
                            let baseStart = t.settings.nestedTabsDelimiterTextStart || "nesting start";
                            let rawStart = baseStart.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                            let startText = rawStart + (isVertical ? " (vertical)" : " (horizontal)");
-                           i.push(q.line({ class: "cm-nested-tab-start" }).range(line.from));
-                           i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
+                           let isActiveBlock = activeLines.has(p);
+                           if (!decoratedLineSet.has(line.from)) {
+                               decoratedLineSet.add(line.from);
+                               i.push(q.line({ class: "cm-nested-tab-start" + (isActiveBlock ? " cm-nested-tab-active-fence" : "") }).range(line.from));
+                           }
+                           i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth, isActiveBlock), side: 1 }).range(line.to));
                       } else {
                          if (current || baseDepth === 1) {
                              fenceStack.push({ fence: fenceStr, type: "code" });
                          }
                      }
                  }
+                 continue;
              }
              let inTabs = (current && current.type === "tabs") || (baseDepth === 1 && fenceStack.length === 0);
              if (inTabs) {
-                 if (line.text.startsWith(t.settings.split)) {
+                 if (line.text.trimStart().startsWith(t.settings.split)) {
                      let depth = fenceStack.filter(f => f.type === "tabs").length + baseDepth;
-                     i.push(q.line({ class: "cm-nested-tab-item" }).range(line.from));
+                     let levelIndex = Math.min(5, Math.max(0, depth - 1));
+                     let levelClass = "cm-nested-tab-level-" + (levelIndex === 5 ? "5plus" : levelIndex);
+                     if (!decoratedLineSet.has(line.from)) {
+                         decoratedLineSet.add(line.from);
+                         i.push(q.line({ class: "cm-nested-tab-item " + levelClass }).range(line.from));
+                     }
                      let splitOffset = line.text.indexOf(t.settings.split);
-                     i.push(q.replace({}).range(line.from + splitOffset, line.from + splitOffset + t.settings.split.length));
-                     let textEnd = line.text.trimEnd().length;
-                     i.push(q.mark({ class: "cm-nested-tab-item-mark" }).range(line.from + splitOffset, line.from + textEnd));
+                     if (splitOffset >= 0) {
+                         i.push(q.replace({ inclusive: false, inclusiveStart: false, inclusiveEnd: false }).range(line.from + splitOffset, line.from + splitOffset + t.settings.split.length));
+                         let textEnd = line.text.trimEnd().length;
+                         let markStart = line.from + splitOffset + t.settings.split.length;
+                         if (markStart < line.from + textEnd) {
+                             i.push(q.mark({ class: "cm-nested-tab-item-mark " + levelClass }).range(markStart, line.from + textEnd));
+                         }
+                     }
                      if (depth === 1) {
                          i.push(q.widget({ widget: new this.DepthWidget("main topic", ""), side: 1 }).range(line.to));
                      } else {
@@ -29118,7 +29269,14 @@ var Zl = class {
                  }
              }
           }
-          return q.set(i, !0);
+          i.sort((a, b) => a.from - b.from || a.to - b.to);
+          let res = q.set(i, false);
+          this.lastValidDeco = res;
+          return res;
+          } catch (err) {
+              console.error("Error in nestedTabsHighlighter getDeco:", err);
+              return q.none;
+          }
         }
       },
       { decorations: (v) => v.decorations }
@@ -29501,14 +29659,31 @@ var Zl = class {
                         }
                     }
 
-                    if (openFenceRegex.test(trimmed) || /^(`{3,}|~{3,})\s*$/.test(trimmed)) {
-                        if (fromA < line.to && toA > line.from) {
+                    if (/^(`{3,}|~{3,})/.test(trimmed)) {
+                        if (fromA <= line.to && toA >= line.from) {
                             allowed = false;
                             break;
                         }
                     }
                 }
             });
+
+            if (allowed && tr.docChanged) {
+                try {
+                    changes.iterChanges((fromA, toA, fromB, toB, ins) => {
+                        if (!allowed) return;
+                        if (ins && ins.lines > 1) {
+                            for (let p = 1; p <= doc.lines; p++) {
+                                let line = doc.line(p);
+                                if (line.text.startsWith(splitStr) && fromA >= line.from && fromA < line.to) {
+                                    allowed = false;
+                                    return;
+                                }
+                            }
+                        }
+                    });
+                } catch(e) {}
+            }
 
             if (!allowed) return [];
 
@@ -29517,33 +29692,384 @@ var Zl = class {
                 let newRanges = tr.selection.ranges.map(r => {
                     let headPos = r.head;
                     let line = doc.lineAt(headPos);
-                    let trimmed = line.text.trim();
-                    let isOpening = openFenceRegex.test(trimmed);
-                    let isClosing = /^(`{3,}|~{3,})\s*$/.test(trimmed);
-                    if ((isOpening || isClosing) && headPos > line.from && headPos <= line.to) {
-                        let movingDown = oldHeadPos < line.from;
-                        let targetPos;
-                        if (isOpening) {
-                            targetPos = movingDown 
-                                ? (line.number < doc.lines ? doc.line(line.number + 1).from : line.to)
-                                : (line.number > 1 ? doc.line(line.number - 1).to : Math.max(0, line.from - 1));
-                        } else {
-                            targetPos = movingDown
-                                ? (line.number > 1 ? doc.line(line.number - 1).to : Math.max(0, line.from - 1))
-                                : (line.number < doc.lines ? doc.line(line.number + 1).from : line.to);
+                    let text = line.text;
+                    let splitOffset = text.indexOf(splitStr);
+                    if (splitOffset >= 0) {
+                        let protectStart = line.from;
+                        let protectEnd = line.from + splitOffset + splitStr.length;
+                        
+                        let processPos = (pos) => {
+                            if (pos >= protectStart && pos < protectEnd) {
+                                if (oldHeadPos === protectEnd && pos === protectEnd - 1) {
+                                    let prevLineNo = Math.max(1, line.number - 1);
+                                    return doc.line(prevLineNo).to;
+                                }
+                                return protectEnd;
+                            }
+                            return pos;
+                        };
+                        
+                        let newHead = processPos(r.head);
+                        let newAnchor = processPos(r.anchor);
+                        if (newHead !== r.head || newAnchor !== r.anchor) {
+                            return Z.range(newAnchor, newHead);
                         }
-                        return Z.range(targetPos, targetPos);
                     }
                     return r;
                 });
-                let hasChanged = newRanges.some((r, idx) => r.head !== tr.selection.ranges[idx].head);
+                let hasChanged = newRanges.some((r, idx) => r.head !== tr.selection.ranges[idx].head || r.anchor !== tr.selection.ranges[idx].anchor);
                 if (hasChanged) {
-                    return [tr, { selection: Z.create(newRanges, tr.selection.mainIndex) }];
+                    return {
+                        changes: tr.changes,
+                        selection: Z.create(newRanges, tr.selection.mainIndex),
+                        effects: tr.effects,
+                        scrollIntoView: tr.scrollIntoView
+                    };
                 }
             }
 
             return tr;
         }));
+
+        exts.push(A.atomicRanges.of(view => {
+            try {
+                let splitStr = this.plugin.settings.split;
+                let doc = view.state.doc;
+                let i = [];
+                for (let p = 1; p <= doc.lines; p++) {
+                    let line = doc.line(p);
+                    let splitOffset = line.text.indexOf(splitStr);
+                    if (splitOffset >= 0) {
+                        let protectStart = line.from;
+                        let protectEnd = line.from + splitOffset + splitStr.length;
+                        if (protectStart < protectEnd) {
+                            i.push(q.replace({ inclusive: false }).range(protectStart, protectEnd));
+                        }
+                    }
+                }
+                i.sort((a, b) => a.from - b.from || a.to - b.to);
+                return q.set(i, false);
+            } catch (err) {
+                return q.none;
+            }
+        }));
+
+        exts.push(A.domEventHandlers({
+            keydown: (event, view) => {
+                if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                    try {
+                        let sel = view.state.selection.main;
+                        if (sel.empty) {
+                            let line = view.state.doc.lineAt(sel.head);
+                            let splitStr = this.plugin.settings.split;
+                            if (line.text.indexOf(splitStr) >= 0) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                view.dispatch({
+                                    changes: { from: line.to, insert: "\n" },
+                                    selection: Z.single(line.to + 1)
+                                });
+                                return true;
+                            }
+                        }
+                    } catch(e) {}
+                }
+                return false;
+            },
+            mousedown: (event, view) => {
+                try {
+                    let pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+                    if (pos !== null) {
+                        let line = view.state.doc.lineAt(pos);
+                        let splitStr = this.plugin.settings.split;
+                        let splitOffset = line.text.indexOf(splitStr);
+                        if (splitOffset >= 0) {
+                            let protectStart = line.from;
+                            let protectEnd = line.from + splitOffset + splitStr.length;
+                            if (pos >= protectStart && pos < protectEnd) {
+                                event.preventDefault();
+                                view.dispatch({ selection: Z.single(protectEnd) });
+                                return true;
+                            }
+                        }
+                    }
+                } catch (err) {}
+                return false;
+            }
+        }));
+
+        exts.push(A.updateListener.of(update => {
+            try {
+                if (update.selectionSet && !update.docChanged && update.state.selection && update.state.selection.main) {
+                    let sel = update.state.selection.main;
+                    let line = update.state.doc.lineAt(sel.head);
+                    let splitStr = this.plugin.settings.split;
+                    let splitOffset = line.text.indexOf(splitStr);
+                    if (splitOffset >= 0) {
+                        let protectStart = line.from;
+                        let protectEnd = line.from + splitOffset + splitStr.length;
+                        if (sel.head >= protectStart && sel.head < protectEnd) {
+                            activeWindow.requestAnimationFrame(() => {
+                                try {
+                                    if (update.view && !update.view.destroyed) {
+                                        update.view.dispatch({ selection: Z.single(protectEnd) });
+                                    }
+                                } catch (e) {}
+                            });
+                        }
+                    }
+                }
+            } catch (err) {}
+        }));
+
+        exts.push(A.inputHandler.of((view, from, to, text) => {
+            try {
+                let splitStr = this.plugin.settings.split;
+                let doc = view.state.doc;
+                let line = doc.lineAt(from);
+                let splitOffset = line.text.indexOf(splitStr);
+                if (splitOffset >= 0) {
+                    if (text.includes("\n")) {
+                        view.dispatch({
+                            changes: { from: line.to, insert: "\n" },
+                            selection: Z.single(line.to + 1)
+                        });
+                        return true;
+                    }
+                    let protectStart = line.from;
+                    let protectEnd = line.from + splitOffset + splitStr.length;
+                    if (from < protectEnd || to < protectEnd) {
+                        let targetFrom = Math.max(from, protectEnd);
+                        let targetTo = Math.max(to, protectEnd);
+                        view.dispatch({ changes: { from: targetFrom, to: targetTo, insert: text }, selection: Z.single(targetFrom + text.length) });
+                        return true;
+                    }
+                }
+            } catch (err) {}
+            return false;
+        }));
+
+        const safeHighest = (ext) => {
+            try {
+                if (typeof be !== "undefined" && typeof be.highest === "function") return be.highest(ext);
+                if (typeof Wd !== "undefined" && typeof Wd.highest === "function") return Wd.highest(ext);
+            } catch (e) {}
+            return ext;
+        };
+
+        exts.push(safeHighest(Be.of([
+            {
+                key: "ArrowLeft",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        if (sel.empty) {
+                            let line = view.state.doc.lineAt(sel.head);
+                            let splitStr = this.plugin.settings.split;
+                            let splitOffset = line.text.indexOf(splitStr);
+                            if (splitOffset >= 0) {
+                                let protectStart = line.from;
+                                let protectEnd = line.from + splitOffset + splitStr.length;
+                                if (sel.head === protectEnd) {
+                                    let prevLineNo = Math.max(1, line.number - 1);
+                                    view.dispatch({ selection: Z.single(view.state.doc.line(prevLineNo).to) });
+                                    return true;
+                                } else if (sel.head > protectStart && sel.head < protectEnd) {
+                                    view.dispatch({ selection: Z.single(protectEnd) });
+                                    return true;
+                                }
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "ArrowRight",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        if (sel.empty) {
+                            let line = view.state.doc.lineAt(sel.head);
+                            let splitStr = this.plugin.settings.split;
+                            let splitOffset = line.text.indexOf(splitStr);
+                            if (splitOffset >= 0) {
+                                let protectStart = line.from;
+                                let protectEnd = line.from + splitOffset + splitStr.length;
+                                if (sel.head >= protectStart && sel.head < protectEnd) {
+                                    view.dispatch({ selection: Z.single(protectEnd) });
+                                    return true;
+                                }
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "ArrowUp",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        let line = view.state.doc.lineAt(sel.head);
+                        if (line.number > 1) {
+                            let prevLine = view.state.doc.line(line.number - 1);
+                            let splitStr = this.plugin.settings.split;
+                            let splitOffset = prevLine.text.indexOf(splitStr);
+                            if (splitOffset >= 0) {
+                                let protectEnd = prevLine.from + splitOffset + splitStr.length;
+                                let col = sel.head - line.from;
+                                let targetPos = Math.max(protectEnd, prevLine.from + col);
+                                targetPos = Math.min(prevLine.to, targetPos);
+                                view.dispatch({ selection: Z.single(targetPos) });
+                                return true;
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "ArrowDown",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        let line = view.state.doc.lineAt(sel.head);
+                        if (line.number < view.state.doc.lines) {
+                            let nextLine = view.state.doc.line(line.number + 1);
+                            let splitStr = this.plugin.settings.split;
+                            let splitOffset = nextLine.text.indexOf(splitStr);
+                            if (splitOffset >= 0) {
+                                let protectEnd = nextLine.from + splitOffset + splitStr.length;
+                                let col = sel.head - line.from;
+                                let targetPos = Math.max(protectEnd, nextLine.from + col);
+                                targetPos = Math.min(nextLine.to, targetPos);
+                                view.dispatch({ selection: Z.single(targetPos) });
+                                return true;
+                            }
+                        } else {
+                            let text = line.text.trim();
+                            let match = text.match(/^(`{3,}|~{3,})(.*)/);
+                            if (match && match[2].trim() === "") {
+                                let insertPos = line.to;
+                                view.dispatch({
+                                    changes: { from: insertPos, insert: "\n" },
+                                    selection: Z.single(insertPos + 1)
+                                });
+                                return true;
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "Enter",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        if (sel.empty) {
+                            let line = view.state.doc.lineAt(sel.head);
+                            let text = line.text.trim();
+                            let splitStr = this.plugin.settings.split;
+                            let splitOffset = line.text.indexOf(splitStr);
+
+                            if (splitOffset >= 0) {
+                                let insertPos = line.to;
+                                view.dispatch({
+                                    changes: { from: insertPos, insert: "\n" },
+                                    selection: Z.single(insertPos + 1)
+                                });
+                                return true;
+                            }
+
+                            let match = text.match(/^(`{3,}|~{3,})(.*)/);
+                            if (match) {
+                                let insertPos = line.to;
+                                view.dispatch({
+                                    changes: { from: insertPos, insert: "\n" },
+                                    selection: Z.single(insertPos + 1)
+                                });
+                                return true;
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "Home",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        let line = view.state.doc.lineAt(sel.head);
+                        let splitStr = this.plugin.settings.split;
+                        let splitOffset = line.text.indexOf(splitStr);
+                        if (splitOffset >= 0) {
+                            let protectEnd = line.from + splitOffset + splitStr.length;
+                            view.dispatch({ selection: Z.single(protectEnd) });
+                            return true;
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "Backspace",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        let line = view.state.doc.lineAt(sel.head);
+                        let text = line.text.trim();
+
+                        if (/^(`{3,}|~{3,})/.test(text)) {
+                            return true;
+                        }
+
+                        let splitStr = this.plugin.settings.split;
+                        let splitOffset = line.text.indexOf(splitStr);
+                        if (splitOffset >= 0) {
+                            let protectEnd = line.from + splitOffset + splitStr.length;
+                            if (sel.head === protectEnd) {
+                                let prevLineNo = Math.max(1, line.number - 1);
+                                view.dispatch({ selection: Z.single(view.state.doc.line(prevLineNo).to) });
+                                return true;
+                            }
+                        }
+
+                        if (sel.head === line.from && line.number > 1) {
+                            let prevLine = view.state.doc.line(line.number - 1);
+                            if (/^(`{3,}|~{3,})/.test(prevLine.text.trim())) {
+                                return true;
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            },
+            {
+                key: "Delete",
+                run: (view) => {
+                    try {
+                        let sel = view.state.selection.main;
+                        let line = view.state.doc.lineAt(sel.head);
+                        let text = line.text.trim();
+
+                        if (/^(`{3,}|~{3,})/.test(text)) {
+                            return true;
+                        }
+
+                        if (sel.head === line.to && line.number < view.state.doc.lines) {
+                            let nextLine = view.state.doc.line(line.number + 1);
+                            if (/^(`{3,}|~{3,})/.test(nextLine.text.trim())) {
+                                return true;
+                            }
+                        }
+                    } catch (err) {}
+                    return false;
+                }
+            }
+        ])));
     }
 
     ((this.state = I.create({
@@ -29572,6 +30098,7 @@ var Zl = class {
       this.addButton("underline", "Underline (Ctrl+U)", "underline-button"),
       this.addButton("strikethrough", "Strike (Ctrl+Shift+S)", "strike-button"),
       this.addButton("highlighter", "Highlight", "highlight-button"),
+      this.addButton("plus-square", "Add Main Tab", "add-main-tab-button"),
       this.addButton("layout-template", "Horizontal Nested Tabs", "nested-tabs-horizontal-button"),
       this.addButton("sidebar", "Vertical Nested Tabs", "nested-tabs-vertical-button"),
     ];
@@ -29628,6 +30155,55 @@ var Zl = class {
     this.view.dispatch({
       changes: { from: sel.from, to: sel.to, insert: insertText },
       selection: { anchor: targetCursor, head: targetCursor },
+    });
+  }
+  insertMainTab() {
+    let doc = this.view.state.doc;
+    let cursorPos = this.view.state.selection.main.head;
+    let cursorLine = doc.lineAt(cursorPos).number;
+    let splitStr = this.plugin.settings.split;
+    let defaultTitle = this.plugin.settings.defaultTabNavItem || "New tab";
+    let defaultContent = this.plugin.settings.defaultTabContent || "New tab content";
+
+    let fenceStack = [];
+    let mainKw = (this.plugin.settings.tabsKeyword || "tabs").trim().toLowerCase();
+    let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    let tabInfoRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
+
+    let insertLineNo = doc.lines;
+
+    for (let p = 1; p <= doc.lines; p++) {
+      let line = doc.line(p);
+      let text = line.text.trim();
+      let match = text.match(/^(`{3,}|~{3,})(.*)/);
+      if (match) {
+        let fenceStr = match[1];
+        let info = match[2].trim();
+        let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
+        if (current && current.type === "code") {
+          if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") fenceStack.pop();
+        } else if (current && fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") {
+          fenceStack.pop();
+        } else {
+          let isTabBlock = tabInfoRegex.test(info);
+          fenceStack.push({ fence: fenceStr, type: isTabBlock ? "tabs" : "code" });
+        }
+      }
+
+      if (p > cursorLine && fenceStack.length === 0 && text.startsWith(splitStr)) {
+        insertLineNo = p - 1;
+        break;
+      }
+    }
+
+    let insertLine = doc.line(insertLineNo);
+    let insertPos = insertLine.to;
+    let insertText = "\n\n" + splitStr + defaultTitle + "\n" + defaultContent;
+    let newTitlePos = insertPos + 2 + splitStr.length;
+
+    this.view.dispatch({
+      changes: { from: insertPos, insert: insertText },
+      selection: { anchor: newTitlePos, head: newTitlePos + defaultTitle.length }
     });
   }
   initParagraphTool() {
@@ -29800,9 +30376,12 @@ var Zl = class {
         });
       }),
       this.formatTools[5].onClick(() => {
-        this.insertNestedTabsBlock(false);
+        this.insertMainTab();
       }),
       this.formatTools[6].onClick(() => {
+        this.insertNestedTabsBlock(false);
+      }),
+      this.formatTools[7].onClick(() => {
         this.insertNestedTabsBlock(true);
       }));
 
@@ -30052,7 +30631,22 @@ var Ml = class extends CO.Modal {
           this.modalEl.style.setProperty("--nested-tab-separator-font-size", (s.tabsSeparatorFontSize || 14) + "px");
           this.modalEl.style.setProperty("--nested-tab-separator-bg-opacity", (s.tabsSeparatorBgOpacity || 30) + "%");
           
+          this.modalEl.style.setProperty("--nested-tab-color-level-0", s.nestedTabsColorLevel0 || "#4a90e2");
+          this.modalEl.style.setProperty("--nested-tab-color-level-1", s.nestedTabsColorLevel1 || "#50e3c2");
+          this.modalEl.style.setProperty("--nested-tab-color-level-2", s.nestedTabsColorLevel2 || "#f5a623");
+          this.modalEl.style.setProperty("--nested-tab-color-level-3", s.nestedTabsColorLevel3 || "#b8e986");
+          this.modalEl.style.setProperty("--nested-tab-color-level-4", s.nestedTabsColorLevel4 || "#bd10e0");
+          this.modalEl.style.setProperty("--nested-tab-color-level-5plus", s.nestedTabsColorLevel5Plus || "#888888");
+          
           this.modalEl.classList.add("nested-tabs-style-text");
+          if (!this.styleObserver && typeof MutationObserver !== "undefined") {
+              this.styleObserver = new MutationObserver(() => {
+                  if (this.modalEl && !this.modalEl.classList.contains("nested-tabs-style-text")) {
+                      this.modalEl.classList.add("nested-tabs-style-text");
+                  }
+              });
+              this.styleObserver.observe(this.modalEl, { attributes: true, attributeFilter: ["class"] });
+          }
       }
       
       this.editor = new Zl(this.plugin, this.contentEl, e);
@@ -30074,6 +30668,10 @@ var Ml = class extends CO.Modal {
     }, this.plugin.settings.editorAutoSaveInterval);
   }
   onClose() {
+    if (this.styleObserver) {
+      this.styleObserver.disconnect();
+      this.styleObserver = null;
+    }
     if (this.saveTimeout) activeWindow.clearTimeout(this.saveTimeout);
     this.saveEditorData();
     if (this.editor && this.editor.view) {
