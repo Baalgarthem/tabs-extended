@@ -298,10 +298,10 @@ var zr_es = {
   "title_wrap_desc": "Define cómo se muestran los títulos extensos en pestañas horizontales superiores o inferiores.",
   "vertical_title_behavior_name": "Comportamiento de Títulos Largos (Pestañas Verticales)",
   "vertical_title_behavior_desc": "Elige la forma en que se gestionan los títulos extensos en las pestañas laterales:",
-  "vertical_title_alignment_name": "Alineación de Títulos (Pestañas Verticales)",
-  "vertical_title_alignment_desc": "Define la alineación horizontal del texto en los títulos de las pestañas verticales.",
-  "tab_content_alignment_name": "Alineación de Contenido (Solo Contenido)",
-  "tab_content_alignment_desc": "Define la alineación horizontal (izquierda, centro, derecha, justificado o heredado) exclusivamente sobre el panel de contenido de las pestañas. No afecta a los títulos.",
+  "vertical_title_alignment_name": "Alineación de Títulos (Solo Pestañas Verticales tabs-v)",
+  "vertical_title_alignment_desc": "Define la alineación horizontal del texto (Izquierda, Centro o Derecha) exclusivamente para los separadores/títulos de los bloques de pestañas verticales (tabs-v). Por defecto la alineación es a la Izquierda.",
+  "tab_content_alignment_name": "Alineación del Contenido de Pestañas",
+  "tab_content_alignment_desc": "Define la alineación horizontal del cuerpo de texto dentro de los separadores (Izquierda, Derecha o Justificado). Aplica para todo el contenido tanto en la vista de edición (Live Preview) como en la vista de lectura de Obsidian.",
   "tab_content_hyphenation_name": "Guionizado Automático de Sílabas (Hyphenation)",
   "tab_content_hyphenation_desc": "Inspirado en obsidian-hyphenation: Divide automáticamente las palabras en sílabas al final de línea dentro del panel de contenido para evitar huecos al justificar. Atómico e independiente.",
   "opt_align_left": "Izquierda (Predeterminado)",
@@ -525,10 +525,10 @@ PluginLocales = {
     title_wrap_desc: "Define how long titles behave in top or bottom horizontal tabs.",
     vertical_title_behavior_name: "Long Titles Behavior (Vertical Tabs)",
     vertical_title_behavior_desc: "Define scrolling or wrapping effects for long titles in vertical sidebars.",
-    vertical_title_alignment_name: "Title Text Alignment (Vertical Tabs)",
-    vertical_title_alignment_desc: "Set text alignment for title items in vertical tab sidebars.",
-    tab_content_alignment_name: "Tab Content Text Alignment (Content Only)",
-    tab_content_alignment_desc: "Set text alignment (left, center, right, justify, soft-justify, or inherit) strictly for tab content panels. Does not affect tab titles.",
+    vertical_title_alignment_name: "Title Alignment (Vertical Tabs tabs-v Only)",
+    vertical_title_alignment_desc: "Set horizontal text alignment (Left, Center, or Right) exclusively for vertical tab separators (tabs-v). Defaults to Left alignment.",
+    tab_content_alignment_name: "Tab Content Text Alignment",
+    tab_content_alignment_desc: "Set text alignment (Left, Right, or Justified) for all body text inside tab separators across both Live Preview (Editing View) and Reading View in Obsidian.",
     tab_content_hyphenation_name: "Tab Content Automatic Hyphenation",
     tab_content_hyphenation_desc: "Inspired by obsidian-hyphenation: Automatically hyphens words at line ends inside tab content panels to prevent wide gaps when justified. Atomic and independent of tab titles.",
     opt_align_left: "Left (Default)",
@@ -1107,23 +1107,6 @@ PluginLocales = {
               })
           ).then((e) => this.addResetButton(e, "verticalTitleBehavior"));
         new U.Setting(t)
-          .setName(_("vertical_title_alignment_name"))
-          .setDesc(_("vertical_title_alignment_desc"))
-          .addDropdown((e) =>
-            e
-              .addOption("left", _("opt_align_left"))
-              .addOption("center", _("opt_align_center"))
-              .addOption("right", _("opt_align_right"))
-              .addOption("soft-justify", _("opt_align_soft_justify"))
-              .setValue(this.plugin.settings.verticalTitleAlignment || "left")
-              .onChange((i) => {
-                this.plugin.settings.verticalTitleAlignment = i;
-                this.plugin.saveSettings();
-                this.plugin.updateGlobalCssVariables();
-                this.needRefresh = !0;
-              })
-          ).then((e) => this.addResetButton(e, "verticalTitleAlignment"));
-        new U.Setting(t)
           .setName(_("limit_width_name"))
           .setDesc(_("limit_width_desc"))
           .addToggle((e) =>
@@ -1193,6 +1176,28 @@ PluginLocales = {
                 }
             })
           ).then((e) => this.addResetButton(e, "defaultTabsContentsMaxHeight"));
+        new U.Setting(t)
+          .setName(_("vertical_title_alignment_name"))
+          .setDesc(_("vertical_title_alignment_desc"))
+          .addDropdown((e) =>
+            e
+              .addOption("left", _("opt_align_left"))
+              .addOption("center", _("opt_align_center"))
+              .addOption("right", _("opt_align_right"))
+              .setValue(
+                this.plugin.settings.verticalTitleAlignment === "left" ||
+                this.plugin.settings.verticalTitleAlignment === "center" ||
+                this.plugin.settings.verticalTitleAlignment === "right"
+                  ? this.plugin.settings.verticalTitleAlignment
+                  : "left"
+              )
+              .onChange((i) => {
+                this.plugin.settings.verticalTitleAlignment = i;
+                this.plugin.saveSettings();
+                this.plugin.updateGlobalCssVariables();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "verticalTitleAlignment"));
         new U.Setting(t)
           .setName(_("tab_content_alignment_name"))
           .setDesc(_("tab_content_alignment_desc"))
@@ -2046,14 +2051,22 @@ var Yr = class extends Dt.Menu {
 
     const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
     if (activeView && activeView.editor && t.sectionInfo) {
-      let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
-      let endLineText = activeView.editor.getLine(lineEnd) || "";
-      activeView.editor.replaceRange(
-        fullNewBlock,
-        { line: lineStart, ch: 0 },
-        { line: lineEnd, ch: endLineText.length }
-      );
-      t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+      let anchorEl = t.tabsEl || (t.tabsNav ? t.tabsNav.navEl : null);
+      const applyReplace = () => {
+        let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
+        let endLineText = activeView.editor.getLine(lineEnd) || "";
+        activeView.editor.replaceRange(
+          fullNewBlock,
+          { line: lineStart, ch: 0 },
+          { line: lineEnd, ch: endLineText.length }
+        );
+        t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+      };
+      if (t && typeof t.lockScrollPosition === "function") {
+        t.lockScrollPosition(anchorEl, applyReplace);
+      } else {
+        applyReplace();
+      }
     }
 
     if (isModalEditingThis) {
@@ -2097,14 +2110,22 @@ var Yr = class extends Dt.Menu {
 
     const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
     if (activeView && activeView.editor && t.sectionInfo) {
-      let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
-      let endLineText = activeView.editor.getLine(lineEnd) || "";
-      activeView.editor.replaceRange(
-        fullNewBlock,
-        { line: lineStart, ch: 0 },
-        { line: lineEnd, ch: endLineText.length }
-      );
-      t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+      let anchorEl = t.tabsEl || (t.tabsNav ? t.tabsNav.navEl : null);
+      const applyReplace = () => {
+        let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
+        let endLineText = activeView.editor.getLine(lineEnd) || "";
+        activeView.editor.replaceRange(
+          fullNewBlock,
+          { line: lineStart, ch: 0 },
+          { line: lineEnd, ch: endLineText.length }
+        );
+        t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
+      };
+      if (t && typeof t.lockScrollPosition === "function") {
+        t.lockScrollPosition(anchorEl, applyReplace);
+      } else {
+        applyReplace();
+      }
     }
 
     if (isModalEditingThis) {
@@ -2884,30 +2905,43 @@ var Gr = class extends U.MarkdownRenderChild {
       return;
     }
     let scroller = anchorEl.closest(".cm-scroller, .markdown-preview-view, .markdown-reading-view") || document.scrollingElement || document.documentElement;
-    let initialBoundingTop = anchorEl.getBoundingClientRect().top;
+    let targetEl = anchorEl.closest(".cm-embed-block, .cm-line, .tabs-container") || anchorEl;
+    
     let initialScrollTop = scroller ? scroller.scrollTop : 0;
+    let initialBoundingTop = targetEl ? targetEl.getBoundingClientRect().top : 0;
+
+    // Calculate desired top of targetEl in the viewport after tab switch:
+    // If the top of the tab container was scrolled ABOVE the viewport (initialBoundingTop < 0),
+    // switching to a short tab means content collapsed. We bring the tab header to the top of the viewport
+    // (e.g. 8px padding) so the user can immediately read the new tab without jumping to line 1 of the note!
+    // If it was visible (initialBoundingTop >= 0), keep it at its exact initial position.
+    let desiredBoundingTop = initialBoundingTop < 0 ? 8 : initialBoundingTop;
 
     action();
 
     if (!scroller) return;
 
     const enforceAnchor = () => {
-      // If CodeMirror 6 or browser forcibly reset scroll to top of document (scrollTop = 0)
-      if (scroller.scrollTop === 0 && initialScrollTop > 40 && Math.abs(anchorEl.getBoundingClientRect().top - initialBoundingTop) > 30) {
-        scroller.scrollTop = initialScrollTop;
-      }
-      let currentBoundingTop = anchorEl.getBoundingClientRect().top;
-      let diff = currentBoundingTop - initialBoundingTop;
-      if (Math.abs(diff) > 0.5) {
-        scroller.scrollTop += diff;
+      let currentEl = (targetEl && targetEl.isConnected) ? targetEl : ((anchorEl && anchorEl.isConnected) ? anchorEl : scroller.querySelector(".tabs-container"));
+      if (!currentEl || !currentEl.isConnected) return;
+
+      let currentBoundingTop = currentEl.getBoundingClientRect().top;
+      let diff = currentBoundingTop - desiredBoundingTop;
+
+      if (Math.abs(diff) > 1) {
+        let maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+        let newScrollTop = Math.max(0, Math.min(maxScroll, scroller.scrollTop + diff));
+        scroller.scrollTop = newScrollTop;
       }
     };
 
     enforceAnchor();
     requestAnimationFrame(enforceAnchor);
-    setTimeout(enforceAnchor, 50);
+    setTimeout(enforceAnchor, 20);
+    setTimeout(enforceAnchor, 60);
     setTimeout(enforceAnchor, 120);
     setTimeout(enforceAnchor, 250);
+    setTimeout(enforceAnchor, 450);
   }
   async registerEventHandlers() {
     if (this.tabsEl) {
@@ -30099,11 +30133,19 @@ var Ml = class extends CO.Modal {
     }
 
     const endLineText = editor.getLine(lineEnd) || "";
-    editor.replaceRange(
-      t,
-      { line: lineStart, ch: 0 },
-      { line: lineEnd, ch: endLineText.length }
-    );
+    let anchorEl = this.tabs ? (this.tabs.tabsEl || (this.tabs.tabsNav ? this.tabs.tabsNav.navEl : null)) : null;
+    const applyReplace = () => {
+      editor.replaceRange(
+        t,
+        { line: lineStart, ch: 0 },
+        { line: lineEnd, ch: endLineText.length }
+      );
+    };
+    if (this.tabs && typeof this.tabs.lockScrollPosition === "function") {
+      this.tabs.lockScrollPosition(anchorEl, applyReplace);
+    } else {
+      applyReplace();
+    }
 
     // Update sectionInfo.lineEnd to track the new actual line count in the note document
     const insertedLineCount = t.split("\n").length;
@@ -30389,11 +30431,14 @@ var Xl = class extends Br.Plugin {
     }
 
     let vAlign = s.verticalTitleAlignment || "left";
+    if (vAlign !== "left" && vAlign !== "center" && vAlign !== "right") {
+      vAlign = "left";
+    }
     let cAlign = s.tabContentAlignment || "left";
     let cHyphen = s.tabContentHyphenation || "none";
 
-    let vAlignCss = vAlign === "soft-justify" ? "justify" : vAlign;
-    let vJustifyCss = vAlign === "center" ? "center" : vAlign === "right" ? "flex-end" : vAlign === "soft-justify" ? "space-between" : "flex-start";
+    let vAlignCss = vAlign;
+    let vJustifyCss = vAlign === "center" ? "center" : vAlign === "right" ? "flex-end" : "flex-start";
     let cAlignCss = cAlign === "soft-justify" ? "justify" : cAlign === "inherit" ? "inherit" : cAlign;
 
     let paddingParts = (padding || "1em 2em").trim().split(/\s+/);

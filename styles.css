@@ -391,59 +391,72 @@ hr.tabs-settings-divider {
     letter-spacing: normal;
 }
 
-/* Vertical Tab Title Alignment Rules */
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md p {
+/* Vertical Tab Title Alignment Rules (Solo Bloques Verticales tabs-v - Defecto: Izquierda) */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
     text-align: left !important;
     text-align-last: left !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
 }
 
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
+    text-align: left !important;
+    text-align-last: left !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item,
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item .tabs-nav-item-md p {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
     text-align: center !important;
     text-align-last: center !important;
+    align-items: center !important;
     justify-content: center !important;
 }
 
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item,
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item .tabs-nav-item-md p {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
     text-align: right !important;
     text-align-last: right !important;
+    align-items: flex-end !important;
     justify-content: flex-end !important;
 }
 
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-soft-justify .tabs-nav-item .tabs-nav-item-md,
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-soft-justify .tabs-nav-item .tabs-nav-item-md p {
-    text-align: justify !important;
-    text-align-last: left !important;
-    hyphens: auto !important;
-    -webkit-hyphens: auto !important;
-    word-spacing: -0.2px !important;
-}
+/* ==========================================================================
+   ATOMIC CONTENT TEXT ALIGNMENT (LIVE PREVIEW / EDITING VIEW & READING VIEW)
+   Options: Izquierda (left), Derecha (right), Justificado (justify / soft-justify)
+   ========================================================================== */
 
-/* Atomic & Independent Content Alignment Rules (SOLAMENTE SOBRE EL CONTENIDO) */
-.tabs-container.tabs-content-align-left .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+/* 1. Izquierda (Left Alignment) */
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-left .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-left .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
     text-align: left !important;
     text-align-last: left !important;
 }
 
-.tabs-container.tabs-content-align-center .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
-    text-align: center !important;
-    text-align-last: center !important;
-}
-
-.tabs-container.tabs-content-align-right .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+/* 2. Derecha (Right Alignment) */
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-right .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-right .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
     text-align: right !important;
     text-align-last: right !important;
 }
 
-.tabs-container.tabs-content-align-justify .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+/* 3. Justificado (Justified Alignment) */
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-justify .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-justify .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
     text-align: justify !important;
     text-align-last: auto !important;
     text-justify: inter-word !important;
 }
 
-.tabs-container.tabs-content-align-soft-justify .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-soft-justify .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-soft-justify .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
     text-align: justify !important;
     text-align-last: left !important;
     hyphens: auto !important;
@@ -451,7 +464,15 @@ hr.tabs-settings-divider {
     word-spacing: -0.2px !important;
 }
 
-.tabs-container.tabs-content-align-inherit .tabs-content :is(p, ul, ol, li, div.markdown-rendered, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+/* 4. Centro & Heredar */
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-center .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-center .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
+    text-align: center !important;
+    text-align-last: center !important;
+}
+
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-inherit .tabs-content,
+:is(.tabs-container, .tabs-editor-modal).tabs-content-align-inherit .tabs-content :is(p, ul, ol, li, div, span, blockquote, h1, h2, h3, h4, h5, h6, td, th) {
     text-align: inherit;
     text-align-last: inherit;
 }
