@@ -273,25 +273,74 @@ body.theme-dark .tabs-editor-modal {
 }
 
 
-/* Vertical Title Behavior Modes */
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-truncate .tabs-nav-item {
+/* Vertical Title Behavior Modes (Both Parent and Nested Vertical Tabs) */
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item .tabs-nav-item-md {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.35 !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-multi-line .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
+    display: inline !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
+    line-height: 1.35 !important;
+}
+
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-truncate .tabs-nav-item,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-truncate .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-truncate .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
 }
 
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-double-line .tabs-nav-item {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-double-line .tabs-nav-item,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-double-line .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-double-line .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
     white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: manual !important;
+    -webkit-hyphens: manual !important;
     display: -webkit-box !important;
     -webkit-line-clamp: 2 !important;
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    word-break: break-word;
 }
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-behavior-auto-scroll .tabs-nav-item-md.is-scrolling-title {
-    display: inline-block;
+    display: inline-block !important;
     white-space: nowrap !important;
     animation: title-hover-scroll-anim var(--title-scroll-duration, 4s) ease-in-out infinite alternate !important;
 }
