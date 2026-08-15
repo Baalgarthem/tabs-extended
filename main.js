@@ -2041,11 +2041,33 @@ function tabsExtendedNormalizeSource(text) {
     .replace(/\n+$/, "");
 }
 
+function tabsExtendedTabCacheIdentity(titles, index) {
+  const title = String(titles[index] == null ? "" : titles[index]);
+  let occurrence = 0;
+  for (let previous = 1; previous < index; previous++) {
+    if (String(titles[previous] == null ? "" : titles[previous]) === title) {
+      occurrence += 1;
+    }
+  }
+  return encodeURIComponent(title) + "#" + occurrence;
+}
+
+function tabsExtendedStableTextHash(text) {
+  const source = String(text == null ? "" : text);
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index++) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 var ys = te(require("obsidian")),
   pn = class {
-    constructor(t, e, i, n, r, ownerTabs = null) {
+    constructor(t, e, i, n, r, ownerTabs = null, cacheIdentity = "") {
       this.isActiveed = !1;
       this.ownerTabs = ownerTabs;
+      this.cacheIdentity = cacheIdentity;
       this.claimedNestedBlocks = new Set();
       ((this.index = t),
         (this.title = e),
@@ -3096,6 +3118,16 @@ var Gr = class extends U.MarkdownRenderChild {
       defaultTitle,
       this.plugin.settings.defaultTabContent,
     );
+    this.tabsId = this.buildStableTabsId();
+    // Initialize the cache before rendering child contents. Nested processors
+    // can run immediately and need their parent's stable identity available.
+    if (!(this.plugin.lastTabsCache instanceof Map)) {
+      this.plugin.lastTabsCache = new Map();
+      this.plugin.lastTabsCache.set("/", 0);
+    }
+    if (!this.plugin.lastTabsCache.has(this.tabsId)) {
+      this.plugin.lastTabsCache.set(this.tabsId, 0);
+    }
     this.tabsConfig = new Nr(a[0], this.tabsEl, this.plugin.settings, isVertical);
     this.tabsNav = new _r(
       this,
@@ -3107,7 +3139,20 @@ var Gr = class extends U.MarkdownRenderChild {
     );
     this.tabsContents = new jr(
       r,
-      a.map((l, h) => new pn(h, o[h], l, n, i, this)).slice(1),
+      a
+        .map(
+          (l, h) =>
+            new pn(
+              h,
+              o[h],
+              l,
+              n,
+              i,
+              this,
+              tabsExtendedTabCacheIdentity(o, h),
+            ),
+        )
+        .slice(1),
     );
     this.registerEventHandlers();
     e.appendChild(this.tabsNav.navEl);
@@ -3117,21 +3162,6 @@ var Gr = class extends U.MarkdownRenderChild {
       this.tabsNav.navEl,
       this.tabsContents.tabcontentsEl,
     );
-    this.tabsId = "/";
-    if (this.context && this.sectionInfo) {
-      this.tabsId = this.context.sourcePath + this.sectionInfo.lineStart;
-    } else {
-      this.tabsId = (this.context ? this.context.sourcePath : "") + "-inner-" + Math.random().toString(36).substring(2, 9);
-    }
-    // Rendering may run immediately when a processor is registered in an
-    // already-open workspace. Keep the preview independent from onload timing.
-    if (!(this.plugin.lastTabsCache instanceof Map)) {
-      this.plugin.lastTabsCache = new Map();
-      this.plugin.lastTabsCache.set("/", 0);
-    }
-    if (!this.plugin.lastTabsCache.has(this.tabsId)) {
-      this.plugin.lastTabsCache.set(this.tabsId, 0);
-    }
     this.currentIndex = this.plugin.lastTabsCache.get(this.tabsId);
     
     if (this.currentIndex >= this.tabsNav.navItems.length) {
@@ -3143,6 +3173,34 @@ var Gr = class extends U.MarkdownRenderChild {
       this.tabsNav.refreshActiveTabNav(this.currentIndex);
       this.tabsContents.refreshActiveTabContent(this.currentIndex);
     }
+  }
+  buildStableTabsId() {
+    const sourcePath = this.context && this.context.sourcePath
+      ? this.context.sourcePath
+      : "";
+    if (this.sectionInfo) {
+      return sourcePath + this.sectionInfo.lineStart;
+    }
+    if (this.parentTabContent && this.parentTabContent.ownerTabs) {
+      const parentId = this.parentTabContent.ownerTabs.tabsId || sourcePath;
+      const contentId = this.parentTabContent.cacheIdentity ||
+        "index-" + this.parentTabContent.index;
+      const nestedId = this.sourceOrdinal >= 0
+        ? String(this.sourceOrdinal)
+        : "unresolved-" + tabsExtendedStableTextHash(this.rawText);
+      return (
+        parentId +
+        "/tab-" + contentId +
+        "/nested-" + nestedId +
+        (this.isVertical ? "-vertical" : "-horizontal")
+      );
+    }
+    return (
+      sourcePath +
+      "-inner-" +
+      tabsExtendedStableTextHash(this.rawText) +
+      (this.isVertical ? "-vertical" : "-horizontal")
+    );
   }
   parseTabs(rawText, defaultTitle, defaultContent) {
     const source = String(rawText == null ? "" : rawText);
@@ -3394,6 +3452,41 @@ var Gr = class extends U.MarkdownRenderChild {
     rootTabs.sectionInfo.lineEnd = closingLine + newLineCount - oldLineCount;
     return true;
   }
+  stageReorderFocus(toIndex) {
+    const cache = this.plugin.lastTabsCache;
+    if (!(cache instanceof Map)) return () => {};
+    const snapshots = [];
+    const visited = new Set();
+    let currentTabs = this;
+    let isDraggedBlock = true;
+
+    while (currentTabs && !visited.has(currentTabs)) {
+      visited.add(currentTabs);
+      const cacheId = currentTabs.tabsId;
+      if (cacheId) {
+        snapshots.push({
+          cacheId,
+          existed: cache.has(cacheId),
+          value: cache.get(cacheId),
+        });
+        cache.set(
+          cacheId,
+          isDraggedBlock ? toIndex : currentTabs.currentIndex,
+        );
+      }
+      isDraggedBlock = false;
+      currentTabs = currentTabs.parentTabContent
+        ? currentTabs.parentTabContent.ownerTabs
+        : null;
+    }
+
+    return () => {
+      snapshots.forEach((snapshot) => {
+        if (snapshot.existed) cache.set(snapshot.cacheId, snapshot.value);
+        else cache.delete(snapshot.cacheId);
+      });
+    };
+  }
   reorderTab(fromIndex, toIndex) {
     if (
       fromIndex === toIndex ||
@@ -3408,13 +3501,15 @@ var Gr = class extends U.MarkdownRenderChild {
     const reorderedRawText = this.buildReorderedRawText(fromIndex, toIndex);
     if (reorderedRawText == null) return false;
     const sourceUpdate = this.buildSourceUpdate(reorderedRawText);
-    if (
-      !sourceUpdate ||
-      !this.writeRootRawText(
-        sourceUpdate.rootTabs,
-        sourceUpdate.rootRawText,
-      )
-    ) {
+    if (!sourceUpdate) return false;
+    // Cache the complete active ancestry before touching the editor. Obsidian
+    // may synchronously rebuild every nested processor during replaceRange.
+    const rollbackFocus = this.stageReorderFocus(toIndex);
+    if (!this.writeRootRawText(
+      sourceUpdate.rootTabs,
+      sourceUpdate.rootRawText,
+    )) {
+      rollbackFocus();
       return false;
     }
 
@@ -3448,18 +3543,24 @@ var Gr = class extends U.MarkdownRenderChild {
       this.tabsContents.tabcontentsEl.appendChild(movedContent.contentEl);
     }
 
-    let activeIndex = 0;
     for (let index = 0; index < this.tabsNav.navItems.length; index++) {
       this.tabsNav.navItems[index].index = index;
       this.tabsContents.tabcontents[index].index = index + 1;
-      if (this.tabsNav.navItems[index].isActiveed) activeIndex = index;
+      const isDraggedTab = index === toIndex;
+      this.tabsNav.navItems[index].isActiveed = isDraggedTab;
+      this.tabsNav.navItems[index].tabitemEl.classList.toggle(
+        "tabs-nav-item-active",
+        isDraggedTab,
+      );
+      this.tabsContents.tabcontents[index].isActiveed = isDraggedTab;
+      this.tabsContents.tabcontents[index].contentEl.classList.toggle(
+        "tabs-content-active",
+        isDraggedTab,
+      );
     }
-    this.currentIndex = activeIndex;
-    this.tabsNav.currentTab = activeIndex;
-    this.tabsContents.currentTab = activeIndex;
-    if (this.plugin.lastTabsCache instanceof Map) {
-      this.plugin.lastTabsCache.set(this.tabsId, activeIndex);
-    }
+    this.currentIndex = toIndex;
+    this.tabsNav.currentTab = toIndex;
+    this.tabsContents.currentTab = toIndex;
     return true;
   }
   lockScrollPosition(anchorEl, action) {
