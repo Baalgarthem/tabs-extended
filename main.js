@@ -1866,6 +1866,17 @@ function tabsExtendedFenceInfo(lineText) {
   };
 }
 
+function tabsExtendedMaxFenceLength(rawText, fenceChar) {
+  let maxLength = 0;
+  for (const line of tabsExtendedSourceLines(rawText)) {
+    const fence = tabsExtendedFenceInfo(line.text);
+    if (fence && fence.char === fenceChar) {
+      maxLength = Math.max(maxLength, fence.length);
+    }
+  }
+  return maxLength;
+}
+
 function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
   if (!fence) return;
   if (stack.length === 0) {
@@ -1879,14 +1890,15 @@ function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
     }
     return;
   }
+  const closingIndex = tabsExtendedClosingFenceIndex(stack, fence);
+  if (closingIndex >= 0) {
+    // A fence that exactly matches an ancestor is an explicit boundary for
+    // that ancestor. Recover malformed descendants by closing them together.
+    stack.splice(closingIndex);
+    return;
+  }
   const current = stack[stack.length - 1];
-  if (
-    fence.info === "" &&
-    fence.char === current.char &&
-    fence.length >= current.length
-  ) {
-    stack.pop();
-  } else if (fence.info !== "" && current.isTabs) {
+  if (fence.info !== "" && current.isTabs) {
     // Any fenced block with an info string starts a protected descendant scope.
     // Its contents cannot expose separators belonging to the current tab level.
     const keyword = fence.info.split(/\s+/)[0].toLowerCase();
@@ -1896,6 +1908,23 @@ function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
       isTabs: keywords.has(keyword),
     });
   }
+}
+
+function tabsExtendedClosingFenceIndex(stack, fence) {
+  if (!fence || fence.info !== "" || stack.length === 0) return -1;
+  for (let index = stack.length - 1; index >= 0; index--) {
+    const candidate = stack[index];
+    if (
+      candidate.char === fence.char &&
+      candidate.length === fence.length
+    ) {
+      return index;
+    }
+  }
+  const current = stack[stack.length - 1];
+  return current.char === fence.char && fence.length >= current.length
+    ? stack.length - 1
+    : -1;
 }
 
 function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {
@@ -1968,13 +1997,32 @@ function tabsExtendedJoinTabSections(prefix, sections, sourceText) {
   return result;
 }
 
-function tabsExtendedTabKeywords(settings) {
-  const configured = String(
+let tabsExtendedCachedKeyword = null;
+let tabsExtendedCachedKeywords = null;
+
+function tabsExtendedConfiguredKeyword(settings) {
+  return String(
     settings && settings.tabsKeyword ? settings.tabsKeyword : "tabs",
   )
     .trim()
     .toLowerCase();
-  return new Set([configured, configured + "-v", "tabs", "tabs-v"]);
+}
+
+function tabsExtendedTabKeywords(settings) {
+  const configured = tabsExtendedConfiguredKeyword(settings);
+  if (
+    configured !== tabsExtendedCachedKeyword ||
+    !tabsExtendedCachedKeywords
+  ) {
+    tabsExtendedCachedKeyword = configured;
+    tabsExtendedCachedKeywords = new Set([
+      configured,
+      configured + "-v",
+      "tabs",
+      "tabs-v",
+    ]);
+  }
+  return tabsExtendedCachedKeywords;
 }
 
 function tabsExtendedFindDirectNestedBlocks(rawText, settings) {
@@ -2002,14 +2050,11 @@ function tabsExtendedFindDirectNestedBlocks(rawText, settings) {
       continue;
     }
 
-    const current = stack[stack.length - 1];
-    if (
-      fence.info === "" &&
-      fence.char === current.char &&
-      fence.length >= current.length
-    ) {
-      const closed = stack.pop();
-      if (stack.length === 0 && closed.isTabs) {
+    const closingIndex = tabsExtendedClosingFenceIndex(stack, fence);
+    if (closingIndex >= 0) {
+      const closed = stack[closingIndex];
+      stack.splice(closingIndex);
+      if (closingIndex === 0 && closed.isTabs) {
         blocks.push({
           blockFrom: closed.blockFrom,
           blockTo: line.fullEnd,
@@ -2017,9 +2062,10 @@ function tabsExtendedFindDirectNestedBlocks(rawText, settings) {
           bodyTo: line.start,
           keyword: closed.keyword,
           isVertical: closed.keyword.endsWith("-v"),
+          implicitClose: false,
         });
       }
-    } else if (fence.info !== "" && current.isTabs) {
+    } else if (fence.info !== "" && stack[stack.length - 1].isTabs) {
       const keyword = fence.info.split(/\s+/)[0].toLowerCase();
       stack.push({
         char: fence.char,
@@ -2032,7 +2078,46 @@ function tabsExtendedFindDirectNestedBlocks(rawText, settings) {
     }
   }
 
+  if (stack.length > 0 && stack[0].isTabs) {
+    const unclosed = stack[0];
+    blocks.push({
+      blockFrom: unclosed.blockFrom,
+      blockTo: source.length,
+      bodyFrom: unclosed.bodyFrom,
+      bodyTo: source.length,
+      keyword: unclosed.keyword,
+      isVertical: unclosed.keyword.endsWith("-v"),
+      implicitClose: true,
+    });
+  }
+
   return blocks;
+}
+
+function tabsExtendedCompleteDanglingTabFences(sectionText, settings) {
+  const source = String(sectionText == null ? "" : sectionText);
+  const stack = [];
+  const keywords = tabsExtendedTabKeywords(settings);
+  for (const line of tabsExtendedSourceLines(source)) {
+    tabsExtendedUpdateFenceStack(
+      stack,
+      tabsExtendedFenceInfo(line.text),
+      keywords,
+    );
+  }
+  if (stack.length === 0) return source;
+  if (stack.some((fence) => !fence.isTabs)) return null;
+
+  const lineBreakMatch = source.match(/\r\n|\n|\r/);
+  const lineBreak = lineBreakMatch ? lineBreakMatch[0] : "\n";
+  let completed = source;
+  for (let index = stack.length - 1; index >= 0; index--) {
+    if (completed.length > 0 && !/(?:\r\n|\n|\r)$/.test(completed)) {
+      completed += lineBreak;
+    }
+    completed += stack[index].char.repeat(stack[index].length);
+  }
+  return completed;
 }
 
 function tabsExtendedNormalizeSource(text) {
@@ -2069,6 +2154,7 @@ var ys = te(require("obsidian")),
       this.ownerTabs = ownerTabs;
       this.cacheIdentity = cacheIdentity;
       this.claimedNestedBlocks = new Set();
+      this.nestedBlocksCache = null;
       ((this.index = t),
         (this.title = e),
         (this.content = i),
@@ -2096,23 +2182,42 @@ var ys = te(require("obsidian")),
       // CommonMark's parser closes the outer ~~~tabs at the FIRST ~~~  it encounters
       // (which belongs to an inner block), causing content to escape as plain text.
       const safeContent = this.fixNestedFences(t);
-      ys.MarkdownRenderer.render(
+      const renderPromise = ys.MarkdownRenderer.render(
         e,
         safeContent,
         this.contentEl,
         i == null ? void 0 : i.sourcePath,
         n,
       );
-      this.ensureCodeBlockWrappers(this.contentEl);
+      Promise.resolve(renderPromise)
+        .then(() => this.ensureCodeBlockWrappers(this.contentEl))
+        .catch((error) => {
+          console.error("Tabs Extended could not finish rendering tab content:", error);
+        });
       if (i && typeof i.addChild === 'function') {
         i.addChild(n);
       }
     }
-    claimNestedBlock(rawText, isVertical) {
+    getDirectNestedBlocks(sourceText = this.content) {
+      const source = String(sourceText == null ? "" : sourceText);
       const settings = this.ownerTabs && this.ownerTabs.plugin
         ? this.ownerTabs.plugin.settings
         : null;
-      const blocks = tabsExtendedFindDirectNestedBlocks(this.content, settings);
+      const keyword = tabsExtendedConfiguredKeyword(settings);
+      const cached = this.nestedBlocksCache;
+      if (
+        cached &&
+        cached.source === source &&
+        cached.keyword === keyword
+      ) {
+        return cached.blocks;
+      }
+      const blocks = tabsExtendedFindDirectNestedBlocks(source, settings);
+      this.nestedBlocksCache = { source, keyword, blocks };
+      return blocks;
+    }
+    claimNestedBlock(rawText, isVertical) {
+      const blocks = this.getDirectNestedBlocks(this.content);
       const normalized = tabsExtendedNormalizeSource(rawText);
       let selected = -1;
 
@@ -2256,6 +2361,7 @@ var Dt = te(require("obsidian"));
 var Yr = class extends Dt.Menu {
   constructor(t, e) {
     super();
+    const contextTabIndex = Yr.findTabIndex(t, e.target);
     this.addItem((i) => {
       i.setTitle($("menu.addNewTab"));
       i.setIcon("plus");
@@ -2270,43 +2376,33 @@ var Yr = class extends Dt.Menu {
     this.addItem((i) => {
       i.setTitle($("menu.deleteTab"));
       i.setIcon("trash");
+      i.setDisabled(
+        contextTabIndex < 0 || t.tabsNav.navItems.length <= 1,
+      );
       i.onClick(() => {
-        let tabIndex = -1;
-        for (let h = 0; h < t.tabsNav.navItems.length; h++) {
-          let itemEl = t.tabsNav.navItems[h].tabitemEl;
-          if (itemEl === e.target || (e.target && itemEl.contains(e.target))) {
-            tabIndex = h;
-            break;
-          }
-        }
-        if (tabIndex === -1) {
+        if (contextTabIndex === -1) {
           if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
           return;
         }
-        let deletedTitle = t.tabsNav.navItems[tabIndex].title;
+        let deletedTitle = t.tabsNav.navItems[contextTabIndex].title;
         new ConfirmDeleteModal(t.app, `¿Estás seguro de que deseas eliminar la pestaña "${deletedTitle}"?`, () => {
-          Yr.removeTabFromBlock(t, tabIndex, deletedTitle);
+          Yr.removeTabFromBlock(t, contextTabIndex, deletedTitle);
         }).open();
       });
     });
     this.addItem((i) => {
       i.setTitle($("menu.copyTab"));
       i.setIcon("copy");
+      i.setDisabled(contextTabIndex < 0);
       i.onClick(() => {
-        let tabIndex = -1, r = "";
-        for (let o = 0; o < t.tabsNav.navItems.length; o++) {
-          let itemEl = t.tabsNav.navItems[o].tabitemEl;
-          if (itemEl === e.target || (e.target && itemEl.contains(e.target))) {
-            tabIndex = o;
-            r = t.split + t.tabsNav.navItems[o].title + "\n" + t.tabsContents.tabcontents[o].content;
-            break;
-          }
-        }
-        if (tabIndex === -1) {
+        const sourceSection = contextTabIndex >= 0
+          ? t.getTabSourceSection(contextTabIndex)
+          : null;
+        if (sourceSection == null) {
           if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
           return;
         }
-        navigator.clipboard.writeText(r).then(() => {
+        navigator.clipboard.writeText(sourceSection).then(() => {
           if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabSuccess"));
         }).catch((err) => {
           if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabFailed"));
@@ -2323,21 +2419,11 @@ var Yr = class extends Dt.Menu {
             if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.noClipboardContent"));
             return;
           }
-          let r = t.isVertical
-            ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
-            : (t.plugin.settings.defaultTabNavItem || "New tab");
-          let o = n.trim();
-          if (n.startsWith(t.split)) {
-            let nlIdx = n.indexOf("\n");
-            if (nlIdx !== -1) {
-              r = n.substring(t.split.length, nlIdx).trim();
-              o = n.substring(nlIdx + 1).trim();
-            } else {
-              r = n.substring(t.split.length).trim();
-              o = "";
+          if (!t.insertClipboardTabs(n)) {
+            if (!t.plugin.settings.ignoreNotice) {
+              new Dt.Notice($("notice.pasteTabFailed"));
             }
           }
-          Yr.updateBlockWithNewTab(t, r, o);
         }).catch((err) => {
           if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.pasteTabFailed"));
           console.error(err);
@@ -2346,159 +2432,53 @@ var Yr = class extends Dt.Menu {
     });
   }
 
-  static getActualBlockRange(editor, sectionInfo) {
-    let lineStart = sectionInfo.lineStart;
-    let lineEnd = sectionInfo.lineEnd;
-    try {
-      const startLineText = (editor.getLine(lineStart) || "").trim();
-      const startMatch = startLineText.match(/^(`{3,}|~{3,})/);
-      if (startMatch) {
-        const fenceChar = startMatch[1][0];
-        const fenceLen = startMatch[1].length;
-        let stack = 0;
-        const totalLines = typeof editor.lineCount === "function" ? editor.lineCount() : 999999;
-        
-        for (let p = lineStart; p < totalLines; p++) {
-          const lineText = (editor.getLine(p) || "").trim();
-          if (lineText.startsWith('|')) continue;
-          const m = lineText.match(/^(`{3,}|~{3,})(.*)/);
-          if (m) {
-            const char = m[1][0];
-            const len = m[1].length;
-            const info = m[2].trim();
-            if (char === fenceChar && len >= fenceLen) {
-              if (info.length > 0) {
-                stack++;
-              } else {
-                stack--;
-                if (stack === 0 || p > lineStart) {
-                  lineEnd = p;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {}
-    return { lineStart, lineEnd };
+  static findTabIndex(tabs, target) {
+    if (!tabs || !tabs.tabsNav || !Array.isArray(tabs.tabsNav.navItems)) {
+      return -1;
+    }
+    return tabs.tabsNav.navItems.findIndex((item) => {
+      const itemEl = item && item.tabitemEl;
+      return !!(
+        itemEl &&
+        (itemEl === target || (target && itemEl.contains(target)))
+      );
+    });
   }
 
   static updateBlockWithNewTab(t, newTitle, newContent) {
-    let fullTabsStr = "";
-    if (t.tabsNav && t.tabsNav.navItems) {
-      for (let h = 0; h < t.tabsNav.navItems.length; h++) {
-        let title = t.tabsNav.navItems[h].title;
-        let content = t.tabsContents && t.tabsContents.tabcontents && t.tabsContents.tabcontents[h]
-          ? t.tabsContents.tabcontents[h].content.replace(/[\r\n]+$/, "")
-          : "";
-        fullTabsStr += t.split + title + "\n" + content + "\n\n";
-      }
-    }
-    fullTabsStr += t.split + newTitle + "\n" + newContent + "\n\n";
-    fullTabsStr = fullTabsStr.replace(/[\r\n]+$/, "") + "\n\n";
-
-    let fenceChar = (t.backquote || "`");
-    let fenceCount = t.backquoteCount || 3;
-    let fence = fenceChar.repeat(fenceCount);
-    let kw = (t.tabsKeyword || "tabs") + (t.isVertical ? "-v" : "");
-    let config = (t.tabsConfig && t.tabsConfig.rawConfig) ? (t.tabsConfig.rawConfig + "\n") : "";
-
-    let fullNewBlock = fence + kw + "\n" + config + fullTabsStr + fence;
-
-    const modal = t.plugin ? t.plugin.tabsEditorModal : null;
-    const isModalEditingThis = modal && modal.tabs === t && modal.isOpen;
-
-    const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
-    if (activeView && activeView.editor && t.sectionInfo) {
-      let anchorEl = t.tabsEl || (t.tabsNav ? t.tabsNav.navEl : null);
-      const applyReplace = () => {
-        let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
-        let endLineText = activeView.editor.getLine(lineEnd) || "";
-        activeView.editor.replaceRange(
-          fullNewBlock,
-          { line: lineStart, ch: 0 },
-          { line: lineEnd, ch: endLineText.length }
-        );
-        t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
-      };
-      if (t && typeof t.lockScrollPosition === "function") {
-        t.lockScrollPosition(anchorEl, applyReplace);
-      } else {
-        applyReplace();
-      }
-    }
-
-    if (isModalEditingThis) {
-      setTimeout(() => {
-        if (modal.isOpen) {
-          modal.startEditing(t);
-        }
-      }, 50);
-    }
-
-    if (!t.plugin.settings.ignoreNotice) {
+    const updated = !!(
+      t &&
+      typeof t.insertNewTab === "function" &&
+      t.insertNewTab(newTitle, newContent)
+    );
+    if (updated && !t.plugin.settings.ignoreNotice) {
       new Dt.Notice($("notice.addNewTabSuccess"));
     }
+    if (!updated) {
+      console.warn("Tabs Extended cancelled an unsafe tab insertion.");
+      if (t && !t.plugin.settings.ignoreNotice) {
+        new Dt.Notice($("notice.invalidTab"));
+      }
+    }
+    return updated;
   }
 
   static removeTabFromBlock(t, tabIndex, deletedTitle) {
-    let fullTabsStr = "";
-    if (t.tabsNav && t.tabsNav.navItems) {
-      for (let h = 0; h < t.tabsNav.navItems.length; h++) {
-        if (h !== tabIndex) {
-          let title = t.tabsNav.navItems[h].title;
-          let content = t.tabsContents && t.tabsContents.tabcontents && t.tabsContents.tabcontents[h]
-            ? t.tabsContents.tabcontents[h].content.replace(/[\r\n]+$/, "")
-            : "";
-          fullTabsStr += t.split + title + "\n" + content + "\n\n";
-        }
-      }
-    }
-    fullTabsStr = fullTabsStr.replace(/[\r\n]+$/, "") + "\n\n";
-
-    let fenceChar = (t.backquote || "`");
-    let fenceCount = t.backquoteCount || 3;
-    let fence = fenceChar.repeat(fenceCount);
-    let kw = (t.tabsKeyword || "tabs") + (t.isVertical ? "-v" : "");
-    let config = (t.tabsConfig && t.tabsConfig.rawConfig) ? (t.tabsConfig.rawConfig + "\n") : "";
-
-    let fullNewBlock = fence + kw + "\n" + config + fullTabsStr + fence;
-
-    const modal = t.plugin ? t.plugin.tabsEditorModal : null;
-    const isModalEditingThis = modal && modal.tabs === t && modal.isOpen;
-
-    const activeView = t.activeView || (t.app && t.app.workspace ? t.app.workspace.getActiveViewOfType(Dt.MarkdownView) : null);
-    if (activeView && activeView.editor && t.sectionInfo) {
-      let anchorEl = t.tabsEl || (t.tabsNav ? t.tabsNav.navEl : null);
-      const applyReplace = () => {
-        let { lineStart, lineEnd } = Yr.getActualBlockRange(activeView.editor, t.sectionInfo);
-        let endLineText = activeView.editor.getLine(lineEnd) || "";
-        activeView.editor.replaceRange(
-          fullNewBlock,
-          { line: lineStart, ch: 0 },
-          { line: lineEnd, ch: endLineText.length }
-        );
-        t.sectionInfo.lineEnd = lineStart + fullNewBlock.split("\n").length - 1;
-      };
-      if (t && typeof t.lockScrollPosition === "function") {
-        t.lockScrollPosition(anchorEl, applyReplace);
-      } else {
-        applyReplace();
-      }
-    }
-
-    if (isModalEditingThis) {
-      setTimeout(() => {
-        if (modal.isOpen) {
-          modal.startEditing(t);
-        }
-      }, 50);
-    }
-
-    if (!t.plugin.settings.ignoreNotice) {
+    const updated = !!(
+      t &&
+      typeof t.deleteTabAt === "function" &&
+      t.deleteTabAt(tabIndex)
+    );
+    if (updated && !t.plugin.settings.ignoreNotice) {
       new Dt.Notice($("notice.deleteTabSuccess", deletedTitle));
     }
+    if (!updated) {
+      console.warn("Tabs Extended cancelled an unsafe tab deletion.");
+      if (t && !t.plugin.settings.ignoreNotice) {
+        new Dt.Notice($("notice.invalidTab"));
+      }
+    }
+    return updated;
   }
 };
 var Nr = class {
@@ -2663,6 +2643,9 @@ function cleanVirtualLinksFromElement(el) {
 var On = class {
   constructor(t, e, i, n = !0) {
     this.isActiveed = !1;
+    this.isDisposed = false;
+    this.titleBehaviorFrame = null;
+    this.virtualLinkObserver = null;
     ((this.index = e),
       (this.title = i.trim()),
       (this.tabnav = t),
@@ -2672,6 +2655,17 @@ var On = class {
       n && this.tabitemEl.setAttr("draggable", "true"),
       (this.tabitemMDEl = this.tabitemEl.createDiv()),
       (this.tabitemMDEl.className = "tabs-nav-item-md no-virtual-link virtual-linker-ignore"));
+    this.tabs.register(() => {
+      this.isDisposed = true;
+      if (this.virtualLinkObserver) {
+        this.virtualLinkObserver.disconnect();
+        this.virtualLinkObserver = null;
+      }
+      if (this.titleBehaviorFrame != null) {
+        window.cancelAnimationFrame(this.titleBehaviorFrame);
+        this.titleBehaviorFrame = null;
+      }
+    });
     let r = new Zi.MarkdownRenderChild(this.tabitemMDEl);
     Zi.MarkdownRenderer.render(
       this.tabs.app,
@@ -2680,16 +2674,28 @@ var On = class {
       this.tabs.context.sourcePath,
       r,
     ).then(() => {
+      if (this.isDisposed) return;
       cleanVirtualLinksFromElement(this.tabitemMDEl);
-      setTimeout(() => {
-        this.applyTitleBehavior();
-      }, 50);
+      this.scheduleTitleBehavior();
+    }).catch((error) => {
+      console.error("Tabs Extended could not render a tab title:", error);
     });
     if (this.tabs && this.tabs.context && typeof this.tabs.context.addChild === 'function') {
       this.tabs.context.addChild(r);
     }
     this.setupVirtualLinkExemption();
     this.setupTitleHoverScroll();
+  }
+  scheduleTitleBehavior() {
+    if (this.isDisposed) return;
+    if (this.titleBehaviorFrame != null) {
+      window.cancelAnimationFrame(this.titleBehaviorFrame);
+    }
+    this.titleBehaviorFrame = window.requestAnimationFrame(() => {
+      this.titleBehaviorFrame = null;
+      if (this.isDisposed) return;
+      this.applyTitleBehavior();
+    });
   }
   applyTitleBehavior() {
     if (!this.tabitemEl || !this.tabitemMDEl) return;
@@ -2792,7 +2798,7 @@ var On = class {
   }
   setupTitleHoverScroll() {
     if (!this.tabitemEl || !this.tabitemMDEl) return;
-    this.tabitemEl.addEventListener("mouseenter", () => {
+    this.tabs.registerDomEvent(this.tabitemEl, "mouseenter", () => {
       let container = this.tabs ? this.tabs.tabsEl : null;
       if (!container) return;
       let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
@@ -2810,7 +2816,7 @@ var On = class {
         mdEl.style.animationPlayState = "running";
       }
     });
-    this.tabitemEl.addEventListener("mouseleave", () => {
+    this.tabs.registerDomEvent(this.tabitemEl, "mouseleave", () => {
       let container = this.tabs ? this.tabs.tabsEl : null;
       if (!container) return;
       let isAutoScroll = container.classList.contains("tabs-nav-v-behavior-auto-scroll");
@@ -2831,12 +2837,11 @@ var On = class {
   }
   setupVirtualLinkExemption() {
     if (!this.tabitemMDEl) return;
-    cleanVirtualLinksFromElement(this.tabitemMDEl);
     try {
       const observer = new MutationObserver((mutations) => {
         let needsClean = false;
         for (const m of mutations) {
-          for (const added of Array.from(m.addedNodes)) {
+          for (const added of m.addedNodes) {
             if (added.nodeType === 1) {
               const el = added;
               if (
@@ -2858,7 +2863,10 @@ var On = class {
         }
       });
       observer.observe(this.tabitemMDEl, { childList: true, subtree: true });
-    } catch (e) {}
+      this.virtualLinkObserver = observer;
+    } catch (error) {
+      console.warn("Tabs Extended could not observe a rendered tab title:", error);
+    }
   }
   clearDragState() {
     if (!this.tabs || !this.tabs.tabsNav) return;
@@ -2899,7 +2907,7 @@ var On = class {
     return after;
   }
   registerdndEvents() {
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragstart", (event) => {
+    this.tabs.registerDomEvent(this.tabitemEl, "dragstart", (event) => {
       const draggedIndex = this.tabs.tabsNav.navItems.indexOf(this);
       if (
         draggedIndex < 0 ||
@@ -2931,7 +2939,7 @@ var On = class {
       this.tabitemEl.setAttr("aria-grabbed", "true");
     });
 
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragenter", (event) => {
+    this.tabs.registerDomEvent(this.tabitemEl, "dragenter", (event) => {
       const internalDrag = this.tabs.plugin.tabDragger;
       if (!this.acceptsCurrentDrag()) {
         if (internalDrag) {
@@ -2946,7 +2954,7 @@ var On = class {
       this.updateDropIndicator(event);
     });
 
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragover", (event) => {
+    this.tabs.registerDomEvent(this.tabitemEl, "dragover", (event) => {
       const internalDrag = this.tabs.plugin.tabDragger;
       if (!this.acceptsCurrentDrag()) {
         if (internalDrag) {
@@ -2962,13 +2970,13 @@ var On = class {
       this.updateDropIndicator(event);
     });
 
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragleave", () => {
+    this.tabs.registerDomEvent(this.tabitemEl, "dragleave", () => {
       this.tabitemEl.classList.remove("tabs-nav-item-dragover");
       this.tabitemEl.classList.remove("tabs-nav-item-dragover-before");
       this.tabitemEl.classList.remove("tabs-nav-item-dragover-after");
     });
 
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "drop", (event) => {
+    this.tabs.registerDomEvent(this.tabitemEl, "drop", (event) => {
       const internalDrag = this.tabs.plugin.tabDragger;
       if (!this.acceptsCurrentDrag()) {
         if (internalDrag) {
@@ -3008,7 +3016,7 @@ var On = class {
       }
     });
 
-    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragend", () => {
+    this.tabs.registerDomEvent(this.tabitemEl, "dragend", () => {
       this.clearDragState();
       const dragger = this.tabs.plugin.tabDragger;
       if (dragger && dragger.fromTabs === this.tabs) {
@@ -3020,6 +3028,7 @@ var On = class {
 var _r = class {
   constructor(t, e, i, n) {
     this.currentTab = 0;
+    this.titleRefreshFrame = null;
     ((this.tabs = t),
       (this.navItems = new Array()),
       e.length > 0 &&
@@ -3027,6 +3036,12 @@ var _r = class {
         (this.tabsButton = new Wr(this, i, n)),
         this.createTabNavEl(e),
         (this.currentTab = 0)));
+    this.tabs.register(() => {
+      if (this.titleRefreshFrame != null) {
+        window.cancelAnimationFrame(this.titleRefreshFrame);
+        this.titleRefreshFrame = null;
+      }
+    });
   }
   createTabNavEl(t) {
     for (let e = 0; e < t.length; e++) this.navItems[e] = new On(this, e, t[e]);
@@ -3051,7 +3066,11 @@ var _r = class {
       this.navItems[t].tabitemEl.classList.add("tabs-nav-item-active"),
       (this.currentTab = t));
 
-    setTimeout(() => {
+    if (this.titleRefreshFrame != null) {
+      window.cancelAnimationFrame(this.titleRefreshFrame);
+    }
+    this.titleRefreshFrame = window.requestAnimationFrame(() => {
+      this.titleRefreshFrame = null;
       if (this.navItems && Array.isArray(this.navItems)) {
         this.navItems.forEach((item) => {
           if (item && typeof item.applyTitleBehavior === 'function') {
@@ -3059,7 +3078,7 @@ var _r = class {
           }
         });
       }
-    }, 20);
+    });
   }
   registerDragEvents() {
     this.navItems.forEach((t) => {
@@ -3078,6 +3097,10 @@ var Gr = class extends U.MarkdownRenderChild {
     this.rawText = String(t == null ? "" : t);
     this.parentTabContent = null;
     this.sourceOrdinal = -1;
+    this.sourceAnalysisCache = null;
+    this.scrollAnchorFrame = null;
+    this.scrollAnchorTimers = [];
+    this.register(() => this.cancelScrollAnchorSchedule());
     ((e.className = "tabs-container"),
       (this.plugin = r),
       (this.tabsEl = e),
@@ -3229,7 +3252,7 @@ var Gr = class extends U.MarkdownRenderChild {
     });
     return [titles, contents];
   }
-  findOuterClosingLine(editor) {
+  findOuterClosingLine(editor, expectedRawText = this.rawText) {
     if (!editor || !this.sectionInfo) return -1;
     const startLine = this.sectionInfo.lineStart;
     const lineCount = typeof editor.lineCount === "function"
@@ -3242,29 +3265,65 @@ var Gr = class extends U.MarkdownRenderChild {
     if (!opening) return -1;
     const openingChar = opening[1][0];
     const openingLength = opening[1].length;
-
-    for (let lineNumber = startLine + 1; lineNumber < lineCount; lineNumber++) {
+    const expectedBody = tabsExtendedNormalizeSource(expectedRawText);
+    const candidateMatches = (lineNumber) => {
+      if (
+        lineNumber <= startLine ||
+        lineNumber >= lineCount
+      ) {
+        return false;
+      }
       const fence = tabsExtendedFenceInfo(editor.getLine(lineNumber));
       if (
-        fence &&
-        fence.info === "" &&
-        fence.char === openingChar &&
-        fence.length >= openingLength
+        !fence ||
+        fence.info !== "" ||
+        fence.char !== openingChar ||
+        fence.length < openingLength
       ) {
-        return lineNumber;
+        return false;
       }
+      const candidateBodyWithBoundary = editor.getRange(
+        { line: startLine + 1, ch: 0 },
+        { line: lineNumber, ch: 0 },
+      );
+      const candidateBody = String(candidateBodyWithBoundary).replace(
+        /(?:\r\n|\n|\r)$/,
+        "",
+      );
+      return tabsExtendedNormalizeSource(candidateBody) === expectedBody;
+    };
+
+    // sectionInfo is maintained after every controlled write. Validate that
+    // O(1) candidate first and only scan the block when external edits made it
+    // stale.
+    const expectedClosingLine = this.sectionInfo.lineEnd;
+    if (candidateMatches(expectedClosingLine)) return expectedClosingLine;
+
+    for (let lineNumber = startLine + 1; lineNumber < lineCount; lineNumber++) {
+      if (lineNumber === expectedClosingLine) continue;
+      // A pasted fenced block can contain a closing run equal to the outer
+      // delimiter. Only the candidate whose complete body matches the source
+      // owned by this tabs instance may close the outer block.
+      if (candidateMatches(lineNumber)) return lineNumber;
     }
     return -1;
   }
   getWritableView() {
-    const view = this.app.workspace.getActiveViewOfType(ws.MarkdownView);
-    if (!view || !view.editor) return null;
     const expectedPath = this.context && this.context.sourcePath
       ? this.context.sourcePath
       : "";
-    const activePath = view.file && view.file.path ? view.file.path : "";
-    if (expectedPath && activePath && expectedPath !== activePath) return null;
-    return view;
+    const currentView = this.app && this.app.workspace
+      ? this.app.workspace.getActiveViewOfType(ws.MarkdownView)
+      : null;
+    const candidates = [currentView, this.activeView];
+    const visited = new Set();
+    for (const view of candidates) {
+      if (!view || visited.has(view) || !view.editor) continue;
+      visited.add(view);
+      const viewPath = view.file && view.file.path ? view.file.path : "";
+      if (!expectedPath || !viewPath || expectedPath === viewPath) return view;
+    }
+    return null;
   }
   readOuterSourceBody() {
     if (!this.sectionInfo) return null;
@@ -3296,14 +3355,9 @@ var Gr = class extends U.MarkdownRenderChild {
     );
   }
   buildReorderedRawText(fromIndex, toIndex) {
-    const analyzed = tabsExtendedAnalyzeTabSections(
-      this.rawText,
-      this.split,
-      this.plugin.settings,
-    );
+    const analyzed = this.analyzeCurrentTabSections();
     if (
       !analyzed ||
-      analyzed.sections.length !== this.tabsNav.navItems.length ||
       fromIndex < 0 ||
       toIndex < 0 ||
       fromIndex >= analyzed.sections.length ||
@@ -3322,11 +3376,223 @@ var Gr = class extends U.MarkdownRenderChild {
       this.rawText,
     );
   }
-  resolveNestedSourceBlock(contentText, childTabs) {
-    const blocks = tabsExtendedFindDirectNestedBlocks(
-      contentText,
+  analyzeSourceTabSections() {
+    const keyword = tabsExtendedConfiguredKeyword(this.plugin.settings);
+    const cached = this.sourceAnalysisCache;
+    if (
+      cached &&
+      cached.rawText === this.rawText &&
+      cached.split === this.split &&
+      cached.keyword === keyword
+    ) {
+      return cached.analysis;
+    }
+    const analysis = tabsExtendedAnalyzeTabSections(
+      this.rawText,
+      this.split,
       this.plugin.settings,
     );
+    this.sourceAnalysisCache = {
+      rawText: this.rawText,
+      split: this.split,
+      keyword,
+      analysis,
+    };
+    return analysis;
+  }
+  analyzeCurrentTabSections() {
+    const analyzed = this.analyzeSourceTabSections();
+    if (
+      !analyzed ||
+      !this.tabsNav ||
+      analyzed.sections.length !== this.tabsNav.navItems.length
+    ) {
+      return null;
+    }
+    return analyzed;
+  }
+  getTabSourceSection(tabIndex) {
+    const analyzed = this.analyzeCurrentTabSections();
+    if (
+      !analyzed ||
+      tabIndex < 0 ||
+      tabIndex >= analyzed.sections.length
+    ) {
+      return null;
+    }
+    const section = analyzed.sections[tabIndex];
+    return this.rawText.slice(section.from, section.to);
+  }
+  replaceTabSourceSection(tabIndex, replacementText) {
+    const analyzed = this.analyzeCurrentTabSections();
+    if (
+      !analyzed ||
+      tabIndex < 0 ||
+      tabIndex >= analyzed.sections.length
+    ) {
+      return false;
+    }
+
+    const replacement = String(replacementText == null ? "" : replacementText);
+    const replacementAnalysis = tabsExtendedAnalyzeTabSections(
+      replacement,
+      this.split,
+      this.plugin.settings,
+    );
+    if (
+      !replacementAnalysis ||
+      replacementAnalysis.prefix !== "" ||
+      replacementAnalysis.sections.length === 0
+    ) {
+      return false;
+    }
+
+    const sections = analyzed.sections.map((section) =>
+      this.rawText.slice(section.from, section.to),
+    );
+    sections.splice(tabIndex, 1, replacement);
+    const nextRawText = tabsExtendedJoinTabSections(
+      analyzed.prefix,
+      sections,
+      this.rawText,
+    );
+    const nextAnalysis = tabsExtendedAnalyzeTabSections(
+      nextRawText,
+      this.split,
+      this.plugin.settings,
+    );
+    const expectedSectionCount =
+      analyzed.sections.length - 1 + replacementAnalysis.sections.length;
+    if (
+      !nextAnalysis ||
+      nextAnalysis.sections.length !== expectedSectionCount
+    ) {
+      return false;
+    }
+    return this.persistRawTextUpdate(nextRawText, tabIndex);
+  }
+  buildNewTabSource(title, content) {
+    const lineBreakMatch = this.rawText.match(/\r\n|\n|\r/);
+    const lineBreak = lineBreakMatch ? lineBreakMatch[0] : "\n";
+    const safeTitle = String(title == null ? "" : title)
+      .replace(/\r\n|\n|\r/g, " ")
+      .trim();
+    const body = String(content == null ? "" : content);
+    return this.split + safeTitle + (body.length > 0 ? lineBreak + body : "");
+  }
+  insertTabSourceSections(newSections) {
+    // Appending does not depend on a visual tab index. The source is the
+    // authority here because Obsidian may still expose the previous DOM for a
+    // short interval after a modal save changed the number of separators.
+    const analyzed = this.analyzeSourceTabSections();
+    if (!analyzed || !Array.isArray(newSections) || newSections.length === 0) {
+      return false;
+    }
+    const safeSections = [];
+    for (const sourceSection of newSections) {
+      const sectionText = String(sourceSection == null ? "" : sourceSection);
+      const sectionAnalysis = tabsExtendedAnalyzeTabSections(
+        sectionText,
+        this.split,
+        this.plugin.settings,
+      );
+      if (
+        !sectionAnalysis ||
+        sectionAnalysis.prefix !== "" ||
+        sectionAnalysis.sections.length !== 1
+      ) {
+        return false;
+      }
+      safeSections.push(sectionText);
+    }
+
+    const currentSections = analyzed.sections.map((section) =>
+      this.rawText.slice(section.from, section.to),
+    );
+    const lastSectionIndex = currentSections.length - 1;
+    const completedLastSection = tabsExtendedCompleteDanglingTabFences(
+      currentSections[lastSectionIndex],
+      this.plugin.settings,
+    );
+    if (completedLastSection == null) return false;
+    currentSections[lastSectionIndex] = completedLastSection;
+    const firstInsertedIndex = currentSections.length;
+    const nextRawText = tabsExtendedJoinTabSections(
+      analyzed.prefix,
+      currentSections.concat(safeSections),
+      this.rawText,
+    );
+    const nextAnalysis = tabsExtendedAnalyzeTabSections(
+      nextRawText,
+      this.split,
+      this.plugin.settings,
+    );
+    if (
+      !nextAnalysis ||
+      nextAnalysis.sections.length !== currentSections.length + safeSections.length
+    ) {
+      return false;
+    }
+    return this.persistRawTextUpdate(nextRawText, firstInsertedIndex);
+  }
+  insertNewTab(title, content) {
+    return this.insertTabSourceSections([
+      this.buildNewTabSource(title, content),
+    ]);
+  }
+  insertClipboardTabs(clipboardText) {
+    const source = String(clipboardText == null ? "" : clipboardText);
+    if (source.trim() === "" || source.trim() === this.split) return false;
+    const clipboardAnalysis = tabsExtendedAnalyzeTabSections(
+      source,
+      this.split,
+      this.plugin.settings,
+    );
+    if (clipboardAnalysis && clipboardAnalysis.prefix === "") {
+      const copiedSections = clipboardAnalysis.sections.map((section) =>
+        source.slice(section.from, section.to),
+      );
+      return this.insertTabSourceSections(copiedSections);
+    }
+
+    const defaultTitle = this.isVertical
+      ? this.plugin.settings.defaultTabNavItemVertical || "New vertical tab"
+      : this.plugin.settings.defaultTabNavItem || "New tab";
+    return this.insertNewTab(defaultTitle, source);
+  }
+  deleteTabAt(tabIndex) {
+    const analyzed = this.analyzeCurrentTabSections();
+    if (
+      !analyzed ||
+      analyzed.sections.length <= 1 ||
+      tabIndex < 0 ||
+      tabIndex >= analyzed.sections.length
+    ) {
+      return false;
+    }
+    const sections = analyzed.sections.map((section) =>
+      this.rawText.slice(section.from, section.to),
+    );
+    sections.splice(tabIndex, 1);
+    const nextRawText = tabsExtendedJoinTabSections(
+      analyzed.prefix,
+      sections,
+      this.rawText,
+    );
+    let nextActiveIndex = this.currentIndex;
+    if (tabIndex === this.currentIndex) {
+      nextActiveIndex = Math.min(tabIndex, sections.length - 1);
+    } else if (tabIndex < this.currentIndex) {
+      nextActiveIndex -= 1;
+    }
+    return this.persistRawTextUpdate(nextRawText, nextActiveIndex);
+  }
+  resolveNestedSourceBlock(contentText, childTabs) {
+    const parentContent = childTabs && childTabs.parentTabContent;
+    const blocks = parentContent &&
+      typeof parentContent.getDirectNestedBlocks === "function"
+      ? parentContent.getDirectNestedBlocks(contentText)
+      : tabsExtendedFindDirectNestedBlocks(contentText, this.plugin.settings);
     const expectedBody = tabsExtendedNormalizeSource(childTabs.rawText);
     const isMatch = (block) =>
       block &&
@@ -3422,7 +3688,10 @@ var Gr = class extends U.MarkdownRenderChild {
     }
     const view = rootTabs.getWritableView();
     if (!view) return false;
-    const closingLine = rootTabs.findOuterClosingLine(view.editor);
+    const closingLine = rootTabs.findOuterClosingLine(
+      view.editor,
+      rootTabs.rawText,
+    );
     if (closingLine < 0) return false;
     const currentBodyWithBoundary = view.editor.getRange(
       { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
@@ -3433,26 +3702,70 @@ var Gr = class extends U.MarkdownRenderChild {
       "",
     );
     if (
-      currentBody.replace(/\r\n?/g, "\n") !==
-      String(rootTabs.rawText).replace(/\r\n?/g, "\n")
+      tabsExtendedNormalizeSource(currentBody) !==
+      tabsExtendedNormalizeSource(rootTabs.rawText)
     ) {
       console.warn(
-        "Tabs Extended cancelled a stale drag operation because the source changed after rendering.",
+        "Tabs Extended cancelled a stale source operation because the document changed after rendering.",
       );
       return false;
     }
 
-    view.editor.replaceRange(
-      String(nextRawText) + "\n",
-      { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
-      { line: closingLine, ch: 0 },
+    const nextBody = String(nextRawText);
+    const openingLine = String(
+      view.editor.getLine(rootTabs.sectionInfo.lineStart) || "",
     );
-    const oldLineCount = currentBody.split(/\r?\n/).length;
-    const newLineCount = String(nextRawText).split(/\r?\n/).length;
-    rootTabs.sectionInfo.lineEnd = closingLine + newLineCount - oldLineCount;
+    const openingMatch = openingLine.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
+    if (!openingMatch) return false;
+    const fenceChar = openingMatch[2][0];
+    const currentFenceLength = openingMatch[2].length;
+    const maxInnerFenceLength = tabsExtendedMaxFenceLength(
+      nextBody,
+      fenceChar,
+    );
+    const requiredFenceLength = Math.max(
+      currentFenceLength,
+      maxInnerFenceLength >= currentFenceLength
+        ? maxInnerFenceLength + 1
+        : currentFenceLength,
+    );
+
+    if (requiredFenceLength > currentFenceLength) {
+      const closingLineText = String(view.editor.getLine(closingLine) || "");
+      const closingMatch = closingLineText.match(
+        /^(\s*)(`{3,}|~{3,})(\s*)$/,
+      );
+      if (!closingMatch || closingMatch[2][0] !== fenceChar) return false;
+      const nextFence = fenceChar.repeat(requiredFenceLength);
+      const nextOpeningLine =
+        openingMatch[1] + nextFence + openingMatch[3];
+      const nextClosingLine =
+        closingMatch[1] + nextFence + closingMatch[3];
+      const nextBlock =
+        nextOpeningLine + "\n" + nextBody + "\n" + nextClosingLine;
+      view.editor.replaceRange(
+        nextBlock,
+        { line: rootTabs.sectionInfo.lineStart, ch: 0 },
+        { line: closingLine, ch: closingLineText.length },
+      );
+      rootTabs.backquote = fenceChar;
+      rootTabs.backquoteCount = requiredFenceLength;
+      rootTabs.sectionInfo.lineEnd =
+        rootTabs.sectionInfo.lineStart + nextBlock.split("\n").length - 1;
+    } else {
+      view.editor.replaceRange(
+        nextBody + "\n",
+        { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
+        { line: closingLine, ch: 0 },
+      );
+      const oldLineCount = currentBody.split(/\r?\n/).length;
+      const newLineCount = nextBody.split(/\r?\n/).length;
+      rootTabs.sectionInfo.lineEnd =
+        closingLine + newLineCount - oldLineCount;
+    }
     return true;
   }
-  stageReorderFocus(toIndex) {
+  stageSourceMutationFocus(nextActiveIndex) {
     const cache = this.plugin.lastTabsCache;
     if (!(cache instanceof Map)) return () => {};
     const snapshots = [];
@@ -3471,7 +3784,7 @@ var Gr = class extends U.MarkdownRenderChild {
         });
         cache.set(
           cacheId,
-          isDraggedBlock ? toIndex : currentTabs.currentIndex,
+          isDraggedBlock ? nextActiveIndex : currentTabs.currentIndex,
         );
       }
       isDraggedBlock = false;
@@ -3487,6 +3800,30 @@ var Gr = class extends U.MarkdownRenderChild {
       });
     };
   }
+  persistRawTextUpdate(nextRawText, nextActiveIndex) {
+    const sourceUpdate = this.buildSourceUpdate(nextRawText);
+    if (!sourceUpdate) return false;
+    // Prepare the complete active ancestry before touching the editor because
+    // Obsidian may synchronously rebuild nested processors during replaceRange.
+    const rollbackFocus = this.stageSourceMutationFocus(nextActiveIndex);
+    if (!this.writeRootRawText(
+      sourceUpdate.rootTabs,
+      sourceUpdate.rootRawText,
+    )) {
+      rollbackFocus();
+      return false;
+    }
+    sourceUpdate.tabsUpdates.forEach((rawText, tabs) => {
+      tabs.rawText = rawText;
+      tabs.sourceAnalysisCache = null;
+    });
+    sourceUpdate.contentUpdates.forEach((content, contentItem) => {
+      contentItem.content = content;
+      contentItem.nestedBlocksCache = null;
+    });
+    this.currentIndex = nextActiveIndex;
+    return true;
+  }
   reorderTab(fromIndex, toIndex) {
     if (
       fromIndex === toIndex ||
@@ -3500,25 +3837,7 @@ var Gr = class extends U.MarkdownRenderChild {
     }
     const reorderedRawText = this.buildReorderedRawText(fromIndex, toIndex);
     if (reorderedRawText == null) return false;
-    const sourceUpdate = this.buildSourceUpdate(reorderedRawText);
-    if (!sourceUpdate) return false;
-    // Cache the complete active ancestry before touching the editor. Obsidian
-    // may synchronously rebuild every nested processor during replaceRange.
-    const rollbackFocus = this.stageReorderFocus(toIndex);
-    if (!this.writeRootRawText(
-      sourceUpdate.rootTabs,
-      sourceUpdate.rootRawText,
-    )) {
-      rollbackFocus();
-      return false;
-    }
-
-    sourceUpdate.tabsUpdates.forEach((rawText, tabs) => {
-      tabs.rawText = rawText;
-    });
-    sourceUpdate.contentUpdates.forEach((content, contentItem) => {
-      contentItem.content = content;
-    });
+    if (!this.persistRawTextUpdate(reorderedRawText, toIndex)) return false;
 
     const movedNav = this.tabsNav.navItems.splice(fromIndex, 1)[0];
     this.tabsNav.navItems.splice(toIndex, 0, movedNav);
@@ -3563,7 +3882,18 @@ var Gr = class extends U.MarkdownRenderChild {
     this.tabsContents.currentTab = toIndex;
     return true;
   }
+  cancelScrollAnchorSchedule() {
+    if (this.scrollAnchorFrame != null) {
+      window.cancelAnimationFrame(this.scrollAnchorFrame);
+      this.scrollAnchorFrame = null;
+    }
+    for (const timer of this.scrollAnchorTimers) {
+      window.clearTimeout(timer);
+    }
+    this.scrollAnchorTimers.length = 0;
+  }
   lockScrollPosition(anchorEl, action) {
+    this.cancelScrollAnchorSchedule();
     if (!anchorEl) {
       action();
       return;
@@ -3600,14 +3930,15 @@ var Gr = class extends U.MarkdownRenderChild {
     };
 
     enforceAnchor();
-    requestAnimationFrame(enforceAnchor);
-    setTimeout(enforceAnchor, 20);
-    setTimeout(enforceAnchor, 60);
-    setTimeout(enforceAnchor, 120);
-    setTimeout(enforceAnchor, 250);
-    setTimeout(enforceAnchor, 450);
+    this.scrollAnchorFrame = window.requestAnimationFrame(() => {
+      this.scrollAnchorFrame = null;
+      enforceAnchor();
+    });
+    this.scrollAnchorTimers = [20, 60, 120, 250, 450].map((delay) =>
+      window.setTimeout(enforceAnchor, delay),
+    );
   }
-  async registerEventHandlers() {
+  registerEventHandlers() {
     const dragEnabled =
       !!this.plugin.settings.dragAndDrop && this.canPersistTabOrder();
     this.tabsNav.navItems.forEach((item) => {
@@ -3615,7 +3946,7 @@ var Gr = class extends U.MarkdownRenderChild {
       item.tabitemEl.setAttr("aria-grabbed", "false");
     });
     if (this.tabsEl) {
-      this.plugin.registerDomEvent(
+      this.registerDomEvent(
         this.tabsEl,
         "wheel",
         (ev) => {
@@ -3652,13 +3983,13 @@ var Gr = class extends U.MarkdownRenderChild {
     }
     switch (
       (this.tabsNav.navItems.forEach((t) => {
-        this.plugin.registerDomEvent(t.tabitemEl, "mousedown", (ev) => {
+        this.registerDomEvent(t.tabitemEl, "mousedown", (ev) => {
           // Native HTML drag detection needs the primary mousedown default.
           // Click selection is still isolated from the surrounding editor.
           if (!(dragEnabled && ev.button === 0)) ev.preventDefault();
           ev.stopPropagation();
         });
-        this.plugin.registerDomEvent(t.tabitemEl, "click", (ev) => {
+        this.registerDomEvent(t.tabitemEl, "click", (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
           let e = this.tabsNav.navItems.indexOf(t);
@@ -3675,7 +4006,7 @@ var Gr = class extends U.MarkdownRenderChild {
       }),
       this.tabsType === "outertabs" &&
         this.plugin.settings.doubleClickToEdit &&
-        this.plugin.registerDomEvent(
+        this.registerDomEvent(
           this.tabsContents.tabcontentsEl,
           "dblclick",
           (t) => {
@@ -3693,7 +4024,7 @@ var Gr = class extends U.MarkdownRenderChild {
           !this.isPreviewMode() &&
           this.tabsType !== "innertabs" &&
           this.tabsNav.tabsButton.buttonEl &&
-          this.plugin.registerDomEvent(
+          this.registerDomEvent(
             this.tabsNav.tabsButton.buttonEl,
             "click",
             () => {
@@ -3706,11 +4037,10 @@ var Gr = class extends U.MarkdownRenderChild {
           !this.isPreviewMode() &&
           this.tabsType !== "innertabs" &&
           this.tabsNav.tabsButton.buttonEl &&
-          this.plugin.registerDomEvent(
+          this.registerDomEvent(
             this.tabsNav.tabsButton.buttonEl,
             "click",
             () => {
-              this.plugin.lastTabsCache[this.tabsId] = this.tabsNav.navItems.length;
               let title = this.isVertical
                 ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
                 : (this.plugin.settings.defaultTabNavItem || "New tab");
@@ -3726,9 +4056,10 @@ var Gr = class extends U.MarkdownRenderChild {
     }
     (this.activeView &&
       !this.isPreviewMode() &&
-      this.tabsType !== "innertabs" &&
-      this.plugin.registerDomEvent(this.tabsNav.navEl, "contextmenu", (t) => {
-        (t.preventDefault(), new Yr(this, t).showAtMouseEvent(t));
+      this.registerDomEvent(this.tabsNav.navEl, "contextmenu", (t) => {
+        t.preventDefault();
+        t.stopPropagation();
+        new Yr(this, t).showAtMouseEvent(t);
       }),
       dragEnabled && this.tabsNav.registerDragEvents());
   }
@@ -3741,7 +4072,8 @@ var Gr = class extends U.MarkdownRenderChild {
     );
   }
   updateBackquote(rawText) {
-    // ── Detect fence char and exact length from the actual opening line ──────
+    // The source opening line is the only authority for the current outer
+    // fence. Collision growth is calculated atomically by writeRootRawText().
     if (this.activeView && this.sectionInfo) {
       const openLine = this.activeView.editor
         .getLine(this.sectionInfo.lineStart)
@@ -3752,18 +4084,6 @@ var Gr = class extends U.MarkdownRenderChild {
         this.backquote = openFence[0];          // '`' or '~'
         this.backquoteCount = openFence.length; // exact fence length
         this.headerTag = openMatch[2].trim() || (this.isVertical ? "tabs-v" : "tabs");
-      }
-    }
-
-    // ── Scan content for nested fences; outer must be strictly longer ────────
-    const nestedFences = rawText.match(/^(`{3,}|~{3,})/gm);
-    if (nestedFences) {
-      const maxNested = nestedFences.reduce(
-        (max, f) => Math.max(max, f.length),
-        0
-      );
-      if (maxNested >= this.backquoteCount) {
-        this.backquoteCount = maxNested + 1;
       }
     }
   }
@@ -29657,6 +29977,13 @@ var Zl = class {
     // EditorSelection is `Z`. The modal is created with `I` + `A`, so every
     // selection passed to it must come from their matching runtime, `k`.
     this.ModalSelection = k;
+    const modalConfiguredKeyword = (t.settings.tabsKeyword || "tabs").trim();
+    const modalSafeKeyword = modalConfiguredKeyword.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const modalTabsInfoRegex = new RegExp(
+      `^(?:${modalSafeKeyword}(?:-v)?|tabs(?:-v)?)$`,
+      "i",
+    );
+    this.modalTabsInfoRegex = modalTabsInfoRegex;
     this.activeLineHighlighter = Zt.fromClass(
       class {
         constructor(t) {
@@ -29812,12 +30139,18 @@ var Zl = class {
                       span.style.opacity = "0.7";
                       span.style.color = "var(--nested-tab-delimiter-color)";
                       span.style.marginLeft = "1em";
-                      span.innerHTML = this.text + (this.depth !== "" ? " <b>" + this.depth + "</b>" : "");
+                      span.appendChild(document.createTextNode(this.text));
+                      if (this.depth !== "") {
+                          span.appendChild(document.createTextNode(" "));
+                          let depthEl = document.createElement("b");
+                          depthEl.textContent = String(this.depth);
+                          span.appendChild(depthEl);
+                      }
                       
                       if (this.type && this.view) {
                           let delBtn = document.createElement("span");
                           delBtn.className = "tabs-delete-button";
-                          delBtn.innerHTML = " 🗑️";
+                          delBtn.textContent = " 🗑️";
                           delBtn.style.cursor = "pointer";
                           delBtn.style.pointerEvents = "auto";
                           delBtn.title = "Delete " + (this.type === "block" ? "entire nested block" : "tab and its content");
@@ -29841,9 +30174,6 @@ var Zl = class {
           let doc = view.state.doc;
           let isModal = !!view.dom.closest('.tabs-editor-modal');
           let baseDepth = isModal ? 1 : 0;
-          let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
-          let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
 
           for (let p = 1; p <= doc.lines; p++) {
              let line = doc.line(p);
@@ -29863,7 +30193,7 @@ var Zl = class {
                      continue;
                  }
                  
-                  if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && !openTagRegex.test(info.toLowerCase())) {
+                  if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && !modalTabsInfoRegex.test(info)) {
                        let depth = tabDepth;
                        let popped = fenceStack.pop();
                        if (popped.type === "tabs") {
@@ -29876,7 +30206,7 @@ var Zl = class {
                             i.push(q.widget({ widget: new this.DepthWidget(endText, depth, view, p, null, t.settings.split, baseDepth), side: 1 }).range(line.to));
                       }
                  } else {
-                      if (openTagRegex.test(info.toLowerCase())) {
+                      if (modalTabsInfoRegex.test(info)) {
                             let isVertical = info.toLowerCase().endsWith("-v");
                             fenceStack.push({ fence: fenceStr, type: "tabs", startLine: p, isVertical });
                             tabDepth++;
@@ -29968,9 +30298,6 @@ var Zl = class {
           let pairs = [];
           let stack = [];
           let tabDepth = 0;
-          let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
-          let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, "i");
 
           for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
             let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)/);
@@ -29986,7 +30313,7 @@ var Zl = class {
             }
 
             if (current && current.type === "tabs" && fence[0] === current.fence[0] &&
-                fence.length >= current.fence.length && !openTagRegex.test(info)) {
+                fence.length >= current.fence.length && !modalTabsInfoRegex.test(info)) {
               let closed = stack.pop();
               let depth = tabDepth;
               tabDepth--;
@@ -29998,7 +30325,7 @@ var Zl = class {
               continue;
             }
 
-            if (openTagRegex.test(info)) {
+            if (modalTabsInfoRegex.test(info)) {
               stack.push({ type: "tabs", fence, startLine: lineNo });
               tabDepth++;
             } else {
@@ -30405,9 +30732,7 @@ var Zl = class {
 
             let protectedLines = new Set();
             let stack = [];
-            let mainKeyword = (this.plugin.settings.tabsKeyword || "tabs").trim();
-            let safeKeyword = mainKeyword.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-            let tabsInfo = new RegExp(`^(?:${safeKeyword}(?:-v)?|tabs(?:-v)?)$`, "i");
+            let tabsInfo = this.modalTabsInfoRegex;
 
             for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
                 let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)$/);
@@ -30950,9 +31275,7 @@ var Zl = class {
     let cursorLine = doc.lineAt(cursorPos).number;
     let fenceStack = [];
 
-    let mainKw = (this.plugin.settings.tabsKeyword || "tabs").trim().toLowerCase();
-    let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-    let tabInfoRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
+    let tabInfoRegex = this.modalTabsInfoRegex;
 
     for (let p = 1; p < cursorLine; p++) {
       let text = doc.line(p).text.trim();
@@ -31047,9 +31370,7 @@ var Zl = class {
     let defaultContent = this.plugin.settings.defaultTabContent || "New tab content";
 
     let fenceStack = [];
-    let mainKw = (this.plugin.settings.tabsKeyword || "tabs").trim().toLowerCase();
-    let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-    let tabInfoRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
+    let tabInfoRegex = this.modalTabsInfoRegex;
 
     let insertLineNo = doc.lines;
 
@@ -31502,7 +31823,14 @@ var Ml = class extends CO.Modal {
       if (t.tabsContents && t.tabsContents.tabcontents && t.tabsContents.tabcontents[t.currentIndex]) {
           contentStr = t.tabsContents.tabcontents[t.currentIndex].content.replace(/[\r\n]+$/, "");
       }
-      let e = (t.split || "") + titleStr + "\n" + contentStr;
+      const sourceSection =
+        typeof t.getTabSourceSection === "function"
+          ? t.getTabSourceSection(t.currentIndex)
+          : null;
+      let e = sourceSection != null
+        ? sourceSection
+        : (t.split || "") + titleStr + "\n" + contentStr;
+      this.initialEditorText = e;
       
       let s = this.plugin.settings;
       if (s.nestedTabsHighlight && this.modalEl) {
@@ -31563,7 +31891,8 @@ var Ml = class extends CO.Modal {
       this.styleObserver = null;
     }
     if (this.saveTimeout) activeWindow.clearTimeout(this.saveTimeout);
-    this.saveEditorData();
+    this.saveTimeout = null;
+    if (this.editor && this.editor.docChange) this.saveEditorData();
     if (this.editor && this.editor.view) {
       if (window.tabsExtActiveViews) {
         let idx = window.tabsExtActiveViews.indexOf(this.editor.view);
@@ -31573,114 +31902,27 @@ var Ml = class extends CO.Modal {
     }
   }
   saveEditorData() {
-    this.editor.docChange = false;
-    let t = this.getUpdatedTabsByIndex(this.tabs.currentIndex);
-    const activeView = this.tabs.activeView;
-    if (!activeView || !activeView.editor) return;
-
-    const editor = activeView.editor;
-    const sectionInfo = this.tabs.sectionInfo;
-    if (!sectionInfo) return;
-
-    const lineStart = sectionInfo.lineStart;
-    let lineEnd = sectionInfo.lineEnd;
-
-    // Dynamically resolve actual lineEnd of outer block to prevent stale line range desync
-    try {
-      const startLineText = (editor.getLine(lineStart) || "").trim();
-      const startMatch = startLineText.match(/^(`{3,}|~{3,})/);
-      if (startMatch) {
-        const fenceChar = startMatch[1][0];
-        const fenceLen = startMatch[1].length;
-        let stack = 0;
-        const totalLines = typeof editor.lineCount === "function" ? editor.lineCount() : 999999;
-        
-        for (let p = lineStart; p < totalLines; p++) {
-          const lineText = (editor.getLine(p) || "").trim();
-          const m = lineText.match(/^(`{3,}|~{3,})(.*)/);
-          if (m) {
-            const char = m[1][0];
-            const len = m[1].length;
-            const info = m[2].trim();
-            if (char === fenceChar && len >= fenceLen) {
-              if (info.length > 0) {
-                stack++;
-              } else {
-                stack--;
-                if (stack === 0 || p > lineStart) {
-                  lineEnd = p;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      // Fallback to sectionInfo.lineEnd on any exception
+    if (!this.editor || !this.editor.view || !this.tabs) return false;
+    const editorText = this.editor.view.state.doc.toString();
+    if (!this.editor.docChange || editorText === this.initialEditorText) {
+      this.editor.docChange = false;
+      return true;
     }
+    if (typeof this.tabs.replaceTabSourceSection !== "function") return false;
 
-    const endLineText = editor.getLine(lineEnd) || "";
-    let anchorEl = this.tabs ? (this.tabs.tabsEl || (this.tabs.tabsNav ? this.tabs.tabsNav.navEl : null)) : null;
-    const applyReplace = () => {
-      editor.replaceRange(
-        t,
-        { line: lineStart, ch: 0 },
-        { line: lineEnd, ch: endLineText.length }
-      );
-    };
-    if (this.tabs && typeof this.tabs.lockScrollPosition === "function") {
-      this.tabs.lockScrollPosition(anchorEl, applyReplace);
-    } else {
-      applyReplace();
-    }
-
-    // Update sectionInfo.lineEnd to track the new actual line count in the note document
-    const insertedLineCount = t.split("\n").length;
-    this.tabs.sectionInfo.lineEnd = lineStart + insertedLineCount - 1;
-  }
-  getUpdatedTabsByIndex(t) {
-    let e = this.editor.view.state.doc.toString(),
-      i = "";
-    for (let n = 0; n < this.tabs.tabsNav.navItems.length; n++) {
-      if (n !== t) {
-        i +=
-          this.tabs.split +
-          this.tabs.tabsNav.navItems[n].title +
-          "\n" +
-          this.tabs.tabsContents.tabcontents[n].content.replace(/[\r\n]+$/, "") +
-          "\n\n";
-      } else {
-        i +=
-          e.replace(/[\r\n]+$/, "") +
-          "\n\n";
-      }
-    }
-    
-    if (!this.tabs.initialBackquoteCount) {
-      this.tabs.initialBackquoteCount = this.tabs.backquoteCount || 3;
-    }
-    
-    const fenceChar = this.tabs.backquote || "`";
-    let requiredFenceCount = this.tabs.initialBackquoteCount;
-
-    const regex = new RegExp((fenceChar === "`" ? "`{3,}" : "~{3,}"), "g");
-    const matches = i.match(regex);
-    if (matches && matches.length > 0) {
-      const maxInnerLen = Math.max(...matches.map(m => m.length));
-      if (maxInnerLen >= requiredFenceCount) {
-        requiredFenceCount = maxInnerLen + 1;
-      }
-    }
-
-    let tag = this.tabs.headerTag || (this.tabs.isVertical ? "tabs-v" : "tabs");
-    return (
-      fenceChar.repeat(requiredFenceCount) +
-      tag + "\n" +
-      (this.tabs.tabsConfig.rawConfig ? this.tabs.tabsConfig.rawConfig + "\n" : "") +
-      i +
-      fenceChar.repeat(requiredFenceCount)
+    const saved = this.tabs.replaceTabSourceSection(
+      this.tabs.currentIndex,
+      editorText,
     );
+    if (saved) {
+      this.initialEditorText = editorText;
+      this.editor.docChange = false;
+    } else {
+      console.warn(
+        "Tabs Extended cancelled an unsafe modal save; the source was not modified.",
+      );
+    }
+    return saved;
   }
 };
 // Obsidian normally loads styles.css beside main.js. Keep the rendering core
