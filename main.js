@@ -271,7 +271,7 @@ var zr_es = {
   "auto_refresh_name": "Actualización Automática de Vista",
   "auto_refresh_desc": "Actualiza automáticamente las notas abiertas al cerrar este panel de ajustes si se realizaron cambios.",
   "drag_drop_name": "Reordenar Pestañas por Arrastre",
-  "drag_drop_desc": "Permite cambiar el orden de las pestañas arrastrándolas directamente con el ratón.",
+  "drag_drop_desc": "Permite reordenar pestañas principales y anidadas arrastrando sus títulos. Cada pestaña se mueve con todo su contenido y solo entre separadores hermanos del mismo bloque y nivel.",
   "double_click_name": "Edición con Doble Clic",
   "double_click_desc": "Abre el editor modal al hacer doble clic sobre la pestaña deseada.",
   "hide_edit_name": "Boton Flotante de Edición de Bloque",
@@ -497,7 +497,7 @@ PluginLocales = {
     auto_refresh_name: "Auto-refresh Document View",
     auto_refresh_desc: "Automatically refresh open notes when closing this settings panel if changes were made.",
     drag_drop_name: "Enable Drag & Drop",
-    drag_drop_desc: "Allow rearranging tabs by clicking and dragging their titles.",
+    drag_drop_desc: "Reorder main and nested tabs by dragging their titles. Each tab moves with all of its content and only between sibling separators in the same block and nesting level.",
     double_click_name: "Double-Click to Edit",
     double_click_desc: "Quickly open the modal editor by double-clicking any tab title.",
     hide_edit_name: "Hide Floating Edit Button",
@@ -669,7 +669,7 @@ PluginLocales = {
     auto_refresh_name: "Actualización Automática de Vista",
     auto_refresh_desc: "Actualiza automáticamente las notas abiertas al cerrar este panel de ajustes si se realizaron cambios.",
     drag_drop_name: "Reordenar Pestañas por Arrastre",
-    drag_drop_desc: "Permite cambiar el orden de las pestañas arrastrándolas directamente con el ratón.",
+    drag_drop_desc: "Permite reordenar pestañas principales y anidadas arrastrando sus títulos. Cada pestaña se mueve con todo su contenido y solo entre separadores hermanos del mismo bloque y nivel.",
     double_click_name: "Edición con Doble Clic",
     double_click_desc: "Abre el editor modal al hacer doble clic sobre la pestaña deseada.",
     hide_edit_name: "Botón Flotante de Edición de Bloque",
@@ -1827,10 +1827,226 @@ PluginLocales = {
   };
 var Br = te(require("obsidian"));
 var ws = te(require("obsidian"));
+
+// Build source-aware line records without normalizing the user's line endings.
+// Drag and drop uses these offsets to move complete tab sections verbatim.
+function tabsExtendedSourceLines(text) {
+  const source = String(text == null ? "" : text);
+  const lines = [];
+  const linePattern = /([^\r\n]*)(\r\n|\n|\r|$)/g;
+  let match;
+  while ((match = linePattern.exec(source)) !== null) {
+    if (match[0] === "" && match.index === source.length) break;
+    const start = match.index;
+    const lineText = match[1];
+    const lineBreak = match[2];
+    lines.push({
+      text: lineText,
+      start,
+      end: start + lineText.length,
+      fullEnd: start + match[0].length,
+      lineBreak,
+    });
+    if (!lineBreak) break;
+  }
+  return lines;
+}
+
+function tabsExtendedFenceInfo(lineText) {
+  const match = String(lineText == null ? "" : lineText)
+    .trim()
+    .match(/^(`{3,}|~{3,})(.*)$/);
+  if (!match) return null;
+  const fence = match[1];
+  return {
+    fence,
+    char: fence[0],
+    length: fence.length,
+    info: match[2].trim(),
+  };
+}
+
+function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
+  if (!fence) return;
+  if (stack.length === 0) {
+    if (fence.info !== "") {
+      const keyword = fence.info.split(/\s+/)[0].toLowerCase();
+      stack.push({
+        char: fence.char,
+        length: fence.length,
+        isTabs: keywords.has(keyword),
+      });
+    }
+    return;
+  }
+  const current = stack[stack.length - 1];
+  if (
+    fence.info === "" &&
+    fence.char === current.char &&
+    fence.length >= current.length
+  ) {
+    stack.pop();
+  } else if (fence.info !== "" && current.isTabs) {
+    // Any fenced block with an info string starts a protected descendant scope.
+    // Its contents cannot expose separators belonging to the current tab level.
+    const keyword = fence.info.split(/\s+/)[0].toLowerCase();
+    stack.push({
+      char: fence.char,
+      length: fence.length,
+      isTabs: keywords.has(keyword),
+    });
+  }
+}
+
+function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {
+  const source = String(rawText == null ? "" : rawText);
+  const separator = String(split == null ? "" : split);
+  if (!separator) return null;
+  const lines = tabsExtendedSourceLines(source);
+  const keywords = tabsExtendedTabKeywords(settings);
+  const fenceStack = [];
+  const separatorLines = [];
+
+  for (const line of lines) {
+    const isTableLine =
+      line.text.includes("|") || /^\s*:?-{2,}:?/.test(line.text);
+    if (
+      fenceStack.length === 0 &&
+      line.text.startsWith(separator) &&
+      !isTableLine
+    ) {
+      separatorLines.push(line);
+      continue;
+    }
+    tabsExtendedUpdateFenceStack(
+      fenceStack,
+      tabsExtendedFenceInfo(line.text),
+      keywords,
+    );
+  }
+
+  if (separatorLines.length === 0) return null;
+  const sections = separatorLines.map((line, index) => ({
+    from: line.start,
+    to:
+      index + 1 < separatorLines.length
+        ? separatorLines[index + 1].start
+        : source.length,
+    separatorFrom: line.start,
+    separatorTo: line.end,
+    contentFrom: line.fullEnd,
+  }));
+  return {
+    prefix: source.slice(0, separatorLines[0].start),
+    sections,
+  };
+}
+
+function tabsExtendedJoinTabSections(prefix, sections, sourceText) {
+  const source = String(sourceText == null ? "" : sourceText);
+  const lineBreakMatch = source.match(/\r\n|\n|\r/);
+  const lineBreak = lineBreakMatch ? lineBreakMatch[0] : "\n";
+  let result = String(prefix == null ? "" : prefix);
+
+  sections.forEach((section, index) => {
+    const sectionText = String(section == null ? "" : section);
+    // The final source section may end exactly at the closing fence and thus
+    // have no trailing newline. If it is moved before a sibling, restore only
+    // the structural boundary needed to keep both separators on their own lines.
+    if (
+      index > 0 &&
+      result.length > 0 &&
+      sectionText.length > 0 &&
+      !/(?:\r\n|\n|\r)$/.test(result) &&
+      !/^(?:\r\n|\n|\r)/.test(sectionText)
+    ) {
+      result += lineBreak;
+    }
+    result += sectionText;
+  });
+
+  return result;
+}
+
+function tabsExtendedTabKeywords(settings) {
+  const configured = String(
+    settings && settings.tabsKeyword ? settings.tabsKeyword : "tabs",
+  )
+    .trim()
+    .toLowerCase();
+  return new Set([configured, configured + "-v", "tabs", "tabs-v"]);
+}
+
+function tabsExtendedFindDirectNestedBlocks(rawText, settings) {
+  const source = String(rawText == null ? "" : rawText);
+  const lines = tabsExtendedSourceLines(source);
+  const keywords = tabsExtendedTabKeywords(settings);
+  const stack = [];
+  const blocks = [];
+
+  for (const line of lines) {
+    const fence = tabsExtendedFenceInfo(line.text);
+    if (!fence) continue;
+
+    if (stack.length === 0) {
+      if (fence.info === "") continue;
+      const keyword = fence.info.split(/\s+/)[0].toLowerCase();
+      stack.push({
+        char: fence.char,
+        length: fence.length,
+        keyword,
+        isTabs: keywords.has(keyword),
+        blockFrom: line.start,
+        bodyFrom: line.fullEnd,
+      });
+      continue;
+    }
+
+    const current = stack[stack.length - 1];
+    if (
+      fence.info === "" &&
+      fence.char === current.char &&
+      fence.length >= current.length
+    ) {
+      const closed = stack.pop();
+      if (stack.length === 0 && closed.isTabs) {
+        blocks.push({
+          blockFrom: closed.blockFrom,
+          blockTo: line.fullEnd,
+          bodyFrom: closed.bodyFrom,
+          bodyTo: line.start,
+          keyword: closed.keyword,
+          isVertical: closed.keyword.endsWith("-v"),
+        });
+      }
+    } else if (fence.info !== "" && current.isTabs) {
+      const keyword = fence.info.split(/\s+/)[0].toLowerCase();
+      stack.push({
+        char: fence.char,
+        length: fence.length,
+        keyword,
+        isTabs: keywords.has(keyword),
+        blockFrom: line.start,
+        bodyFrom: line.fullEnd,
+      });
+    }
+  }
+
+  return blocks;
+}
+
+function tabsExtendedNormalizeSource(text) {
+  return String(text == null ? "" : text)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n+$/, "");
+}
+
 var ys = te(require("obsidian")),
   pn = class {
-    constructor(t, e, i, n, r) {
+    constructor(t, e, i, n, r, ownerTabs = null) {
       this.isActiveed = !1;
+      this.ownerTabs = ownerTabs;
+      this.claimedNestedBlocks = new Set();
       ((this.index = t),
         (this.title = e),
         (this.content = i),
@@ -1851,6 +2067,7 @@ var ys = te(require("obsidian")),
     createTabContentEl(t, e, i) {
       ((this.contentEl = createDiv()),
         (this.contentEl.className = "tabs-content markdown-rendered"));
+      this.contentEl.tabsExtendedContentModel = this;
       let n = new ys.MarkdownRenderChild(this.contentEl);
       // Pre-process the content so that any top-level tabs fenced blocks use a fence
       // longer than all inner same-character closing fences.  Without this,
@@ -1868,6 +2085,34 @@ var ys = te(require("obsidian")),
       if (i && typeof i.addChild === 'function') {
         i.addChild(n);
       }
+    }
+    claimNestedBlock(rawText, isVertical) {
+      const settings = this.ownerTabs && this.ownerTabs.plugin
+        ? this.ownerTabs.plugin.settings
+        : null;
+      const blocks = tabsExtendedFindDirectNestedBlocks(this.content, settings);
+      const normalized = tabsExtendedNormalizeSource(rawText);
+      let selected = -1;
+
+      for (let index = 0; index < blocks.length; index++) {
+        if (this.claimedNestedBlocks.has(index)) continue;
+        const block = blocks[index];
+        if (block.isVertical !== !!isVertical) continue;
+        const body = this.content.slice(block.bodyFrom, block.bodyTo);
+        if (tabsExtendedNormalizeSource(body) === normalized) {
+          selected = index;
+          break;
+        }
+      }
+      if (selected < 0) {
+        selected = blocks.findIndex(
+          (block, index) =>
+            !this.claimedNestedBlocks.has(index) &&
+            block.isVertical === !!isVertical,
+        );
+      }
+      if (selected >= 0) this.claimedNestedBlocks.add(selected);
+      return selected;
     }
     // ── Fix CommonMark fence-length collision for nested tabs blocks ──────────
     // CommonMark closes a fenced code block at the FIRST line containing the
@@ -2593,200 +2838,161 @@ var On = class {
       observer.observe(this.tabitemMDEl, { childList: true, subtree: true });
     } catch (e) {}
   }
+  clearDragState() {
+    if (!this.tabs || !this.tabs.tabsNav) return;
+    this.tabs.tabsNav.navItems.forEach((item) => {
+      item.tabitemEl.classList.remove("tabs-nav-item-dragover");
+      item.tabitemEl.classList.remove("tabs-nav-item-dragover-before");
+      item.tabitemEl.classList.remove("tabs-nav-item-dragover-after");
+      item.tabitemEl.style.opacity = "";
+      item.tabitemEl.setAttr("aria-grabbed", "false");
+    });
+  }
+  acceptsCurrentDrag() {
+    const dragger = this.tabs.plugin.tabDragger;
+    return !!(
+      dragger &&
+      dragger.draggedTab &&
+      dragger.fromTabs === this.tabs &&
+      dragger.draggedTab !== this
+    );
+  }
+  updateDropIndicator(event) {
+    const rect = this.tabitemEl.getBoundingClientRect();
+    const horizontal =
+      this.tabs.tabsConfig.titlePosition === "top" ||
+      this.tabs.tabsConfig.titlePosition === "bottom";
+    const after = horizontal
+      ? event.clientX - rect.left >= rect.width / 2
+      : event.clientY - rect.top >= rect.height / 2;
+    this.tabitemEl.classList.add("tabs-nav-item-dragover");
+    this.tabitemEl.classList.toggle(
+      "tabs-nav-item-dragover-before",
+      !after,
+    );
+    this.tabitemEl.classList.toggle(
+      "tabs-nav-item-dragover-after",
+      after,
+    );
+    return after;
+  }
   registerdndEvents() {
-    (this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragstart", (t) => {
-      let e = this.tabs.tabsNav.navItems.indexOf(this),
-        i =
-          this.title +
-          `
-` +
-          this.tabs.tabsContents.tabcontents[e].content;
-      (t.dataTransfer.setData("text/plain", i),
-        (t.dataTransfer.effectAllowed = "copy"),
-        (this.tabs.plugin.tabDragger = {
-          fromTabs: this.tabnav.tabs,
-          draggedTab: this,
-          draggedContent: this.tabs.tabsContents.tabcontents[e],
-          draggedContentLineCount: this.tabs.tabsContents.tabcontents[e].content
-            .split(`
-`).length,
-          draggedIndex: e,
-        }),
-        (this.tabitemEl.style.opacity = "0.9"));
-    }),
-      this.tabs.plugin.registerDomEvent(this.tabitemEl, "drag", (t) => {
-        t.preventDefault();
-      }),
-      this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragenter", (t) => {
-        (t.preventDefault(),
-          !(
-            this.tabs.plugin.tabDragger.draggedTab === this ||
-            this.tabs.plugin.tabDragger.draggedTab.tabs.activeView !==
-              this.tabs.activeView ||
-            this.tabs.plugin.tabDragger.draggedTab.tabs.context.sourcePath !==
-              this.tabs.context.sourcePath
-          ) && this.tabitemEl.classList.add("tabs-nav-item-dragover"));
-      }),
-      this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragover", (t) => {
-        (t.preventDefault(),
-          (t.dataTransfer.dropEffect = "copy"),
-          !(
-            this.tabs.plugin.tabDragger.draggedTab === this ||
-            this.tabs.plugin.tabDragger.draggedTab.tabs.activeView !==
-              this.tabs.activeView ||
-            this.tabs.plugin.tabDragger.draggedTab.tabs.context.sourcePath !==
-              this.tabs.context.sourcePath
-          ) &&
-            (this.tabitemEl.classList.add("tabs-nav-item-dragover"),
-            this.tabs.tabsConfig.titlePosition === "top" ||
-            this.tabs.tabsConfig.titlePosition === "bottom"
-              ? t.clientX - this.tabitemEl.getBoundingClientRect().left >
-                this.tabitemEl.clientWidth * 0.5
-                ? (this.tabitemEl.classList.remove(
-                    "tabs-nav-item-dragover-before",
-                  ),
-                  this.tabitemEl.classList.add("tabs-nav-item-dragover-after"))
-                : t.clientX - this.tabitemEl.getBoundingClientRect().left <
-                    this.tabitemEl.clientWidth * 0.5 &&
-                  (this.tabitemEl.classList.remove(
-                    "tabs-nav-item-dragover-after",
-                  ),
-                  this.tabitemEl.classList.add("tabs-nav-item-dragover-before"))
-              : t.clientY - this.tabitemEl.getBoundingClientRect().top >
-                  this.tabitemEl.clientHeight * 0.5
-                ? (this.tabitemEl.classList.remove(
-                    "tabs-nav-item-dragover-before",
-                  ),
-                  this.tabitemEl.classList.add("tabs-nav-item-dragover-after"))
-                : t.clientY - this.tabitemEl.getBoundingClientRect().top <
-                    this.tabitemEl.clientHeight * 0.5 &&
-                  (this.tabitemEl.classList.remove(
-                    "tabs-nav-item-dragover-after",
-                  ),
-                  this.tabitemEl.classList.add(
-                    "tabs-nav-item-dragover-before",
-                  ))));
-      }),
-      this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragleave", (t) => {
-        (this.tabitemEl.classList.remove("tabs-nav-item-dragover"),
-          this.tabitemEl.classList.remove("tabs-nav-item-dragover-before"),
-          this.tabitemEl.classList.remove("tabs-nav-item-dragover-after"));
-      }),
-      this.tabs.plugin.registerDomEvent(this.tabitemEl, "drop", (t) => {
-        t.preventDefault();
-        this.tabitemEl.classList.remove("tabs-nav-item-dragover");
-        this.tabitemEl.classList.remove("tabs-nav-item-dragover-before");
-        this.tabitemEl.classList.remove("tabs-nav-item-dragover-after");
-        this.tabitemEl.style.opacity = "";
-        
-        let tabDragger = this.tabs.plugin.tabDragger;
-        if (!tabDragger || tabDragger.draggedTab === this) {
-          return;
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragstart", (event) => {
+      const draggedIndex = this.tabs.tabsNav.navItems.indexOf(this);
+      if (
+        draggedIndex < 0 ||
+        this.tabs.tabsNav.navItems.length < 2 ||
+        !this.tabs.canPersistTabOrder()
+      ) {
+        event.preventDefault();
+        return;
+      }
+      const analyzed = tabsExtendedAnalyzeTabSections(
+        this.tabs.rawText,
+        this.tabs.split,
+        this.tabs.plugin.settings,
+      );
+      const section = analyzed && analyzed.sections[draggedIndex];
+      const transferText = section
+        ? this.tabs.rawText.slice(section.from, section.to)
+        : this.title + "\n" + this.tabs.tabsContents.tabcontents[draggedIndex].content;
+      if (event.dataTransfer) {
+        event.dataTransfer.setData("text/plain", transferText);
+        event.dataTransfer.effectAllowed = "move";
+      }
+      this.tabs.plugin.tabDragger = {
+        fromTabs: this.tabs,
+        draggedTab: this,
+        draggedIndex,
+      };
+      this.tabitemEl.style.opacity = "0.55";
+      this.tabitemEl.setAttr("aria-grabbed", "true");
+    });
+
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragenter", (event) => {
+      const internalDrag = this.tabs.plugin.tabDragger;
+      if (!this.acceptsCurrentDrag()) {
+        if (internalDrag) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
         }
-        
-        // FORBID CROSS-BLOCK DRAGGING COMPLETELY
-        if (tabDragger.fromTabs !== this.tabnav.tabs) {
-          this.tabs.plugin.tabDragger = null;
-          return;
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.updateDropIndicator(event);
+    });
+
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragover", (event) => {
+      const internalDrag = this.tabs.plugin.tabDragger;
+      if (!this.acceptsCurrentDrag()) {
+        if (internalDrag) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
         }
-        
-        let draggedIndex = tabDragger.draggedIndex;
-        let dropIndex =
-          this.tabs.tabsConfig.titlePosition === "top" ||
-          this.tabs.tabsConfig.titlePosition === "bottom"
-            ? t.clientX - this.tabitemEl.getBoundingClientRect().left <
-              this.tabitemEl.clientWidth / 2
-              ? this.index
-              : this.index + 1
-            : t.clientY - this.tabitemEl.getBoundingClientRect().top <
-                this.tabitemEl.clientHeight / 2
-              ? this.index
-              : this.index + 1;
-              
-        if (this.index > tabDragger.draggedTab.index) {
-           dropIndex -= 1;
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      this.updateDropIndicator(event);
+    });
+
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragleave", () => {
+      this.tabitemEl.classList.remove("tabs-nav-item-dragover");
+      this.tabitemEl.classList.remove("tabs-nav-item-dragover-before");
+      this.tabitemEl.classList.remove("tabs-nav-item-dragover-after");
+    });
+
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "drop", (event) => {
+      const internalDrag = this.tabs.plugin.tabDragger;
+      if (!this.acceptsCurrentDrag()) {
+        if (internalDrag) {
+          event.preventDefault();
+          event.stopPropagation();
         }
-        
-        if (draggedIndex === dropIndex) {
-          this.tabs.plugin.tabDragger = null;
-          return;
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const dragger = this.tabs.plugin.tabDragger;
+      try {
+        const draggedIndex = this.tabs.tabsNav.navItems.indexOf(
+          dragger.draggedTab,
+        );
+        const targetIndex = this.tabs.tabsNav.navItems.indexOf(this);
+        const insertAfter = this.updateDropIndicator(event);
+        let insertionIndex = targetIndex + (insertAfter ? 1 : 0);
+        if (insertionIndex > draggedIndex) insertionIndex -= 1;
+        const finalIndex = Math.max(
+          0,
+          Math.min(this.tabs.tabsNav.navItems.length - 1, insertionIndex),
+        );
+        if (draggedIndex !== finalIndex) {
+          const moved = this.tabs.reorderTab(draggedIndex, finalIndex);
+          if (!moved) {
+            console.warn(
+              "Tabs Extended cancelled an unsafe tab reorder operation.",
+            );
+          }
         }
-        
-        try {
-            let f = "";
-            let draggedNavItem = this.tabs.tabsNav.navItems.splice(draggedIndex, 1)[0];
-            this.tabs.tabsNav.navItems.splice(dropIndex, 0, draggedNavItem);
-            
-            let draggedContentItem = this.tabs.tabsContents.tabcontents.splice(draggedIndex, 1)[0];
-            this.tabs.tabsContents.tabcontents.splice(dropIndex, 0, draggedContentItem);
-            
-            let startIndex = Math.min(draggedIndex, dropIndex);
-            let endIndex = Math.max(draggedIndex, dropIndex);
-            
-            for (let p = startIndex; p <= endIndex; p++) {
-                this.tabs.tabsNav.navItems[p].index = p;
-                this.tabs.tabsContents.tabcontents[p].index = p;
-                if (this.tabs.tabsNav.navItems[p].isActiveed) {
-                    this.tabs.tabsNav.currentTab = p;
-                    this.tabs.tabsContents.currentTab = p;
-                    let O = "/";
-                    if (this.tabs.context && this.tabs.sectionInfo) {
-                        O = this.tabs.context.sourcePath + this.tabs.sectionInfo.lineStart;
-                    }
-                    this.tabs.plugin.lastTabsCache.set(O, p);
-                }
-            }
-            
-            for (let p = 0; p < this.tabs.tabsNav.navItems.length; p++) {
-              f +=
-                this.tabs.split +
-                this.tabs.tabsNav.navItems[p].title +
-                "\n" +
-                this.tabs.tabsContents.tabcontents[p].content.replace(/[\r\n]+$/, "") +
-                "\n\n";
-            }
-            f = f.replace(/[\r\n]+$/, "") + "\n\n";
-            f =
-              this.tabs.backquote.repeat(this.tabs.backquoteCount) +
-              `tabs\n` +
-              (this.tabs.tabsConfig.rawConfig ? this.tabs.tabsConfig.rawConfig + `\n` : "") +
-              f +
-              this.tabs.backquote.repeat(this.tabs.backquoteCount);
-              
-            this.tabs.tabsNav.navWrapperEl.removeChild(draggedNavItem.tabitemEl);
-            this.tabs.tabsContents.tabcontentsEl.removeChild(draggedContentItem.contentEl);
-            
-            if (dropIndex === this.tabs.tabsNav.navItems.length - 1) {
-              this.tabs.tabsNav.navWrapperEl.appendChild(draggedNavItem.tabitemEl);
-              this.tabs.tabsContents.tabcontentsEl.appendChild(draggedContentItem.contentEl);
-            } else {
-              this.tabs.tabsNav.navWrapperEl.insertBefore(
-                  draggedNavItem.tabitemEl,
-                  this.tabs.tabsNav.navItems[dropIndex + 1].tabitemEl,
-              );
-              this.tabs.tabsContents.tabcontentsEl.insertBefore(
-                  draggedContentItem.contentEl,
-                  this.tabs.tabsContents.tabcontents[dropIndex + 1].contentEl,
-              );
-            }
-            
-            let o = this.tabs.activeView;
-            if (o != null) {
-              o.editor.replaceRange(
-                f,
-                { line: this.tabs.sectionInfo.lineStart, ch: 0 },
-                {
-                  line: this.tabs.sectionInfo.lineEnd,
-                  ch: o.editor.getLine(this.tabs.sectionInfo.lineEnd).length,
-                }
-              );
-            }
-        } catch(err) {
-            console.error("Error during drag and drop operation:", err);
-        } finally {
-            this.tabs.plugin.tabDragger = null;
-        }
-      }));
+      } catch (error) {
+        console.error("Error during drag and drop operation:", error);
+      } finally {
+        this.clearDragState();
+        this.tabs.plugin.tabDragger = null;
+      }
+    });
+
+    this.tabs.plugin.registerDomEvent(this.tabitemEl, "dragend", () => {
+      this.clearDragState();
+      const dragger = this.tabs.plugin.tabDragger;
+      if (dragger && dragger.fromTabs === this.tabs) {
+        this.tabs.plugin.tabDragger = null;
+      }
+    });
   }
 };
 var _r = class {
@@ -2847,6 +3053,9 @@ var Gr = class extends U.MarkdownRenderChild {
     this.backquote = "`";
     this.backquoteCount = 3;
     this.isVertical = isVertical;
+    this.rawText = String(t == null ? "" : t);
+    this.parentTabContent = null;
+    this.sourceOrdinal = -1;
     ((e.className = "tabs-container"),
       (this.plugin = r),
       (this.tabsEl = e),
@@ -2860,6 +3069,25 @@ var Gr = class extends U.MarkdownRenderChild {
         ((this.tabsType = "innertabs"),
         this.tabsEl.classList.add("tabs-innertabs"),
         this.plugin.settings.nestedTabsNoBorders && this.tabsEl.classList.add("tabs-innertabs-no-borders")));
+    const parentContentEl = this.tabsEl.closest
+      ? this.tabsEl.closest(".tabs-content")
+      : null;
+    const parentContentModel = parentContentEl
+      ? parentContentEl.tabsExtendedContentModel
+      : null;
+    if (
+      this.tabsType === "innertabs" &&
+      parentContentModel &&
+      parentContentModel.ownerTabs
+    ) {
+      this.parentTabContent = parentContentModel;
+      this.sourceOrdinal = parentContentModel.claimNestedBlock(t, isVertical);
+    }
+    if (this.tabsType === "outertabs") {
+      const sourceBody = this.readOuterSourceBody();
+      if (sourceBody != null) t = sourceBody;
+    }
+    this.rawText = String(t == null ? "" : t);
     let defaultTitle = isVertical
       ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
       : (this.plugin.settings.defaultTabNavItem || "New tab");
@@ -2879,7 +3107,7 @@ var Gr = class extends U.MarkdownRenderChild {
     );
     this.tabsContents = new jr(
       r,
-      a.map((l, h) => new pn(h, o[h], l, n, i)).slice(1),
+      a.map((l, h) => new pn(h, o[h], l, n, i, this)).slice(1),
     );
     this.registerEventHandlers();
     e.appendChild(this.tabsNav.navEl);
@@ -2917,85 +3145,322 @@ var Gr = class extends U.MarkdownRenderChild {
     }
   }
   parseTabs(rawText, defaultTitle, defaultContent) {
-    // ── Titles array (index 0 = config slot, rest = tab titles)
-    let titles = [];
-    // ── Contents array (index 0 = config block, rest = tab bodies)
-    let contents = [];
-    let currentTitle = "";
-    let currentContent = "";
-
-    if (!rawText.includes(this.split)) {
-      // No separator at all — treat the whole text as one tab
-      titles.push("");
-      contents.push("");
-      titles.push(defaultTitle);
-      contents.push(rawText.trim() === "" ? defaultContent : rawText);
-      return [titles, contents];
+    const source = String(rawText == null ? "" : rawText);
+    const analyzed = tabsExtendedAnalyzeTabSections(
+      source,
+      this.split,
+      this.plugin.settings,
+    );
+    if (!analyzed) {
+      return [
+        ["", defaultTitle],
+        ["", source.trim() === "" ? defaultContent : source],
+      ];
     }
 
-    const lines = rawText.split(/\r?\n/);
-    // AST fence stack: each entry tracks { fence: string, char: backtick or tilde }
-    // A separator line is only consumed by THIS block when the stack is empty (depth === 0).
-    const fenceStack = [];
-
-    for (let idx = 0; idx < lines.length; idx++) {
-      const lineStr = lines[idx];
-      const depth = fenceStack.length;
-      const current = depth > 0 ? fenceStack[depth - 1] : null;
-
-      // ── Is this a separator for the CURRENT block? ───────────────────────
-      // Only when the fence stack is empty (depth === 0) and the raw line
-      // (not trimmed, to respect leading whitespace rules) starts with the split string.
-      // EXCLUDE lines that are Markdown table delimiters or contain table columns ("|")
-      const isTableLine = lineStr.includes('|') || /^\s*:?-{2,}:?/.test(lineStr);
-
-      if (depth === 0 && lineStr.startsWith(this.split) && !isTableLine) {
-        titles.push(currentTitle);
-        contents.push(currentContent);
-        currentTitle = lineStr.substring(this.split.length);
-        currentContent = "";
-        continue;
-      }
-
-      // ── Accumulate content ────────────────────────────────────────────────
-      currentContent += lineStr + "\n";
-
-      // ── Update the fence stack for nested code blocks ─────────────────────
-      const trimmed = lineStr.trim();
-      const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)/);
-      if (!fenceMatch) continue;
-
-      const fenceStr = fenceMatch[1];   // e.g. "~~~", "````"
-      const fenceChar = fenceStr[0];    // '`' or '~'
-      const info = fenceMatch[2].trim(); // language/info string
-
-      if (!current) {
-        // Opening a new nested block
-        fenceStack.push({ fence: fenceStr, char: fenceChar });
-      } else if (
-        fenceChar === current.char &&
-        fenceStr.length >= current.fence.length &&
-        info === ""
-      ) {
-        // Closing the innermost block — strict char-family + length + no-info guard
-        fenceStack.pop();
-      } else if (
-        fenceChar === current.char &&
-        fenceStr.length >= current.fence.length &&
-        info !== ""
-      ) {
-        // Opening a deeper nested block (same char family, longer or equal fence, has info)
-        fenceStack.push({ fence: fenceStr, char: fenceChar });
-      }
-      // NOTE: fences of a different char family (` vs ~) or shorter length
-      // are treated as plain content — they cannot open or close any block.
-    }
-
-    // Push the last accumulated tab
-    titles.push(currentTitle);
-    contents.push(currentContent);
-
+    const titles = [""];
+    const contents = [analyzed.prefix];
+    analyzed.sections.forEach((section) => {
+      titles.push(
+        source.slice(
+          section.separatorFrom + this.split.length,
+          section.separatorTo,
+        ),
+      );
+      contents.push(source.slice(section.contentFrom, section.to));
+    });
     return [titles, contents];
+  }
+  findOuterClosingLine(editor) {
+    if (!editor || !this.sectionInfo) return -1;
+    const startLine = this.sectionInfo.lineStart;
+    const lineCount = typeof editor.lineCount === "function"
+      ? editor.lineCount()
+      : startLine + 1;
+    if (startLine < 0 || startLine >= lineCount) return -1;
+    const opening = String(editor.getLine(startLine) || "")
+      .trim()
+      .match(/^(`{3,}|~{3,})(.*)$/);
+    if (!opening) return -1;
+    const openingChar = opening[1][0];
+    const openingLength = opening[1].length;
+
+    for (let lineNumber = startLine + 1; lineNumber < lineCount; lineNumber++) {
+      const fence = tabsExtendedFenceInfo(editor.getLine(lineNumber));
+      if (
+        fence &&
+        fence.info === "" &&
+        fence.char === openingChar &&
+        fence.length >= openingLength
+      ) {
+        return lineNumber;
+      }
+    }
+    return -1;
+  }
+  getWritableView() {
+    const view = this.app.workspace.getActiveViewOfType(ws.MarkdownView);
+    if (!view || !view.editor) return null;
+    const expectedPath = this.context && this.context.sourcePath
+      ? this.context.sourcePath
+      : "";
+    const activePath = view.file && view.file.path ? view.file.path : "";
+    if (expectedPath && activePath && expectedPath !== activePath) return null;
+    return view;
+  }
+  readOuterSourceBody() {
+    if (!this.sectionInfo) return null;
+    const view = this.getWritableView();
+    if (!view) return null;
+    const closingLine = this.findOuterClosingLine(view.editor);
+    if (closingLine < 0) return null;
+    const bodyWithBoundary = view.editor.getRange(
+      { line: this.sectionInfo.lineStart + 1, ch: 0 },
+      { line: closingLine, ch: 0 },
+    );
+    this.sectionInfo.lineEnd = closingLine;
+    return String(bodyWithBoundary).replace(/(?:\r\n|\n|\r)$/, "");
+  }
+  canPersistTabOrder() {
+    let current = this;
+    const visited = new Set();
+    while (current && current.parentTabContent) {
+      if (visited.has(current) || current.sourceOrdinal < 0) return false;
+      visited.add(current);
+      current = current.parentTabContent.ownerTabs;
+    }
+    const writableView = current ? current.getWritableView() : null;
+    return !!(
+      current &&
+      current.sectionInfo &&
+      writableView &&
+      current.findOuterClosingLine(writableView.editor) >= 0
+    );
+  }
+  buildReorderedRawText(fromIndex, toIndex) {
+    const analyzed = tabsExtendedAnalyzeTabSections(
+      this.rawText,
+      this.split,
+      this.plugin.settings,
+    );
+    if (
+      !analyzed ||
+      analyzed.sections.length !== this.tabsNav.navItems.length ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= analyzed.sections.length ||
+      toIndex >= analyzed.sections.length
+    ) {
+      return null;
+    }
+    const sections = analyzed.sections.map((section) =>
+      this.rawText.slice(section.from, section.to),
+    );
+    const moved = sections.splice(fromIndex, 1)[0];
+    sections.splice(toIndex, 0, moved);
+    return tabsExtendedJoinTabSections(
+      analyzed.prefix,
+      sections,
+      this.rawText,
+    );
+  }
+  resolveNestedSourceBlock(contentText, childTabs) {
+    const blocks = tabsExtendedFindDirectNestedBlocks(
+      contentText,
+      this.plugin.settings,
+    );
+    const expectedBody = tabsExtendedNormalizeSource(childTabs.rawText);
+    const isMatch = (block) =>
+      block &&
+      block.isVertical === !!childTabs.isVertical &&
+      tabsExtendedNormalizeSource(
+        contentText.slice(block.bodyFrom, block.bodyTo),
+      ) === expectedBody;
+
+    const ordinalBlock = blocks[childTabs.sourceOrdinal];
+    if (isMatch(ordinalBlock)) {
+      return { block: ordinalBlock, index: childTabs.sourceOrdinal };
+    }
+
+    const matches = [];
+    for (let index = 0; index < blocks.length; index++) {
+      if (isMatch(blocks[index])) matches.push({ block: blocks[index], index });
+    }
+    return matches.length === 1 ? matches[0] : null;
+  }
+  buildSourceUpdate(nextRawText) {
+    const tabsUpdates = new Map([[this, nextRawText]]);
+    const contentUpdates = new Map();
+    const visited = new Set();
+    let childTabs = this;
+
+    while (childTabs.parentTabContent) {
+      if (visited.has(childTabs)) return null;
+      visited.add(childTabs);
+      const parentContent = childTabs.parentTabContent;
+      const parentTabs = parentContent.ownerTabs;
+      if (!parentTabs) return null;
+
+      const currentContent = contentUpdates.has(parentContent)
+        ? contentUpdates.get(parentContent)
+        : parentContent.content;
+      const resolvedBlock = parentTabs.resolveNestedSourceBlock(
+        currentContent,
+        childTabs,
+      );
+      if (!resolvedBlock) return null;
+      childTabs.sourceOrdinal = resolvedBlock.index;
+      const childRaw = tabsUpdates.get(childTabs);
+      const currentNestedBody = currentContent.slice(
+        resolvedBlock.block.bodyFrom,
+        resolvedBlock.block.bodyTo,
+      );
+      const boundaryMatch = currentNestedBody.match(/(\r\n|\n|\r)$/);
+      const boundaryLineBreak = boundaryMatch ? boundaryMatch[1] : "\n";
+      const updatedContent =
+        currentContent.slice(0, resolvedBlock.block.bodyFrom) +
+        childRaw +
+        boundaryLineBreak +
+        currentContent.slice(resolvedBlock.block.bodyTo);
+      contentUpdates.set(parentContent, updatedContent);
+
+      const parentRaw = tabsUpdates.has(parentTabs)
+        ? tabsUpdates.get(parentTabs)
+        : parentTabs.rawText;
+      const analyzedParent = tabsExtendedAnalyzeTabSections(
+        parentRaw,
+        parentTabs.split,
+        parentTabs.plugin.settings,
+      );
+      const contentIndex = parentTabs.tabsContents.tabcontents.indexOf(
+        parentContent,
+      );
+      if (
+        !analyzedParent ||
+        contentIndex < 0 ||
+        contentIndex >= analyzedParent.sections.length
+      ) {
+        return null;
+      }
+      const parentSection = analyzedParent.sections[contentIndex];
+      const updatedParentRaw =
+        parentRaw.slice(0, parentSection.contentFrom) +
+        updatedContent +
+        parentRaw.slice(parentSection.to);
+      tabsUpdates.set(parentTabs, updatedParentRaw);
+      childTabs = parentTabs;
+    }
+
+    return {
+      rootTabs: childTabs,
+      rootRawText: tabsUpdates.get(childTabs),
+      tabsUpdates,
+      contentUpdates,
+    };
+  }
+  writeRootRawText(rootTabs, nextRawText) {
+    if (!rootTabs || rootTabs.parentTabContent || !rootTabs.sectionInfo) {
+      return false;
+    }
+    const view = rootTabs.getWritableView();
+    if (!view) return false;
+    const closingLine = rootTabs.findOuterClosingLine(view.editor);
+    if (closingLine < 0) return false;
+    const currentBodyWithBoundary = view.editor.getRange(
+      { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
+      { line: closingLine, ch: 0 },
+    );
+    const currentBody = String(currentBodyWithBoundary).replace(
+      /(?:\r\n|\n|\r)$/,
+      "",
+    );
+    if (
+      currentBody.replace(/\r\n?/g, "\n") !==
+      String(rootTabs.rawText).replace(/\r\n?/g, "\n")
+    ) {
+      console.warn(
+        "Tabs Extended cancelled a stale drag operation because the source changed after rendering.",
+      );
+      return false;
+    }
+
+    view.editor.replaceRange(
+      String(nextRawText) + "\n",
+      { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
+      { line: closingLine, ch: 0 },
+    );
+    const oldLineCount = currentBody.split(/\r?\n/).length;
+    const newLineCount = String(nextRawText).split(/\r?\n/).length;
+    rootTabs.sectionInfo.lineEnd = closingLine + newLineCount - oldLineCount;
+    return true;
+  }
+  reorderTab(fromIndex, toIndex) {
+    if (
+      fromIndex === toIndex ||
+      !this.canPersistTabOrder() ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= this.tabsNav.navItems.length ||
+      toIndex >= this.tabsNav.navItems.length
+    ) {
+      return false;
+    }
+    const reorderedRawText = this.buildReorderedRawText(fromIndex, toIndex);
+    if (reorderedRawText == null) return false;
+    const sourceUpdate = this.buildSourceUpdate(reorderedRawText);
+    if (
+      !sourceUpdate ||
+      !this.writeRootRawText(
+        sourceUpdate.rootTabs,
+        sourceUpdate.rootRawText,
+      )
+    ) {
+      return false;
+    }
+
+    sourceUpdate.tabsUpdates.forEach((rawText, tabs) => {
+      tabs.rawText = rawText;
+    });
+    sourceUpdate.contentUpdates.forEach((content, contentItem) => {
+      contentItem.content = content;
+    });
+
+    const movedNav = this.tabsNav.navItems.splice(fromIndex, 1)[0];
+    this.tabsNav.navItems.splice(toIndex, 0, movedNav);
+    const movedContent = this.tabsContents.tabcontents.splice(fromIndex, 1)[0];
+    this.tabsContents.tabcontents.splice(toIndex, 0, movedContent);
+
+    this.tabsNav.navWrapperEl.removeChild(movedNav.tabitemEl);
+    this.tabsContents.tabcontentsEl.removeChild(movedContent.contentEl);
+    const nextNav = this.tabsNav.navItems[toIndex + 1];
+    const nextContent = this.tabsContents.tabcontents[toIndex + 1];
+    if (nextNav) {
+      this.tabsNav.navWrapperEl.insertBefore(
+        movedNav.tabitemEl,
+        nextNav.tabitemEl,
+      );
+      this.tabsContents.tabcontentsEl.insertBefore(
+        movedContent.contentEl,
+        nextContent.contentEl,
+      );
+    } else {
+      this.tabsNav.navWrapperEl.appendChild(movedNav.tabitemEl);
+      this.tabsContents.tabcontentsEl.appendChild(movedContent.contentEl);
+    }
+
+    let activeIndex = 0;
+    for (let index = 0; index < this.tabsNav.navItems.length; index++) {
+      this.tabsNav.navItems[index].index = index;
+      this.tabsContents.tabcontents[index].index = index + 1;
+      if (this.tabsNav.navItems[index].isActiveed) activeIndex = index;
+    }
+    this.currentIndex = activeIndex;
+    this.tabsNav.currentTab = activeIndex;
+    this.tabsContents.currentTab = activeIndex;
+    if (this.plugin.lastTabsCache instanceof Map) {
+      this.plugin.lastTabsCache.set(this.tabsId, activeIndex);
+    }
+    return true;
   }
   lockScrollPosition(anchorEl, action) {
     if (!anchorEl) {
@@ -3042,6 +3507,12 @@ var Gr = class extends U.MarkdownRenderChild {
     setTimeout(enforceAnchor, 450);
   }
   async registerEventHandlers() {
+    const dragEnabled =
+      !!this.plugin.settings.dragAndDrop && this.canPersistTabOrder();
+    this.tabsNav.navItems.forEach((item) => {
+      item.tabitemEl.setAttr("draggable", dragEnabled ? "true" : "false");
+      item.tabitemEl.setAttr("aria-grabbed", "false");
+    });
     if (this.tabsEl) {
       this.plugin.registerDomEvent(
         this.tabsEl,
@@ -3081,7 +3552,9 @@ var Gr = class extends U.MarkdownRenderChild {
     switch (
       (this.tabsNav.navItems.forEach((t) => {
         this.plugin.registerDomEvent(t.tabitemEl, "mousedown", (ev) => {
-          ev.preventDefault();
+          // Native HTML drag detection needs the primary mousedown default.
+          // Click selection is still isolated from the surrounding editor.
+          if (!(dragEnabled && ev.button === 0)) ev.preventDefault();
           ev.stopPropagation();
         });
         this.plugin.registerDomEvent(t.tabitemEl, "click", (ev) => {
@@ -3156,9 +3629,7 @@ var Gr = class extends U.MarkdownRenderChild {
       this.plugin.registerDomEvent(this.tabsNav.navEl, "contextmenu", (t) => {
         (t.preventDefault(), new Yr(this, t).showAtMouseEvent(t));
       }),
-      this.tabsType !== "innertabs" &&
-        this.plugin.settings.dragAndDrop &&
-        this.tabsNav.registerDragEvents());
+      dragEnabled && this.tabsNav.registerDragEvents());
   }
   isPreviewMode() {
     var t;
