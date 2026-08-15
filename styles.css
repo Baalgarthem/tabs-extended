@@ -12,69 +12,6 @@ body.theme-dark .tabs-editor-modal {
     user-select: none !important;
     pointer-events: none !important;
 }
-.cm-nested-tab-start .tabs-delete-button, .cm-nested-tab-end .tabs-delete-button {
-    pointer-events: auto !important;
-    user-select: auto !important;
-}
-.cm-nested-tab-item {
-    font-weight: var(--nested-tab-item-font-weight, normal);
-    text-decoration-line: underline;
-    text-decoration-style: var(--nested-tab-item-underline-style, solid);
-    text-decoration-color: color-mix(in srgb, var(--nested-tab-item-color) var(--nested-tab-item-underline-opacity, 100%), transparent);
-    text-decoration-thickness: var(--nested-tab-item-underline-thickness, 2px);
-    text-underline-offset: var(--nested-tab-item-underline-offset, 2px);
-}
-
-.tabs-container.tabs-innertabs.tabs-innertabs-no-borders { box-shadow: none !important; border: none !important; background-color: transparent !important; }
-.tabs-container.tabs-innertabs.tabs-innertabs-no-borders:hover { box-shadow: none !important; }
-
-.tabs-container :is(.callout, pre, .tabs-codeblock-wrapper) { margin-top: 1rem !important; margin-bottom: 1rem !important; }
-.tabs-editor-modal :is(.callout, pre, .tabs-codeblock-wrapper) { margin-top: 1rem !important; margin-bottom: 1rem !important; }
-.tabs-codeblock-wrapper > pre { margin-top: 0 !important; margin-bottom: 0 !important; }
-
-.tabs-delete-button { opacity: 0; transition: opacity 0.2s ease, color 0.2s ease; margin-left: 6px; }
-.cm-nested-tab-ghost-text:hover .tabs-delete-button { opacity: 0.6; }
-.tabs-delete-button:hover { opacity: 1 !important; filter: drop-shadow(0 0 2px red); }
-
-.tabs-nav-item .virtual-link, .tabs-nav-item .virtual-link-a, .tabs-nav-item .virtual-link-span, .tabs-nav-item .glossary-entry {
-    color: inherit !important;
-    text-decoration: none !important;
-    border: none !important;
-    background: none !important;
-    pointer-events: none !important;
-}
-.tabs-nav-item .linker-suffix-icon, .tabs-nav-item .virtual-link-a sup, .tabs-nav-item .multiple-files-indicator {
-    display: none !important;
-}
-
-/* Column layouts for vertical tabs */
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav {
-    max-width: 35%;
-}
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-2 > .tabs-nav > .tabs-nav-item-wrapper {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px;
-    width: 100%;
-}
-
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav {
-    max-width: 50%;
-}
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-cols-3 > .tabs-nav > .tabs-nav-item-wrapper {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    width: 100%;
-}
-
-/* Hover title carousel animation for long titles */
-@keyframes title-hover-scroll-anim {
-    0%, 15% { transform: translateX(0); }
-    85%, 100% { transform: translateX(var(--title-scroll-offset, 0px)); }
-}
-
-
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
     padding-left: 0 !important;
     padding-right: 10px !important;
@@ -181,12 +118,11 @@ body.theme-dark .tabs-editor-modal {
 .cm-nested-tab-start, .cm-nested-tab-end {
     color: var(--nested-tab-delimiter-color);
 }
-.cm-nested-tab-start .tabs-delete-button, .cm-nested-tab-end .tabs-delete-button {
+.cm-nested-tab-start .tabs-delete-button {
     pointer-events: auto !important;
     user-select: auto !important;
 }
-.cm-nested-tab-active-fence .cm-nested-tab-ghost-text,
-.cm-nested-tab-ghost-text.is-active-ghost-text {
+.cm-nested-tab-active-fence .cm-nested-tab-ghost-text {
     font-weight: bold !important;
     opacity: 1 !important;
     color: var(--text-normal) !important;
@@ -258,8 +194,7 @@ body.theme-dark .tabs-editor-modal {
 }
 .cm-line:hover .tabs-delete-button,
 .cm-nested-tab-ghost-text:hover .tabs-delete-button,
-.cm-nested-tab-start:hover .tabs-delete-button,
-.cm-nested-tab-end:hover .tabs-delete-button {
+.cm-nested-tab-start:hover .tabs-delete-button {
     opacity: 0.9 !important;
 }
 .tabs-delete-button:hover {
@@ -618,7 +553,9 @@ hr.tabs-settings-divider {
     -ms-hyphens: manual !important;
 }
 
-
-
-
-
+/* Ghost labels are interactive only to normalize the caret at the end of the
+   real Markdown line. Closing fences do not receive a delete button. */
+.tabs-editor-modal .cm-nested-tab-ghost-text {
+    pointer-events: auto !important;
+    user-select: none !important;
+}

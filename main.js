@@ -378,7 +378,6 @@ function $(s, ...t) {
     defaultTabNavItem: "New tab",
     defaultTabNavItemVertical: "New vertical tab",
     verticalTabsColumns: "1",
-    verticalTabsHoverScroll: !0,
     defaultTabContent: "New tab content",
     actionButtonType: "action-add",
     ignoreNotice: !1,
@@ -398,7 +397,6 @@ function $(s, ...t) {
     defaultTabsContentsMaxHeight: "none",
     nestedTabsHighlight: !0,
     nestedTabsNoBorders: !0,
-    nestedTabsDelimiterStyle: "color",
     nestedTabsDelimiterTextStart: "nesting start",
     nestedTabsDelimiterTextEnd: "nesting end",
     nestedTabsDelimiterColorLight: "#808080",
@@ -406,7 +404,6 @@ function $(s, ...t) {
     nestedTabsItemColorLight: "#4CAF50",
     nestedTabsItemColorDark: "#81C784",
     nestedTabsDifferentDarkColor: !1,
-    nestedTabsItemBold: !0,
     nestedTabsItemUnderlineThickness: 2,
     nestedTabsItemUnderlineOffset: 2,
     nestedTabsItemUnderlineStyle: "solid",
@@ -417,9 +414,7 @@ function $(s, ...t) {
     nestedTabsColorLevel3: "#b8e986",
     nestedTabsColorLevel4: "#bd10e0",
     nestedTabsColorLevel5Plus: "#888888",
-    protectTabsSeparator: !0,
     language: "es",
-    hideTabsSeparator: !1,
     tabsSeparatorFontSize: 14,
     tabsSeparatorBgOpacity: 30,
     deleteButtonSpacing: 12,
@@ -2240,7 +2235,6 @@ var Nr = class {
       (this.tabsContentsPadding = i.defaultTabsContentsPadding),
       (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
       (this.verticalTitleBehavior = i.verticalTitleBehavior || "hover-scroll"),
-      (this.verticalTabsHoverScroll = i.verticalTabsHoverScroll !== false),
       (this.verticalTabsLeftSpacing = i.verticalTabsLeftSpacing !== undefined ? i.verticalTabsLeftSpacing : 4),
       (this.verticalTabsRightSpacing = i.verticalTabsRightSpacing !== undefined ? i.verticalTabsRightSpacing : 8),
       this.parseConfig(t));
@@ -2295,10 +2289,10 @@ var Nr = class {
               this.verticalTabsColumns = "3";
               break;
             case "hover-scroll":
-              this.verticalTabsHoverScroll = true;
+              this.verticalTitleBehavior = "hover-scroll";
               break;
             case "no-hover-scroll":
-              this.verticalTabsHoverScroll = false;
+              this.verticalTitleBehavior = "multi-line";
               break;
             default:
               break;
@@ -3183,6 +3177,18 @@ var Gr = class extends U.MarkdownRenderChild {
   }
 };
 var CO = te(require("obsidian"));
+/*
+ * BEGIN BUNDLED CODEMIRROR/LEZER RUNTIME
+ *
+ * The compact strings and short identifiers below are generated dependency
+ * data, not random application logic. In particular, the base-36 string that
+ * initializes Ur/Bl encodes Unicode combining-character ranges used for
+ * grapheme-safe cursor movement. The modal editor depends on this runtime via
+ * EditorState (I), EditorView (A), Decoration (q), ViewPlugin (Zt), the
+ * Markdown language factory ($O), and their parser/keymap dependencies.
+ * Removing or hand-formatting this generated section would break selection,
+ * Unicode handling, Markdown parsing, history, and modal-editor decorations.
+ */
 var Ur = [],
   Bl = [];
 (() => {
@@ -29041,6 +29047,7 @@ var Ty =
       );
     },
   });
+/* END BUNDLED CODEMIRROR/LEZER RUNTIME — plugin modal-editor logic resumes. */
 var Zl = class {
   constructor(t, e, i = "") {
     this.historyTools = [];
@@ -29072,14 +29079,45 @@ var Zl = class {
       },
       { decorations: (t) => t.decorations },
     );
+    const nestedPairCache = new WeakMap();
     this.nestedTabsHighlighter = Zt.fromClass(
       class {
         constructor(view) {
           this.decorations = this.getDeco(view);
         }
         update(update) {
-          if (update.docChanged || update.viewportChanged || update.selectionSet) {
-            this.decorations = this.getDeco(update.view);
+          // Structural decorations must never depend on cursor/selection state.
+          // Map ordinary content edits incrementally. Rebuild only when a fence,
+          // separator, or line topology changes.
+          if (update.docChanged) {
+            let oldDoc = update.startState.doc;
+            let newDoc = update.state.doc;
+            let structureChanged = oldDoc.lines !== newDoc.lines;
+            let split = t.settings.split;
+            let isStructuralLine = (text) =>
+              /^\s*(`{3,}|~{3,})/.test(text) || text.trimStart().startsWith(split);
+
+            if (!structureChanged) {
+              update.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+                if (structureChanged) return;
+                let oldStart = oldDoc.lineAt(fromA);
+                let oldEnd = oldDoc.lineAt(toA);
+                let newStart = newDoc.lineAt(fromB);
+                let newEnd = newDoc.lineAt(toB);
+                if (oldStart.number !== oldEnd.number || newStart.number !== newEnd.number ||
+                    isStructuralLine(oldStart.text) || isStructuralLine(newStart.text)) {
+                  structureChanged = true;
+                }
+              });
+            }
+
+            if (structureChanged) {
+              this.decorations = this.getDeco(update.view);
+            } else {
+              this.decorations = this.decorations.map(update.changes);
+              let previousPairs = nestedPairCache.get(oldDoc);
+              if (previousPairs) nestedPairCache.set(newDoc, previousPairs);
+            }
           }
         }
         getDeco(view) {
@@ -29087,7 +29125,7 @@ var Zl = class {
           try {
           if (!this.DepthWidget) {
               this.DepthWidget = class extends Re {
-                  constructor(text, depth, view = null, lineNo = -1, type = null, splitStr = "", baseDepth = 0, isActive = false) {
+                  constructor(text, depth, view = null, lineNo = -1, type = null, splitStr = "", baseDepth = 0) {
                       super();
                       this.text = text;
                       this.depth = depth;
@@ -29096,30 +29134,35 @@ var Zl = class {
                       this.type = type;
                       this.splitStr = splitStr;
                       this.baseDepth = baseDepth;
-                      this.isActive = isActive;
                   }
                   eq(other) { 
                       return other.text === this.text && other.depth === this.depth && 
                              other.lineNo === this.lineNo && other.type === this.type &&
-                             other.splitStr === this.splitStr && other.baseDepth === this.baseDepth &&
-                             other.isActive === this.isActive; 
+                             other.splitStr === this.splitStr && other.baseDepth === this.baseDepth;
                   }
                   ignoreEvent(e) { return true; }
                   toDOM() {
                       let span = document.createElement("span");
-                      span.className = "cm-nested-tab-ghost-text" + (this.isActive ? " is-active-ghost-text" : "");
+                      span.className = "cm-nested-tab-ghost-text";
                       span.style.fontSize = "0.7em";
-                      if (this.isActive) {
-                          span.style.fontWeight = "bold";
-                          span.style.opacity = "1";
-                          span.style.color = "var(--text-normal)";
-                      } else {
-                          span.style.opacity = "0.7";
-                          span.style.color = "var(--nested-tab-delimiter-color)";
-                      }
+                      span.style.opacity = "0.7";
+                      span.style.color = "var(--nested-tab-delimiter-color)";
                       span.style.marginLeft = "1em";
                       span.innerHTML = this.text + (this.depth !== "" ? " <b>" + this.depth + "</b>" : "");
                       
+                      if (this.view && this.lineNo > 0) {
+                          span.addEventListener("mousedown", (event) => {
+                              if (event.target && event.target.closest && event.target.closest(".tabs-delete-button")) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              try {
+                                  let line = this.view.state.doc.line(this.lineNo);
+                                  this.view.dispatch({ selection: Z.single(line.to), scrollIntoView: true });
+                                  this.view.focus();
+                              } catch (err) {}
+                          });
+                      }
+
                       if (this.type && this.view) {
                           let delBtn = document.createElement("span");
                           delBtn.className = "tabs-delete-button";
@@ -29141,53 +29184,16 @@ var Zl = class {
           }
           
           let i = [];
-          let fenceStack = []; 
+          let fenceStack = [];
+          let tabDepth = 0;
+          let pairs = [];
           let doc = view.state.doc;
           let isModal = !!view.dom.closest('.tabs-editor-modal');
           let baseDepth = isModal ? 1 : 0;
-          let cursorHead = (view.state.selection && view.state.selection.main) ? view.state.selection.main.head : 0;
-          let cursorLine = doc.lineAt(cursorHead).number;
-
-          let activeLines = new Set();
-          let scanStack = [];
           let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
           let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
           let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, 'i');
 
-          for (let p = 1; p <= doc.lines; p++) {
-              let text = doc.line(p).text.trim();
-              let match = text.match(/^(`{3,}|~{3,})(.*)/);
-              if (!match) continue;
-              let fenceStr = match[1];
-              let info = match[2].trim();
-              let current = scanStack.length > 0 ? scanStack[scanStack.length - 1] : null;
-
-              if (current && current.type === "code") {
-                  if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
-                      scanStack.pop();
-                  }
-                  continue;
-              }
-
-              if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
-                  if (!openTagRegex.test(info.toLowerCase())) {
-                      let popped = scanStack.pop();
-                      if (cursorLine >= popped.startLine && cursorLine <= p) {
-                          activeLines.add(popped.startLine);
-                          activeLines.add(p);
-                      }
-                      continue;
-                  }
-              }
-
-              if (openTagRegex.test(info.toLowerCase())) {
-                  scanStack.push({ fence: fenceStr, type: "tabs", startLine: p });
-              } else {
-                  scanStack.push({ fence: fenceStr, type: "code" });
-              }
-          }
-
-          let decoratedLineSet = new Set();
           for (let p = 1; p <= doc.lines; p++) {
              let line = doc.line(p);
              let text = line.text.trim();
@@ -29206,34 +29212,29 @@ var Zl = class {
                      continue;
                  }
                  
-                 if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && !openTagRegex.test(info.toLowerCase())) {
-                      let depth = fenceStack.filter(f => f.type === "tabs").length;
-                      let popped = fenceStack.pop();
-                      if (popped.type === "tabs") {
-                          let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nesting end";
+                  if (current && current.type === "tabs" && fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0]) && !openTagRegex.test(info.toLowerCase())) {
+                       let depth = tabDepth;
+                       let popped = fenceStack.pop();
+                       if (popped.type === "tabs") {
+                           tabDepth--;
+                           pairs.push({ startLine: popped.startLine, endLine: p, depth });
+                           let baseEnd = t.settings.nestedTabsDelimiterTextEnd || "nesting end";
                           let rawEnd = baseEnd.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                           let endText = rawEnd + (popped.isVertical ? " (vertical)" : " (horizontal)");
-                          let isActiveBlock = activeLines.has(p);
-                          if (!decoratedLineSet.has(line.from)) {
-                              decoratedLineSet.add(line.from);
-                              i.push(q.line({ class: "cm-nested-tab-end" + (isActiveBlock ? " cm-nested-tab-active-fence" : "") }).range(line.from));
-                          }
-                          i.push(q.widget({ widget: new this.DepthWidget(endText, depth, view, p, "block", t.settings.split, baseDepth, isActiveBlock), side: 1 }).range(line.to));
+                           i.push(q.line({ class: "cm-nested-tab-end" }).range(line.from));
+                            i.push(q.widget({ widget: new this.DepthWidget(endText, depth, view, p, null, t.settings.split, baseDepth), side: 1 }).range(line.to));
                       }
                  } else {
                       if (openTagRegex.test(info.toLowerCase())) {
-                           let isVertical = info.toLowerCase().endsWith("-v");
-                           fenceStack.push({ fence: fenceStr, type: "tabs", startLine: p, isVertical });
-                           let depth = fenceStack.filter(f => f.type === "tabs").length;
+                            let isVertical = info.toLowerCase().endsWith("-v");
+                            fenceStack.push({ fence: fenceStr, type: "tabs", startLine: p, isVertical });
+                            tabDepth++;
+                            let depth = tabDepth;
                            let baseStart = t.settings.nestedTabsDelimiterTextStart || "nesting start";
                            let rawStart = baseStart.replace(/\s*\((horizontal|vertical|vertical end)\)$/i, "");
                            let startText = rawStart + (isVertical ? " (vertical)" : " (horizontal)");
-                           let isActiveBlock = activeLines.has(p);
-                           if (!decoratedLineSet.has(line.from)) {
-                               decoratedLineSet.add(line.from);
-                               i.push(q.line({ class: "cm-nested-tab-start" + (isActiveBlock ? " cm-nested-tab-active-fence" : "") }).range(line.from));
-                           }
-                           i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth, isActiveBlock), side: 1 }).range(line.to));
+                            i.push(q.line({ class: "cm-nested-tab-start" }).range(line.from));
+                            i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
                       } else {
                          if (current || baseDepth === 1) {
                              fenceStack.push({ fence: fenceStr, type: "code" });
@@ -29244,14 +29245,11 @@ var Zl = class {
              }
              let inTabs = (current && current.type === "tabs") || (baseDepth === 1 && fenceStack.length === 0);
              if (inTabs) {
-                 if (line.text.trimStart().startsWith(t.settings.split)) {
-                     let depth = fenceStack.filter(f => f.type === "tabs").length + baseDepth;
+                  if (line.text.trimStart().startsWith(t.settings.split)) {
+                      let depth = tabDepth + baseDepth;
                      let levelIndex = Math.min(5, Math.max(0, depth - 1));
                      let levelClass = "cm-nested-tab-level-" + (levelIndex === 5 ? "5plus" : levelIndex);
-                     if (!decoratedLineSet.has(line.from)) {
-                         decoratedLineSet.add(line.from);
-                         i.push(q.line({ class: "cm-nested-tab-item " + levelClass }).range(line.from));
-                     }
+                      i.push(q.line({ class: "cm-nested-tab-item " + levelClass }).range(line.from));
                      let splitOffset = line.text.indexOf(t.settings.split);
                      if (splitOffset >= 0) {
                          i.push(q.replace({ inclusive: false, inclusiveStart: false, inclusiveEnd: false }).range(line.from + splitOffset, line.from + splitOffset + t.settings.split.length));
@@ -29259,7 +29257,8 @@ var Zl = class {
                          let markStart = line.from + splitOffset + t.settings.split.length;
                          if (markStart < line.from + textEnd) {
                              i.push(q.mark({ class: "cm-nested-tab-item-mark " + levelClass }).range(markStart, line.from + textEnd));
-                         }
+           }
+          nestedPairCache.set(doc, pairs);
                      }
                      if (depth === 1) {
                          i.push(q.widget({ widget: new this.DepthWidget("main topic", ""), side: 1 }).range(line.to));
@@ -29269,17 +29268,111 @@ var Zl = class {
                  }
              }
           }
-          i.sort((a, b) => a.from - b.from || a.to - b.to);
-          let res = q.set(i, false);
-          this.lastValidDeco = res;
+          // Mixed CodeMirror decorations at the same document position must be
+          // ordered by RangeValue.startSide, not only by from/to. Let CodeMirror
+          // perform its canonical ordering so cursor movement cannot invalidate
+          // the complete decoration set.
+          let res = q.set(i, true);
           return res;
           } catch (err) {
-              console.error("Error in nestedTabsHighlighter getDeco:", err);
-              return q.none;
+              let selection = view.state.selection && view.state.selection.main;
+              console.error("Error in nestedTabsHighlighter getDeco:", {
+                  error: err,
+                  cursor: selection ? selection.head : null,
+                  anchor: selection ? selection.anchor : null,
+                  line: selection ? view.state.doc.lineAt(selection.head).number : null,
+                  docLength: view.state.doc.length
+              });
+
+              throw err;
           }
         }
       },
       { decorations: (v) => v.decorations }
+    );
+    this.activeNestedTabsHighlighter = Zt.fromClass(
+      class {
+        constructor(view) {
+          this.doc = null;
+          this.pairs = [];
+          this.activeKey = null;
+          this.decorations = this.getDeco(view, true);
+        }
+        update(update) {
+          if (update.docChanged || update.selectionSet) {
+            this.decorations = this.getDeco(update.view, update.docChanged);
+          }
+        }
+        scanPairs(doc) {
+          let pairs = [];
+          let stack = [];
+          let tabDepth = 0;
+          let mainKw = (t.settings.tabsKeyword || "tabs").trim().toLowerCase();
+          let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          let openTagRegex = new RegExp(`^(${safeKw}-v|${safeKw}|tabs-v|tabs)$`, "i");
+
+          for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
+            let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)/);
+            if (!match) continue;
+
+            let fence = match[1];
+            let info = match[2].trim();
+            let current = stack.length ? stack[stack.length - 1] : null;
+
+            if (current && current.type === "code") {
+              if (fence[0] === current.fence[0] && fence.length >= current.fence.length) stack.pop();
+              continue;
+            }
+
+            if (current && current.type === "tabs" && fence[0] === current.fence[0] &&
+                fence.length >= current.fence.length && !openTagRegex.test(info)) {
+              let closed = stack.pop();
+              let depth = tabDepth;
+              tabDepth--;
+              pairs.push({
+                startLine: closed.startLine,
+                endLine: lineNo,
+                depth
+              });
+              continue;
+            }
+
+            if (openTagRegex.test(info)) {
+              stack.push({ type: "tabs", fence, startLine: lineNo });
+              tabDepth++;
+            } else {
+              stack.push({ type: "code", fence });
+            }
+          }
+          nestedPairCache.set(doc, pairs);
+          return pairs;
+        }
+        getDeco(view, forceScan = false) {
+          let doc = view.state.doc;
+          let sameDoc = this.doc === doc;
+          if (forceScan || this.doc !== doc) {
+            this.doc = doc;
+            this.pairs = nestedPairCache.get(doc) || this.scanPairs(doc);
+          }
+
+          let cursorLine = doc.lineAt(view.state.selection.main.head).number;
+          let active = null;
+          for (let pair of this.pairs) {
+            if (cursorLine >= pair.startLine && cursorLine <= pair.endLine &&
+                (!active || pair.depth > active.depth)) active = pair;
+          }
+          let nextKey = active ? `${active.startLine}:${active.endLine}` : "root";
+          if (sameDoc && nextKey === this.activeKey && this.decorations) return this.decorations;
+          this.activeKey = nextKey;
+          if (!active) return q.none;
+
+          return q.set([
+            q.line({ class: "cm-nested-tab-active-fence" }).range(doc.line(active.startLine).from),
+            q.line({ class: "cm-nested-tab-active-fence" }).range(doc.line(active.endLine).from)
+          ], true);
+        }
+      },
+      { decorations: plugin => plugin.decorations }
     );
     this.basicMDKeymap = [
       {
@@ -29629,30 +29722,38 @@ var Zl = class {
       Be.of(this.basicMDKeymap),
       this.activeLineHighlighter,
       this.nestedTabsHighlighter,
+      this.activeNestedTabsHighlighter,
       ud,
       i,
     ];
     
-    if (true) {
+    {
         let splitStr = this.plugin.settings.split;
+        const cursorSelectionAt = (position, assoc = 1) =>
+            Z.create([Z.cursor(position, assoc)]);
+        const getSeparatorOffset = (text) => {
+            let leadingWhitespace = text.length - text.trimStart().length;
+            return text.startsWith(splitStr, leadingWhitespace) ? leadingWhitespace : -1;
+        };
         exts.push(I.transactionFilter.of(tr => {
             if (window.isTabsExtAuthorizedDelete || window.isTabsExtHoveringDelete) return tr;
             let doc = tr.startState.doc;
             let changes = tr.changes;
             let allowed = true;
             
-            let mainKw = (this.plugin.settings.tabsKeyword || "tabs").trim().toLowerCase();
-            let safeKw = mainKw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-            let openFenceRegex = new RegExp(`^(\`{3,}|~{3,})\\s*(${safeKw}-v|${safeKw}|tabs-v|tabs)\\b`, 'i');
-            
             changes.iterChangedRanges((fromA, toA) => {
-                for (let p = 1; p <= doc.lines; p++) {
+                let safeFrom = Math.max(0, Math.min(fromA, doc.length));
+                let safeTo = Math.max(safeFrom, Math.min(toA, doc.length));
+                let firstChangedLine = doc.lineAt(safeFrom).number;
+                let lastChangedLine = doc.lineAt(safeTo).number;
+                for (let p = firstChangedLine; p <= lastChangedLine; p++) {
                     let line = doc.line(p);
                     let text = line.text;
                     let trimmed = text.trim();
 
-                    if (text.startsWith(splitStr)) {
-                        let protectEnd = line.from + splitStr.length;
+                    let separatorOffset = getSeparatorOffset(text);
+                    if (separatorOffset >= 0) {
+                        let protectEnd = line.from + separatorOffset + splitStr.length;
                         if (fromA < protectEnd && toA >= line.from) {
                             allowed = false;
                             break;
@@ -29660,7 +29761,8 @@ var Zl = class {
                     }
 
                     if (/^(`{3,}|~{3,})/.test(trimmed)) {
-                        if (fromA <= line.to && toA >= line.from) {
+                        let insertsAfterFence = fromA === toA && fromA === line.to;
+                        if (!insertsAfterFence && fromA <= line.to && toA >= line.from) {
                             allowed = false;
                             break;
                         }
@@ -29673,12 +29775,11 @@ var Zl = class {
                     changes.iterChanges((fromA, toA, fromB, toB, ins) => {
                         if (!allowed) return;
                         if (ins && ins.lines > 1) {
-                            for (let p = 1; p <= doc.lines; p++) {
-                                let line = doc.line(p);
-                                if (line.text.startsWith(splitStr) && fromA >= line.from && fromA < line.to) {
-                                    allowed = false;
-                                    return;
-                                }
+                            let safePos = Math.max(0, Math.min(fromA, doc.length));
+                            let line = doc.lineAt(safePos);
+                            if (getSeparatorOffset(line.text) >= 0 && fromA >= line.from && fromA <= line.to) {
+                                allowed = false;
+                                return;
                             }
                         }
                     });
@@ -29693,7 +29794,7 @@ var Zl = class {
                     let headPos = r.head;
                     let line = doc.lineAt(headPos);
                     let text = line.text;
-                    let splitOffset = text.indexOf(splitStr);
+                    let splitOffset = getSeparatorOffset(text);
                     if (splitOffset >= 0) {
                         let protectStart = line.from;
                         let protectEnd = line.from + splitOffset + splitStr.length;
@@ -29712,7 +29813,9 @@ var Zl = class {
                         let newHead = processPos(r.head);
                         let newAnchor = processPos(r.anchor);
                         if (newHead !== r.head || newAnchor !== r.anchor) {
-                            return Z.range(newAnchor, newHead);
+                            return r.empty
+                              ? Z.cursor(newHead, 1)
+                              : Z.range(newAnchor, newHead);
                         }
                     }
                     return r;
@@ -29731,14 +29834,17 @@ var Zl = class {
             return tr;
         }));
 
+        let atomicRangesDoc = null;
+        let atomicRangesCache = q.none;
         exts.push(A.atomicRanges.of(view => {
             try {
                 let splitStr = this.plugin.settings.split;
                 let doc = view.state.doc;
+                if (doc === atomicRangesDoc) return atomicRangesCache;
                 let i = [];
                 for (let p = 1; p <= doc.lines; p++) {
                     let line = doc.line(p);
-                    let splitOffset = line.text.indexOf(splitStr);
+                    let splitOffset = getSeparatorOffset(line.text);
                     if (splitOffset >= 0) {
                         let protectStart = line.from;
                         let protectEnd = line.from + splitOffset + splitStr.length;
@@ -29747,48 +29853,29 @@ var Zl = class {
                         }
                     }
                 }
-                i.sort((a, b) => a.from - b.from || a.to - b.to);
-                return q.set(i, false);
+                atomicRangesDoc = doc;
+                atomicRangesCache = q.set(i, true);
+                return atomicRangesCache;
             } catch (err) {
-                return q.none;
+                console.error("Tabs Extended atomic range calculation error:", err);
+                throw err;
             }
         }));
 
         exts.push(A.domEventHandlers({
-            keydown: (event, view) => {
-                if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey) {
-                    try {
-                        let sel = view.state.selection.main;
-                        if (sel.empty) {
-                            let line = view.state.doc.lineAt(sel.head);
-                            let splitStr = this.plugin.settings.split;
-                            if (line.text.indexOf(splitStr) >= 0) {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                view.dispatch({
-                                    changes: { from: line.to, insert: "\n" },
-                                    selection: Z.single(line.to + 1)
-                                });
-                                return true;
-                            }
-                        }
-                    } catch(e) {}
-                }
-                return false;
-            },
             mousedown: (event, view) => {
                 try {
                     let pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
                     if (pos !== null) {
                         let line = view.state.doc.lineAt(pos);
                         let splitStr = this.plugin.settings.split;
-                        let splitOffset = line.text.indexOf(splitStr);
+                        let splitOffset = getSeparatorOffset(line.text);
                         if (splitOffset >= 0) {
                             let protectStart = line.from;
                             let protectEnd = line.from + splitOffset + splitStr.length;
                             if (pos >= protectStart && pos < protectEnd) {
                                 event.preventDefault();
-                                view.dispatch({ selection: Z.single(protectEnd) });
+                                view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                 return true;
                             }
                         }
@@ -29804,7 +29891,7 @@ var Zl = class {
                     let sel = update.state.selection.main;
                     let line = update.state.doc.lineAt(sel.head);
                     let splitStr = this.plugin.settings.split;
-                    let splitOffset = line.text.indexOf(splitStr);
+                    let splitOffset = getSeparatorOffset(line.text);
                     if (splitOffset >= 0) {
                         let protectStart = line.from;
                         let protectEnd = line.from + splitOffset + splitStr.length;
@@ -29812,7 +29899,7 @@ var Zl = class {
                             activeWindow.requestAnimationFrame(() => {
                                 try {
                                     if (update.view && !update.view.destroyed) {
-                                        update.view.dispatch({ selection: Z.single(protectEnd) });
+                                        update.view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                     }
                                 } catch (e) {}
                             });
@@ -29827,21 +29914,17 @@ var Zl = class {
                 let splitStr = this.plugin.settings.split;
                 let doc = view.state.doc;
                 let line = doc.lineAt(from);
-                let splitOffset = line.text.indexOf(splitStr);
+                let splitOffset = getSeparatorOffset(line.text);
                 if (splitOffset >= 0) {
-                    if (text.includes("\n")) {
-                        view.dispatch({
-                            changes: { from: line.to, insert: "\n" },
-                            selection: Z.single(line.to + 1)
-                        });
-                        return true;
-                    }
-                    let protectStart = line.from;
+                    // Enter is handled once, at highest priority, by the keymap
+                    // registered below. Handling newlines here as well produced two
+                    // blank lines and could replay a nested-tabs insertion.
+                    if (text.includes("\n")) return false;
                     let protectEnd = line.from + splitOffset + splitStr.length;
                     if (from < protectEnd || to < protectEnd) {
                         let targetFrom = Math.max(from, protectEnd);
                         let targetTo = Math.max(to, protectEnd);
-                        view.dispatch({ changes: { from: targetFrom, to: targetTo, insert: text }, selection: Z.single(targetFrom + text.length) });
+                        view.dispatch({ changes: { from: targetFrom, to: targetTo, insert: text }, selection: cursorSelectionAt(targetFrom + text.length, 1) });
                         return true;
                     }
                 }
@@ -29857,6 +29940,45 @@ var Zl = class {
             return ext;
         };
 
+        const moveFromSeparatorStart = (view, direction) => {
+            try {
+                let sel = view.state.selection.main;
+                if (!sel.empty) return false;
+
+                let doc = view.state.doc;
+                let line = doc.lineAt(sel.head);
+                let splitStr = this.plugin.settings.split;
+                let splitOffset = getSeparatorOffset(line.text);
+                if (splitOffset < 0) return false;
+
+                let separatorTextStart = line.from + splitOffset + splitStr.length;
+                if (sel.head !== separatorTextStart) return false;
+
+                let targetLineNo = line.number + direction;
+                if (targetLineNo < 1 || targetLineNo > doc.lines) return true;
+
+                let targetLine = doc.line(targetLineNo);
+                let targetSplitOffset = getSeparatorOffset(targetLine.text);
+                    let targetPos;
+                    let targetAssoc = 1;
+
+                    if (targetSplitOffset >= 0) {
+                        targetPos = targetLine.from + targetSplitOffset + splitStr.length;
+                    } else if (/^\s*(`{3,}|~{3,})/.test(targetLine.text)) {
+                        targetPos = targetLine.to;
+                        targetAssoc = -1;
+                    } else {
+                        targetPos = targetLine.from;
+                    }
+
+                    view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc), scrollIntoView: true });
+                return true;
+            } catch (err) {
+                console.error("Tabs Extended vertical cursor navigation error:", err);
+                return false;
+            }
+        };
+
         exts.push(safeHighest(Be.of([
             {
                 key: "ArrowLeft",
@@ -29866,16 +29988,16 @@ var Zl = class {
                         if (sel.empty) {
                             let line = view.state.doc.lineAt(sel.head);
                             let splitStr = this.plugin.settings.split;
-                            let splitOffset = line.text.indexOf(splitStr);
+                            let splitOffset = getSeparatorOffset(line.text);
                             if (splitOffset >= 0) {
                                 let protectStart = line.from;
                                 let protectEnd = line.from + splitOffset + splitStr.length;
                                 if (sel.head === protectEnd) {
                                     let prevLineNo = Math.max(1, line.number - 1);
-                                    view.dispatch({ selection: Z.single(view.state.doc.line(prevLineNo).to) });
+                                    view.dispatch({ selection: cursorSelectionAt(view.state.doc.line(prevLineNo).to, -1) });
                                     return true;
                                 } else if (sel.head > protectStart && sel.head < protectEnd) {
-                                    view.dispatch({ selection: Z.single(protectEnd) });
+                                    view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                     return true;
                                 }
                             }
@@ -29892,12 +30014,12 @@ var Zl = class {
                         if (sel.empty) {
                             let line = view.state.doc.lineAt(sel.head);
                             let splitStr = this.plugin.settings.split;
-                            let splitOffset = line.text.indexOf(splitStr);
+                            let splitOffset = getSeparatorOffset(line.text);
                             if (splitOffset >= 0) {
                                 let protectStart = line.from;
                                 let protectEnd = line.from + splitOffset + splitStr.length;
                                 if (sel.head >= protectStart && sel.head < protectEnd) {
-                                    view.dispatch({ selection: Z.single(protectEnd) });
+                                    view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                     return true;
                                 }
                             }
@@ -29910,18 +30032,19 @@ var Zl = class {
                 key: "ArrowUp",
                 run: (view) => {
                     try {
+                        if (moveFromSeparatorStart(view, -1)) return true;
                         let sel = view.state.selection.main;
                         let line = view.state.doc.lineAt(sel.head);
                         if (line.number > 1) {
                             let prevLine = view.state.doc.line(line.number - 1);
                             let splitStr = this.plugin.settings.split;
-                            let splitOffset = prevLine.text.indexOf(splitStr);
+                            let splitOffset = getSeparatorOffset(prevLine.text);
                             if (splitOffset >= 0) {
                                 let protectEnd = prevLine.from + splitOffset + splitStr.length;
                                 let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, prevLine.from + col);
                                 targetPos = Math.min(prevLine.to, targetPos);
-                                view.dispatch({ selection: Z.single(targetPos) });
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, 1) });
                                 return true;
                             }
                         }
@@ -29933,18 +30056,19 @@ var Zl = class {
                 key: "ArrowDown",
                 run: (view) => {
                     try {
+                        if (moveFromSeparatorStart(view, 1)) return true;
                         let sel = view.state.selection.main;
                         let line = view.state.doc.lineAt(sel.head);
                         if (line.number < view.state.doc.lines) {
                             let nextLine = view.state.doc.line(line.number + 1);
                             let splitStr = this.plugin.settings.split;
-                            let splitOffset = nextLine.text.indexOf(splitStr);
+                            let splitOffset = getSeparatorOffset(nextLine.text);
                             if (splitOffset >= 0) {
                                 let protectEnd = nextLine.from + splitOffset + splitStr.length;
                                 let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, nextLine.from + col);
                                 targetPos = Math.min(nextLine.to, targetPos);
-                                view.dispatch({ selection: Z.single(targetPos) });
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, 1) });
                                 return true;
                             }
                         } else {
@@ -29972,7 +30096,7 @@ var Zl = class {
                             let line = view.state.doc.lineAt(sel.head);
                             let text = line.text.trim();
                             let splitStr = this.plugin.settings.split;
-                            let splitOffset = line.text.indexOf(splitStr);
+                            let splitOffset = getSeparatorOffset(line.text);
 
                             if (splitOffset >= 0) {
                                 let insertPos = line.to;
@@ -30004,10 +30128,10 @@ var Zl = class {
                         let sel = view.state.selection.main;
                         let line = view.state.doc.lineAt(sel.head);
                         let splitStr = this.plugin.settings.split;
-                        let splitOffset = line.text.indexOf(splitStr);
+                        let splitOffset = getSeparatorOffset(line.text);
                         if (splitOffset >= 0) {
                             let protectEnd = line.from + splitOffset + splitStr.length;
-                            view.dispatch({ selection: Z.single(protectEnd) });
+                            view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                             return true;
                         }
                     } catch (err) {}
@@ -30027,12 +30151,12 @@ var Zl = class {
                         }
 
                         let splitStr = this.plugin.settings.split;
-                        let splitOffset = line.text.indexOf(splitStr);
+                        let splitOffset = getSeparatorOffset(line.text);
                         if (splitOffset >= 0) {
                             let protectEnd = line.from + splitOffset + splitStr.length;
                             if (sel.head === protectEnd) {
                                 let prevLineNo = Math.max(1, line.number - 1);
-                                view.dispatch({ selection: Z.single(view.state.doc.line(prevLineNo).to) });
+                                view.dispatch({ selection: cursorSelectionAt(view.state.doc.line(prevLineNo).to, -1) });
                                 return true;
                             }
                         }
@@ -30953,17 +31077,19 @@ var Xl = class extends Br.Plugin {
         document.addEventListener("pointerdown", this.globalClickHandler, { capture: true });
         document.addEventListener("click", this.globalClickHandler, { capture: true });
 
-        document.addEventListener("mouseover", (e) => {
+        this.deleteButtonMouseOverHandler = (e) => {
             if (e.target && typeof e.target.closest === "function" && e.target.closest(".tabs-delete-button")) {
                 window.isTabsExtHoveringDelete = true;
             }
-        }, { capture: true });
+        };
+        document.addEventListener("mouseover", this.deleteButtonMouseOverHandler, { capture: true });
 
-        document.addEventListener("mouseout", (e) => {
+        this.deleteButtonMouseOutHandler = (e) => {
             if (e.target && typeof e.target.closest === "function" && e.target.closest(".tabs-delete-button")) {
                 window.isTabsExtHoveringDelete = false;
             }
-        }, { capture: true });
+        };
+        document.addEventListener("mouseout", this.deleteButtonMouseOutHandler, { capture: true });
     }
 
     (await this.loadSettings(),
@@ -30976,9 +31102,10 @@ var Xl = class extends Br.Plugin {
       }),
       (this.lastTabsCache = new Map()),
       this.lastTabsCache.set("/", 0),
-      this.app.workspace.on("active-leaf-change", () => {
-        ((this.lastTabsCache = new Map()), this.lastTabsCache.set("/", 0));
-      }));
+      this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+        this.lastTabsCache.clear();
+        this.lastTabsCache.set("/", 0);
+      })));
   }
   registerCodeBlockProcessors() {
     let mainKw = (this.settings.tabsKeyword || "tabs").trim().toLowerCase();
@@ -31001,6 +31128,15 @@ var Xl = class extends Br.Plugin {
       document.removeEventListener("click", this.globalClickHandler, { capture: true });
       this.globalClickHandler = null;
     }
+    if (this.deleteButtonMouseOverHandler) {
+      document.removeEventListener("mouseover", this.deleteButtonMouseOverHandler, { capture: true });
+      this.deleteButtonMouseOverHandler = null;
+    }
+    if (this.deleteButtonMouseOutHandler) {
+      document.removeEventListener("mouseout", this.deleteButtonMouseOutHandler, { capture: true });
+      this.deleteButtonMouseOutHandler = null;
+    }
+    window.isTabsExtHoveringDelete = false;
     window.hasTabsExtGlobalDeleteListener = false;
     window.tabsExtActiveViews = [];
   }
