@@ -102,18 +102,13 @@ body.theme-dark .tabs-editor-modal {
 .tabs-editor-modal .modal-content .cm-editor .cm-cursor,
 .tabs-editor-modal .cm-cursorLayer .cm-cursor {
     border-left: 2.5px solid var(--text-accent, var(--text-normal, #4a90e2)) !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    animation: cm-blink 1.2s steps(1) infinite !important;
 }
 .tabs-editor-modal .modal-content .cm-content,
 .tabs-editor-modal .cm-editor .cm-content {
-    caret-color: var(--text-accent, var(--text-normal, #4a90e2)) !important;
-}
-@keyframes cm-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+    /* CodeMirror 6 renders the synchronized caret in .cm-cursorLayer. Keeping
+       the browser caret visible creates a second cursor that can remain inside
+       a replaced separator node while the logical selection keeps advancing. */
+    caret-color: transparent !important;
 }
 .cm-nested-tab-start, .cm-nested-tab-end {
     color: var(--nested-tab-delimiter-color);
@@ -127,8 +122,7 @@ body.theme-dark .tabs-editor-modal {
     opacity: 1 !important;
     color: var(--text-normal) !important;
 }
-.cm-nested-tab-item,
-.cm-nested-tab-item-mark {
+.cm-nested-tab-item {
     font-weight: var(--nested-tab-item-font-weight, bold) !important;
     text-decoration-line: underline !important;
     text-decoration-style: var(--nested-tab-item-underline-style, solid) !important;
@@ -139,37 +133,31 @@ body.theme-dark .tabs-editor-modal {
 
 /* Color per level of nesting in Modal Editor separators */
 .cm-nested-tab-level-0,
-.cm-nested-tab-item-mark.cm-nested-tab-level-0,
 .tabs-editor-modal .cm-nested-tab-level-0 {
     color: var(--nested-tab-color-level-0, #4a90e2) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-0, #4a90e2) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;
 }
 .cm-nested-tab-level-1,
-.cm-nested-tab-item-mark.cm-nested-tab-level-1,
 .tabs-editor-modal .cm-nested-tab-level-1 {
     color: var(--nested-tab-color-level-1, #50e3c2) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-1, #50e3c2) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;
 }
 .cm-nested-tab-level-2,
-.cm-nested-tab-item-mark.cm-nested-tab-level-2,
 .tabs-editor-modal .cm-nested-tab-level-2 {
     color: var(--nested-tab-color-level-2, #f5a623) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-2, #f5a623) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;
 }
 .cm-nested-tab-level-3,
-.cm-nested-tab-item-mark.cm-nested-tab-level-3,
 .tabs-editor-modal .cm-nested-tab-level-3 {
     color: var(--nested-tab-color-level-3, #b8e986) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-3, #b8e986) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;
 }
 .cm-nested-tab-level-4,
-.cm-nested-tab-item-mark.cm-nested-tab-level-4,
 .tabs-editor-modal .cm-nested-tab-level-4 {
     color: var(--nested-tab-color-level-4, #bd10e0) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-4, #bd10e0) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;
 }
 .cm-nested-tab-level-5plus,
-.cm-nested-tab-item-mark.cm-nested-tab-level-5plus,
 .tabs-editor-modal .cm-nested-tab-level-5plus {
     color: var(--nested-tab-color-level-5plus, #888888) !important;
     text-decoration-color: color-mix(in srgb, var(--nested-tab-color-level-5plus, #888888) var(--nested-tab-item-underline-opacity, 100%), transparent) !important;

@@ -2881,6 +2881,12 @@ var Gr = class extends U.MarkdownRenderChild {
     } else {
       this.tabsId = (this.context ? this.context.sourcePath : "") + "-inner-" + Math.random().toString(36).substring(2, 9);
     }
+    // Rendering may run immediately when a processor is registered in an
+    // already-open workspace. Keep the preview independent from onload timing.
+    if (!(this.plugin.lastTabsCache instanceof Map)) {
+      this.plugin.lastTabsCache = new Map();
+      this.plugin.lastTabsCache.set("/", 0);
+    }
     if (!this.plugin.lastTabsCache.has(this.tabsId)) {
       this.plugin.lastTabsCache.set(this.tabsId, 0);
     }
@@ -29056,6 +29062,11 @@ var Zl = class {
     this.insertTools = [];
     this.lastEditTime = 0;
     this.docChange = !1;
+    // Explicit invalidation for structural toolbar commands. Document changes
+    // normally trigger a rebuild, but this effect also refreshes the decoration
+    // layer after the button click/focus cycle has completed.
+    const forceNestedTabsRefreshEffect = pt.define();
+    this.forceNestedTabsRefreshEffect = forceNestedTabsRefreshEffect;
     this.activeLineHighlighter = Zt.fromClass(
       class {
         constructor(t) {
@@ -29086,6 +29097,13 @@ var Zl = class {
           this.decorations = this.getDeco(view);
         }
         update(update) {
+          let forceRefresh = update.transactions.some((transaction) =>
+            transaction.effects.some((effect) => effect.is(forceNestedTabsRefreshEffect)),
+          );
+          if (forceRefresh) {
+            this.decorations = this.getDeco(update.view);
+            return;
+          }
           // Structural decorations must never depend on cursor/selection state.
           // Map ordinary content edits incrementally. Rebuild only when a fence,
           // separator, or line topology changes.
@@ -29094,8 +29112,10 @@ var Zl = class {
             let newDoc = update.state.doc;
             let structureChanged = oldDoc.lines !== newDoc.lines;
             let split = t.settings.split;
-            let isStructuralLine = (text) =>
-              /^\s*(`{3,}|~{3,})/.test(text) || text.trimStart().startsWith(split);
+            let separatorOffset = (text) => {
+              let leadingWhitespace = text.length - text.trimStart().length;
+              return text.startsWith(split, leadingWhitespace) ? leadingWhitespace : -1;
+            };
 
             if (!structureChanged) {
               update.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
@@ -29104,9 +29124,31 @@ var Zl = class {
                 let oldEnd = oldDoc.lineAt(toA);
                 let newStart = newDoc.lineAt(fromB);
                 let newEnd = newDoc.lineAt(toB);
-                if (oldStart.number !== oldEnd.number || newStart.number !== newEnd.number ||
-                    isStructuralLine(oldStart.text) || isStructuralLine(newStart.text)) {
+                if (oldStart.number !== oldEnd.number || newStart.number !== newEnd.number) {
                   structureChanged = true;
+                  return;
+                }
+
+                let oldFence = /^\s*(`{3,}|~{3,})/.test(oldStart.text);
+                let newFence = /^\s*(`{3,}|~{3,})/.test(newStart.text);
+                let oldSplitOffset = separatorOffset(oldStart.text);
+                let newSplitOffset = separatorOffset(newStart.text);
+
+                if (oldFence || newFence || (oldSplitOffset >= 0) !== (newSplitOffset >= 0)) {
+                  structureChanged = true;
+                  return;
+                }
+
+                if (oldSplitOffset >= 0 && newSplitOffset >= 0) {
+                  let oldProtectEnd = oldStart.from + oldSplitOffset + split.length;
+                  let newProtectEnd = newStart.from + newSplitOffset + split.length;
+                  // The line decoration already supplies the title color and
+                  // underline. Rebuild only when the protected prefix itself is
+                  // touched; ordinary title edits can map the line and endpoint
+                  // widget without creating an inline DOM boundary at the caret.
+                  if (fromA < oldProtectEnd || fromB < newProtectEnd) {
+                    structureChanged = true;
+                  }
                 }
               });
             }
@@ -29157,7 +29199,18 @@ var Zl = class {
                               event.stopPropagation();
                               try {
                                   let line = this.view.state.doc.line(this.lineNo);
-                                  this.view.dispatch({ selection: Z.single(line.to), scrollIntoView: true });
+                                  let assoc = -1;
+                                  if (this.splitStr) {
+                                      let leadingWhitespace = line.text.length - line.text.trimStart().length;
+                                      let protectEnd = line.from + leadingWhitespace + this.splitStr.length;
+                                      if (line.text.startsWith(this.splitStr, leadingWhitespace) && line.to <= protectEnd) {
+                                          assoc = 1;
+                                      }
+                                  }
+                                  this.view.dispatch({
+                                      selection: Z.create([Z.cursor(line.to, assoc)]),
+                                      scrollIntoView: true
+                                  });
                                   this.view.focus();
                               } catch (err) {}
                           });
@@ -29253,21 +29306,25 @@ var Zl = class {
                      let splitOffset = line.text.indexOf(t.settings.split);
                      if (splitOffset >= 0) {
                          i.push(q.replace({ inclusive: false, inclusiveStart: false, inclusiveEnd: false }).range(line.from + splitOffset, line.from + splitOffset + t.settings.split.length));
-                         let textEnd = line.text.trimEnd().length;
-                         let markStart = line.from + splitOffset + t.settings.split.length;
-                         if (markStart < line.from + textEnd) {
-                             i.push(q.mark({ class: "cm-nested-tab-item-mark " + levelClass }).range(markStart, line.from + textEnd));
-           }
-          nestedPairCache.set(doc, pairs);
-                     }
-                     if (depth === 1) {
-                         i.push(q.widget({ widget: new this.DepthWidget("main topic", ""), side: 1 }).range(line.to));
-                     } else {
+                         // Do not wrap the editable title in an inline mark. The
+                         // line class above provides the same visual styling and
+                         // leaves a single, stable text node for mouse hit-testing
+                         // and CodeMirror's synthetic cursor measurement.
+                      }
+                      if (depth === 1) {
+                          // Root separators have no delete action, but their
+                          // endpoint widget must still route mouse clicks back to
+                          // the editor—especially while the title is empty.
+                          i.push(q.widget({ widget: new this.DepthWidget("main topic", "", view, p, null, t.settings.split, baseDepth), side: 1 }).range(line.to));
+                      } else {
                          i.push(q.widget({ widget: new this.DepthWidget("", "", view, p, "tab", t.settings.split, baseDepth), side: 1 }).range(line.to));
                      }
                  }
              }
           }
+          // Publish only after the complete scan. Storing from inside a title
+          // line exposed an incomplete array before the closing fence was seen.
+          nestedPairCache.set(doc, pairs);
           // Mixed CodeMirror decorations at the same document position must be
           // ordered by RangeValue.startSide, not only by from/to. Let CodeMirror
           // perform its canonical ordering so cursor movement cannot invalidate
@@ -29299,8 +29356,14 @@ var Zl = class {
           this.decorations = this.getDeco(view, true);
         }
         update(update) {
-          if (update.docChanged || update.selectionSet) {
-            this.decorations = this.getDeco(update.view, update.docChanged);
+          let forceRefresh = update.transactions.some((transaction) =>
+            transaction.effects.some((effect) => effect.is(forceNestedTabsRefreshEffect)),
+          );
+          if (update.docChanged || update.selectionSet || forceRefresh) {
+            // The structural plugin runs first and publishes the mapped/rebuilt
+            // pair cache for the new immutable document. Reuse it instead of
+            // rescanning every line after each typed character.
+            this.decorations = this.getDeco(update.view, forceRefresh);
           }
         }
         scanPairs(doc) {
@@ -29676,10 +29739,12 @@ var Zl = class {
         run: (t) => (Kn({ state: t.state, dispatch: (e) => t.dispatch(e) }), !0),
       },
     ];
-    ((this.plugin = t),
-      t.settings.showToolbar &&
-        (this.initToolbar(e), this.registerToolbarEvents()),
-      this.initEditor(e, i));
+    this.plugin = t;
+    if (t.settings.showToolbar) this.initToolbar(e);
+    // Toolbar callbacks operate on this.view. Bind them only after CodeMirror
+    // has been constructed so no handler depends on partially initialized state.
+    this.initEditor(e, i);
+    if (t.settings.showToolbar) this.registerToolbarEvents();
   }
   addButton(t, e, i) {
     return new TO.ButtonComponent(this.editToolbarEl)
@@ -29735,84 +29800,165 @@ var Zl = class {
             let leadingWhitespace = text.length - text.trimStart().length;
             return text.startsWith(splitStr, leadingWhitespace) ? leadingWhitespace : -1;
         };
-        exts.push(I.transactionFilter.of(tr => {
-            if (window.isTabsExtAuthorizedDelete || window.isTabsExtHoveringDelete) return tr;
-            let doc = tr.startState.doc;
-            let changes = tr.changes;
-            let allowed = true;
-            
-            changes.iterChangedRanges((fromA, toA) => {
-                let safeFrom = Math.max(0, Math.min(fromA, doc.length));
-                let safeTo = Math.max(safeFrom, Math.min(toA, doc.length));
-                let firstChangedLine = doc.lineAt(safeFrom).number;
-                let lastChangedLine = doc.lineAt(safeTo).number;
-                for (let p = firstChangedLine; p <= lastChangedLine; p++) {
-                    let line = doc.line(p);
-                    let text = line.text;
-                    let trimmed = text.trim();
+        const protectedFenceLinesCache = new WeakMap();
+        const getProtectedFenceLines = (doc) => {
+            let cached = protectedFenceLinesCache.get(doc);
+            if (cached) return cached;
 
-                    let separatorOffset = getSeparatorOffset(text);
-                    if (separatorOffset >= 0) {
-                        let protectEnd = line.from + separatorOffset + splitStr.length;
-                        if (fromA < protectEnd && toA >= line.from) {
-                            allowed = false;
-                            break;
-                        }
-                    }
+            let protectedLines = new Set();
+            let stack = [];
+            let mainKeyword = (this.plugin.settings.tabsKeyword || "tabs").trim();
+            let safeKeyword = mainKeyword.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+            let tabsInfo = new RegExp(`^(?:${safeKeyword}(?:-v)?|tabs(?:-v)?)$`, "i");
 
-                    if (/^(`{3,}|~{3,})/.test(trimmed)) {
-                        let insertsAfterFence = fromA === toA && fromA === line.to;
-                        if (!insertsAfterFence && fromA <= line.to && toA >= line.from) {
-                            allowed = false;
-                            break;
-                        }
-                    }
+            for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
+                let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)$/);
+                if (!match) continue;
+
+                let fence = match[1];
+                let info = match[2].trim();
+                let current = stack.length ? stack[stack.length - 1] : null;
+                let closesCurrent = current && info === "" &&
+                  fence[0] === current.fence[0] && fence.length >= current.fence.length;
+
+                if (current && current.type === "code") {
+                    if (closesCurrent) stack.pop();
+                    continue;
                 }
-            });
 
-            if (allowed && tr.docChanged) {
-                try {
-                    changes.iterChanges((fromA, toA, fromB, toB, ins) => {
-                        if (!allowed) return;
-                        if (ins && ins.lines > 1) {
-                            let safePos = Math.max(0, Math.min(fromA, doc.length));
-                            let line = doc.lineAt(safePos);
-                            if (getSeparatorOffset(line.text) >= 0 && fromA >= line.from && fromA <= line.to) {
-                                allowed = false;
-                                return;
-                            }
-                        }
-                    });
-                } catch(e) {}
+                if (current && current.type === "tabs" && closesCurrent) {
+                    stack.pop();
+                    protectedLines.add(lineNo);
+                    continue;
+                }
+
+                if (tabsInfo.test(info)) {
+                    stack.push({ type: "tabs", fence, lineNo });
+                    protectedLines.add(lineNo);
+                } else {
+                    stack.push({ type: "code", fence, lineNo });
+                }
             }
 
-            if (!allowed) return [];
+            protectedFenceLinesCache.set(doc, protectedLines);
+            return protectedLines;
+        };
+        const selectionTouchesProtectedStructure = (doc, range) => {
+            if (range.empty) return false;
 
-            if (!tr.docChanged && tr.selection && tr.startState.selection.main) {
+            let firstLine = doc.lineAt(range.from).number;
+            let lastLine = doc.lineAt(Math.min(range.to, doc.length)).number;
+            let protectedFences = getProtectedFenceLines(doc);
+            for (let lineNo = firstLine; lineNo <= lastLine; lineNo++) {
+                if (protectedFences.has(lineNo)) return true;
+
+                let line = doc.line(lineNo);
+                let splitOffset = getSeparatorOffset(line.text);
+                if (splitOffset < 0) continue;
+
+                let protectStart = line.from + splitOffset;
+                let protectEnd = protectStart + splitStr.length;
+                if (range.from < protectEnd && range.to > protectStart) return true;
+            }
+            return false;
+        };
+        const safeLineBreakTarget = (doc, range) => {
+            let line = doc.lineAt(range.head);
+            if (getProtectedFenceLines(doc).has(line.number)) return line.to;
+
+            let splitOffset = getSeparatorOffset(line.text);
+            if (splitOffset >= 0) {
+                let protectEnd = line.from + splitOffset + splitStr.length;
+                return Math.max(protectEnd, Math.min(range.head, line.to));
+            }
+            return range.head;
+        };
+        const insertSingleLineBreak = (view) => {
+            if (view.state.readOnly) return false;
+
+            let state = view.state;
+            let edit = state.changeByRange((range) => {
+                let target = safeLineBreakTarget(state.doc, range);
+                let preserveStructure = selectionTouchesProtectedStructure(state.doc, range);
+                let from = preserveStructure ? target : range.from;
+                let to = preserveStructure ? target : range.to;
+                return {
+                    changes: { from, to, insert: "\n" },
+                    range: Z.cursor(from + 1)
+                };
+            });
+
+            view.dispatch(state.update(edit, {
+                scrollIntoView: true,
+                userEvent: "input"
+            }));
+            return true;
+        };
+        const protectStructuralBackspace = (view) => {
+            let doc = view.state.doc;
+            let protectedFences = getProtectedFenceLines(doc);
+
+            for (let range of view.state.selection.ranges) {
+                if (selectionTouchesProtectedStructure(doc, range)) return true;
+
+                let line = doc.lineAt(range.head);
+                if (protectedFences.has(line.number)) return true;
+
+                let splitOffset = getSeparatorOffset(line.text);
+                if (splitOffset >= 0) {
+                    let protectEnd = line.from + splitOffset + splitStr.length;
+                    if (range.empty && range.head === protectEnd) return true;
+                }
+
+                if (range.empty && range.head === line.from && line.number > 1 &&
+                    protectedFences.has(line.number - 1)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        exts.push(I.transactionFilter.of(tr => {
+            // Selection-only normalization. This filter must never reject a
+            // document change—especially a line break—or act as a second
+            // keyboard policy. Structural Backspace protection lives solely in
+            // the highest-priority keymap below.
+            // Normalize the resulting selection synchronously, including
+            // transactions that also edit the document. A delayed corrective
+            // dispatch can race with typing and move the caret behind text that
+            // was just inserted.
+            let resultDoc = tr.newDoc;
+            let resultSelection = tr.newSelection;
+            if (resultSelection && resultSelection.main) {
                 let oldHeadPos = tr.startState.selection.main.head;
-                let newRanges = tr.selection.ranges.map(r => {
+                let newRanges = resultSelection.ranges.map(r => {
                     let headPos = r.head;
-                    let line = doc.lineAt(headPos);
+                    let line = resultDoc.lineAt(headPos);
                     let text = line.text;
                     let splitOffset = getSeparatorOffset(text);
                     if (splitOffset >= 0) {
                         let protectStart = line.from;
                         let protectEnd = line.from + splitOffset + splitStr.length;
-                        
+                        // A cursor can keep the same document position while being
+                        // associated with either side of a replaced range. At the
+                        // separator boundary it must belong to the visible title;
+                        // otherwise CodeMirror draws it inside the hidden prefix.
+                        let needsVisibleBoundaryAssoc =
+                            r.empty && r.head === protectEnd && r.assoc !== 1;
+
                         let processPos = (pos) => {
                             if (pos >= protectStart && pos < protectEnd) {
-                                if (oldHeadPos === protectEnd && pos === protectEnd - 1) {
+                                if (!tr.docChanged && oldHeadPos === protectEnd && pos === protectEnd - 1) {
                                     let prevLineNo = Math.max(1, line.number - 1);
-                                    return doc.line(prevLineNo).to;
+                                    return resultDoc.line(prevLineNo).to;
                                 }
                                 return protectEnd;
                             }
                             return pos;
                         };
-                        
+
                         let newHead = processPos(r.head);
                         let newAnchor = processPos(r.anchor);
-                        if (newHead !== r.head || newAnchor !== r.anchor) {
+                        if (needsVisibleBoundaryAssoc || newHead !== r.head || newAnchor !== r.anchor) {
                             return r.empty
                               ? Z.cursor(newHead, 1)
                               : Z.range(newAnchor, newHead);
@@ -29820,12 +29966,16 @@ var Zl = class {
                     }
                     return r;
                 });
-                let hasChanged = newRanges.some((r, idx) => r.head !== tr.selection.ranges[idx].head || r.anchor !== tr.selection.ranges[idx].anchor);
+                let hasChanged = newRanges.some((r, idx) => {
+                    let previous = resultSelection.ranges[idx];
+                    return r.head !== previous.head || r.anchor !== previous.anchor || r.assoc !== previous.assoc;
+                });
                 if (hasChanged) {
                     return {
                         changes: tr.changes,
-                        selection: Z.create(newRanges, tr.selection.mainIndex),
+                        selection: Z.create(newRanges, resultSelection.mainIndex),
                         effects: tr.effects,
+                        annotations: tr.annotations,
                         scrollIntoView: tr.scrollIntoView
                     };
                 }
@@ -29865,48 +30015,54 @@ var Zl = class {
         exts.push(A.domEventHandlers({
             mousedown: (event, view) => {
                 try {
-                    let pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-                    if (pos !== null) {
-                        let line = view.state.doc.lineAt(pos);
-                        let splitStr = this.plugin.settings.split;
-                        let splitOffset = getSeparatorOffset(line.text);
-                        if (splitOffset >= 0) {
-                            let protectStart = line.from;
-                            let protectEnd = line.from + splitOffset + splitStr.length;
-                            if (pos >= protectStart && pos < protectEnd) {
-                                event.preventDefault();
-                                view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
-                                return true;
-                            }
-                        }
+                    if (event.button !== 0 || event.detail > 1) return false;
+                    if (event.target && event.target.closest && event.target.closest(".tabs-delete-button")) return false;
+
+                    // `precise: false` keeps hit-testing available when the click
+                    // lands beside an empty title or on the endpoint widget.
+                    let pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+                    let lineElement = event.target && event.target.closest
+                      ? event.target.closest(".cm-line")
+                      : null;
+                    let line = null;
+                    if (lineElement && view.contentDOM.contains(lineElement)) {
+                        line = view.state.doc.lineAt(view.posAtDOM(lineElement, 0));
+                    } else if (pos !== null) {
+                        line = view.state.doc.lineAt(pos);
                     }
+                    if (!line) return false;
+
+                    let splitStr = this.plugin.settings.split;
+                    let splitOffset = getSeparatorOffset(line.text);
+                    if (splitOffset < 0) return false;
+
+                    let protectEnd = line.from + splitOffset + splitStr.length;
+                    let targetPos = pos === null
+                      ? protectEnd
+                      : Math.max(protectEnd, Math.min(pos, line.to));
+                    let targetAssoc = targetPos === protectEnd
+                      ? 1
+                      : targetPos === line.to
+                        ? -1
+                        : 0;
+
+                    // The browser DOM selection remains ambiguous across the
+                    // replaced prefix and endpoint widget, including positions
+                    // inside the visible title. Make the computed CodeMirror
+                    // position authoritative for the whole separator line.
+                    event.preventDefault();
+                    let nextSelection = event.shiftKey
+                      ? Z.create([Z.range(view.state.selection.main.anchor, targetPos)])
+                      : cursorSelectionAt(targetPos, targetAssoc);
+                    view.dispatch({
+                        selection: nextSelection,
+                        scrollIntoView: true
+                    });
+                    view.focus();
+                    return true;
                 } catch (err) {}
                 return false;
             }
-        }));
-
-        exts.push(A.updateListener.of(update => {
-            try {
-                if (update.selectionSet && !update.docChanged && update.state.selection && update.state.selection.main) {
-                    let sel = update.state.selection.main;
-                    let line = update.state.doc.lineAt(sel.head);
-                    let splitStr = this.plugin.settings.split;
-                    let splitOffset = getSeparatorOffset(line.text);
-                    if (splitOffset >= 0) {
-                        let protectStart = line.from;
-                        let protectEnd = line.from + splitOffset + splitStr.length;
-                        if (sel.head >= protectStart && sel.head < protectEnd) {
-                            activeWindow.requestAnimationFrame(() => {
-                                try {
-                                    if (update.view && !update.view.destroyed) {
-                                        update.view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
-                                    }
-                                } catch (e) {}
-                            });
-                        }
-                    }
-                }
-            } catch (err) {}
         }));
 
         exts.push(A.inputHandler.of((view, from, to, text) => {
@@ -29917,14 +30073,22 @@ var Zl = class {
                 let splitOffset = getSeparatorOffset(line.text);
                 if (splitOffset >= 0) {
                     // Enter is handled once, at highest priority, by the keymap
-                    // registered below. Handling newlines here as well produced two
-                    // blank lines and could replay a nested-tabs insertion.
+                    // registered below. Handling newlines here as well produced
+                    // duplicate blank lines.
                     if (text.includes("\n")) return false;
                     let protectEnd = line.from + splitOffset + splitStr.length;
-                    if (from < protectEnd || to < protectEnd) {
+                    // Own edits at the exact replace boundary as well. Letting
+                    // the browser resolve that DOM boundary can place input on
+                    // the hidden side and make fast text appear out of order.
+                    if (from <= protectEnd || to < protectEnd) {
                         let targetFrom = Math.max(from, protectEnd);
                         let targetTo = Math.max(to, protectEnd);
-                        view.dispatch({ changes: { from: targetFrom, to: targetTo, insert: text }, selection: cursorSelectionAt(targetFrom + text.length, 1) });
+                        let targetPos = targetFrom + text.length;
+                        let targetAssoc = targetPos === protectEnd ? 1 : -1;
+                        view.dispatch({
+                            changes: { from: targetFrom, to: targetTo, insert: text },
+                            selection: cursorSelectionAt(targetPos, targetAssoc)
+                        });
                         return true;
                     }
                 }
@@ -30044,7 +30208,8 @@ var Zl = class {
                                 let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, prevLine.from + col);
                                 targetPos = Math.min(prevLine.to, targetPos);
-                                view.dispatch({ selection: cursorSelectionAt(targetPos, 1) });
+                                let targetAssoc = targetPos === protectEnd ? 1 : targetPos === prevLine.to ? -1 : 0;
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc) });
                                 return true;
                             }
                         }
@@ -30068,18 +30233,8 @@ var Zl = class {
                                 let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, nextLine.from + col);
                                 targetPos = Math.min(nextLine.to, targetPos);
-                                view.dispatch({ selection: cursorSelectionAt(targetPos, 1) });
-                                return true;
-                            }
-                        } else {
-                            let text = line.text.trim();
-                            let match = text.match(/^(`{3,}|~{3,})(.*)/);
-                            if (match && match[2].trim() === "") {
-                                let insertPos = line.to;
-                                view.dispatch({
-                                    changes: { from: insertPos, insert: "\n" },
-                                    selection: Z.single(insertPos + 1)
-                                });
+                                let targetAssoc = targetPos === protectEnd ? 1 : targetPos === nextLine.to ? -1 : 0;
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc) });
                                 return true;
                             }
                         }
@@ -30089,37 +30244,8 @@ var Zl = class {
             },
             {
                 key: "Enter",
-                run: (view) => {
-                    try {
-                        let sel = view.state.selection.main;
-                        if (sel.empty) {
-                            let line = view.state.doc.lineAt(sel.head);
-                            let text = line.text.trim();
-                            let splitStr = this.plugin.settings.split;
-                            let splitOffset = getSeparatorOffset(line.text);
-
-                            if (splitOffset >= 0) {
-                                let insertPos = line.to;
-                                view.dispatch({
-                                    changes: { from: insertPos, insert: "\n" },
-                                    selection: Z.single(insertPos + 1)
-                                });
-                                return true;
-                            }
-
-                            let match = text.match(/^(`{3,}|~{3,})(.*)/);
-                            if (match) {
-                                let insertPos = line.to;
-                                view.dispatch({
-                                    changes: { from: insertPos, insert: "\n" },
-                                    selection: Z.single(insertPos + 1)
-                                });
-                                return true;
-                            }
-                        }
-                    } catch (err) {}
-                    return false;
-                }
+                run: insertSingleLineBreak,
+                shift: insertSingleLineBreak
             },
             {
                 key: "Home",
@@ -30140,58 +30266,13 @@ var Zl = class {
             },
             {
                 key: "Backspace",
-                run: (view) => {
-                    try {
-                        let sel = view.state.selection.main;
-                        let line = view.state.doc.lineAt(sel.head);
-                        let text = line.text.trim();
-
-                        if (/^(`{3,}|~{3,})/.test(text)) {
-                            return true;
-                        }
-
-                        let splitStr = this.plugin.settings.split;
-                        let splitOffset = getSeparatorOffset(line.text);
-                        if (splitOffset >= 0) {
-                            let protectEnd = line.from + splitOffset + splitStr.length;
-                            if (sel.head === protectEnd) {
-                                let prevLineNo = Math.max(1, line.number - 1);
-                                view.dispatch({ selection: cursorSelectionAt(view.state.doc.line(prevLineNo).to, -1) });
-                                return true;
-                            }
-                        }
-
-                        if (sel.head === line.from && line.number > 1) {
-                            let prevLine = view.state.doc.line(line.number - 1);
-                            if (/^(`{3,}|~{3,})/.test(prevLine.text.trim())) {
-                                return true;
-                            }
-                        }
-                    } catch (err) {}
-                    return false;
-                }
+                run: protectStructuralBackspace,
+                shift: protectStructuralBackspace
             },
             {
-                key: "Delete",
-                run: (view) => {
-                    try {
-                        let sel = view.state.selection.main;
-                        let line = view.state.doc.lineAt(sel.head);
-                        let text = line.text.trim();
-
-                        if (/^(`{3,}|~{3,})/.test(text)) {
-                            return true;
-                        }
-
-                        if (sel.head === line.to && line.number < view.state.doc.lines) {
-                            let nextLine = view.state.doc.line(line.number + 1);
-                            if (/^(`{3,}|~{3,})/.test(nextLine.text.trim())) {
-                                return true;
-                            }
-                        }
-                    } catch (err) {}
-                    return false;
-                }
+                key: "Mod-Backspace",
+                mac: "Alt-Backspace",
+                run: protectStructuralBackspace
             }
         ])));
     }
@@ -30216,20 +30297,34 @@ var Zl = class {
     );
   }
   initFormatTool() {
+    let boldButton = this.addButton("bold", "Bold (Ctrl+B)", "bold-button");
+    let italicButton = this.addButton("italic", "Italic (Ctrl+I)", "italic-button");
+    let underlineButton = this.addButton("underline", "Underline (Ctrl+U)", "underline-button");
+    let strikeButton = this.addButton("strikethrough", "Strike (Ctrl+Shift+S)", "strike-button");
+    let highlightButton = this.addButton("highlighter", "Highlight", "highlight-button");
+    this.addMainTabButton = this.addButton("plus-square", "Add Main Tab", "add-main-tab-button");
+    this.nestedTabsHorizontalButton = this.addButton("layout-template", "Horizontal Nested Tabs", "nested-tabs-horizontal-button");
+    this.nestedTabsVerticalButton = this.addButton("sidebar", "Vertical Nested Tabs", "nested-tabs-vertical-button");
     this.formatTools = [
-      this.addButton("bold", "Bold (Ctrl+B)", "bold-button"),
-      this.addButton("italic", "Italic (Ctrl+I)", "italic-button"),
-      this.addButton("underline", "Underline (Ctrl+U)", "underline-button"),
-      this.addButton("strikethrough", "Strike (Ctrl+Shift+S)", "strike-button"),
-      this.addButton("highlighter", "Highlight", "highlight-button"),
-      this.addButton("plus-square", "Add Main Tab", "add-main-tab-button"),
-      this.addButton("layout-template", "Horizontal Nested Tabs", "nested-tabs-horizontal-button"),
-      this.addButton("sidebar", "Vertical Nested Tabs", "nested-tabs-vertical-button"),
+      boldButton,
+      italicButton,
+      underlineButton,
+      strikeButton,
+      highlightButton,
+      this.addMainTabButton,
+      this.nestedTabsHorizontalButton,
+      this.nestedTabsVerticalButton,
     ];
   }
   insertNestedTabsBlock(isVertical) {
+    if (!this.view || this.view.destroyed) {
+      console.error("Tabs Extended nested toolbar insertion error: editor view is not available");
+      try { new TO.Notice("Tabs Extended: el editor modal todavía no está disponible."); } catch (err) {}
+      return false;
+    }
     let doc = this.view.state.doc;
-    let cursorPos = this.view.state.selection.main.head;
+    let sel = this.view.state.selection.main;
+    let cursorPos = sel.head;
     let cursorLine = doc.lineAt(cursorPos).number;
     let fenceStack = [];
 
@@ -30267,19 +30362,57 @@ var Zl = class {
     let newFenceLen = cursorDepth === 0 ? 3 : Math.max(3, parentFenceLen - 1);
     let fence = "~".repeat(newFenceLen);
 
-    let sel = this.view.state.selection.main;
-    let selectedText = doc.sliceString(sel.from, sel.to);
+    let insertFrom = sel.from;
+    let insertTo = sel.to;
+    let selectedText = doc.sliceString(insertFrom, insertTo);
     let split = this.plugin.settings.split;
     let baseKw = (this.plugin.settings.tabsKeyword || "tabs").trim();
     let kw = isVertical ? (baseKw + "-v") : baseKw;
 
-    let targetCursor = sel.from + ("\n" + fence + kw + "\n" + split).length;
+    // A toolbar insertion requested from a title belongs to that tab's content,
+    // not in the middle of its protected separator line.
+    if (sel.empty) {
+      let currentLine = doc.lineAt(sel.head);
+      let leadingWhitespace = currentLine.text.length - currentLine.text.trimStart().length;
+      if (currentLine.text.startsWith(split, leadingWhitespace)) {
+        insertFrom = currentLine.to;
+        insertTo = currentLine.to;
+        selectedText = "";
+      }
+    }
+
+    let targetCursor = insertFrom + ("\n" + fence + kw + "\n" + split).length;
     let insertText = "\n" + fence + kw + "\n" + split + (selectedText ? selectedText + "\n" : "\n") + fence + "\n";
 
-    this.view.dispatch({
-      changes: { from: sel.from, to: sel.to, insert: insertText },
-      selection: { anchor: targetCursor, head: targetCursor },
-    });
+    try {
+      this.view.dispatch({
+        changes: { from: insertFrom, to: insertTo, insert: insertText },
+        selection: Z.create([Z.cursor(targetCursor, 1)]),
+        scrollIntoView: true,
+        // Keep the toolbar insertion atomic and independent from selection
+        // normalization. The explicit visual refresh below remains responsible
+        // for attaching every new fence, widget and control immediately.
+        filter: false,
+      });
+      this.view.focus();
+      if (typeof this.view.requestMeasure === "function") this.view.requestMeasure();
+      activeWindow.requestAnimationFrame(() => {
+        if (!this.view || this.view.destroyed) return;
+        // Force a second, cheap visual pass after CodeMirror has attached the
+        // new lines to the DOM. This is what reopening the modal used to do.
+        this.view.dispatch({
+          effects: this.forceNestedTabsRefreshEffect.of(true),
+          filter: false,
+        });
+        if (typeof this.view.requestMeasure === "function") this.view.requestMeasure();
+        this.view.focus();
+      });
+      return true;
+    } catch (err) {
+      console.error("Tabs Extended nested toolbar insertion error:", err);
+      try { new TO.Notice("Tabs Extended: no se pudo insertar el bloque de pestañas."); } catch (noticeErr) {}
+      return false;
+    }
   }
   insertMainTab() {
     let doc = this.view.state.doc;
@@ -30349,10 +30482,25 @@ var Zl = class {
     ];
   }
   registerToolbarEvents() {
-    (this.registerHistoryToolEvents(),
-      this.registerFormatToolEvents(),
-      this.registerPragraphToolEvents(),
-      this.registerInsertToolEvents());
+    // Bind the two structural actions independently and first. An unrelated
+    // formatting-button failure must never leave them without a click handler.
+    this.registerNestedTabsToolEvents();
+    this.registerHistoryToolEvents();
+    this.registerFormatToolEvents();
+    this.registerPragraphToolEvents();
+    this.registerInsertToolEvents();
+  }
+  registerNestedTabsToolEvents() {
+    if (this.nestedTabsHorizontalButton) {
+      this.nestedTabsHorizontalButton.onClick(() => {
+        this.insertNestedTabsBlock(false);
+      });
+    }
+    if (this.nestedTabsVerticalButton) {
+      this.nestedTabsVerticalButton.onClick(() => {
+        this.insertNestedTabsBlock(true);
+      });
+    }
   }
   registerHistoryToolEvents() {
     (this.historyTools[0].onClick(() => {
@@ -30501,12 +30649,6 @@ var Zl = class {
       }),
       this.formatTools[5].onClick(() => {
         this.insertMainTab();
-      }),
-      this.formatTools[6].onClick(() => {
-        this.insertNestedTabsBlock(false);
-      }),
-      this.formatTools[7].onClick(() => {
-        this.insertNestedTabsBlock(true);
       }));
 
   }
@@ -30917,8 +31059,156 @@ var Ml = class extends CO.Modal {
     );
   }
 };
+// Obsidian normally loads styles.css beside main.js. Keep the rendering core
+// available in the bundle as a last-resort fallback: a partial deployment must
+// not turn valid tabs into unstyled HTML. The complete stylesheet remains the
+// canonical source for advanced options and modal-specific presentation.
+var tabsExtendedCorePreviewStyles = `
+.tabs-container {
+  --tabs-border-color: var(--background-modifier-border);
+  --tabs-nav-item-active-color: var(--interactive-accent);
+  --tabs-nav-item-hover-color: var(--background-modifier-border-hover);
+  --p-spacing: .75em;
+  display: flex;
+  margin: 2px;
+  flex-direction: column;
+}
+.markdown-source-view.is-readable-line-width .tabs-container {
+  max-width: max(100%, var(--file-line-width));
+}
+.tabs-container .tabs-nav {
+  display: inline-flex;
+  width: 100%;
+  justify-content: space-between;
+}
+.tabs-container .tabs-nav .tabs-nav-item-wrapper {
+  display: flex;
+  position: relative;
+  margin-bottom: 0;
+  overflow-x: auto;
+  padding: 0;
+}
+.tabs-container .tabs-nav .tabs-nav-item-wrapper::-webkit-scrollbar {
+  display: none;
+}
+.tabs-container .tabs-nav-item {
+  position: relative;
+  cursor: pointer;
+  padding: 5px 16px;
+  font-size: var(--horizontal-tab-font-size, 16px);
+  font-weight: bold;
+  user-select: none;
+  white-space: nowrap;
+  border-width: 0 0 3px;
+  border-style: solid;
+  border-color: transparent;
+  transition: border-color .1s cubic-bezier(.4, 0, .2, 1);
+}
+.tabs-container .tabs-nav-item .tabs-nav-item-md {
+  pointer-events: none;
+}
+.tabs-container .tabs-nav-item .tabs-nav-item-md p {
+  margin: 0;
+}
+.tabs-container .tabs-nav .tabs-nav-item.tabs-nav-item-active {
+  color: var(--tabs-nav-item-active-color);
+  border-color: var(--tabs-nav-item-active-color);
+}
+.tabs-container .tabs-nav .tabs-nav-item:not(.tabs-nav-item-active, .tabs-nav-item-dragover):hover {
+  border-color: var(--tabs-nav-item-hover-color);
+}
+.tabs-container .tabs-nav .tabs-nav-button {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  margin: auto 40px auto 15px;
+  color: var(--text-muted);
+  background-color: transparent;
+  box-shadow: unset;
+  opacity: 0;
+  cursor: pointer;
+}
+.tabs-container:hover .tabs-nav .tabs-nav-button {
+  opacity: 1;
+}
+.markdown-reading-view .tabs-container .tabs-nav .tabs-nav-button {
+  display: none;
+}
+.tabs-container .tabs-contents {
+  width: 100%;
+  padding: var(--tabs-contents-padding, .25em 2em);
+  overflow: auto;
+}
+.tabs-container .tabs-contents .tabs-content {
+  display: none;
+}
+.tabs-container .tabs-contents .tabs-content.tabs-content-active {
+  display: block;
+}
+.tabs-container .tabs-contents.tabs-contents-hidden {
+  display: none;
+}
+.tabs-container.tabs-nav-top {
+  flex-direction: column;
+}
+.tabs-container.tabs-nav-bottom {
+  flex-direction: column-reverse;
+}
+.tabs-container.tabs-nav-left {
+  flex-direction: row;
+}
+.tabs-container.tabs-nav-right {
+  flex-direction: row-reverse;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav {
+  display: flex;
+  width: auto;
+  max-width: 20%;
+  flex-direction: column;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper {
+  flex-direction: column;
+}
+.tabs-container.tabs-nav-left > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
+  border-width: 0 3px 0 0;
+}
+.tabs-container.tabs-nav-right > .tabs-nav > .tabs-nav-item-wrapper > .tabs-nav-item {
+  border-width: 0 0 0 3px;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item {
+  font-size: var(--vertical-tab-font-size, 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabs-container.tabs-nav-multi > .tabs-nav > .tabs-nav-item-wrapper {
+  flex-wrap: wrap;
+}
+.tabs-container > .tabs-contents {
+  max-height: var(--tabs-max-height, 100%);
+}
+.tabs-container.tabs-border-always {
+  box-shadow: 0 0 0 1px var(--tabs-border-color), inset 0 0 0 1px var(--tabs-border-color);
+  border-radius: var(--radius-s);
+}
+.tabs-container.tabs-border-hover {
+  box-shadow: none;
+  border-radius: var(--radius-s);
+}
+.tabs-container.tabs-border-hover:hover {
+  box-shadow: 0 0 0 1px var(--tabs-border-color), inset 0 0 0 1px var(--tabs-border-color);
+}
+.tabs-container.tabs-innertabs {
+  margin: 10px 0;
+}
+`;
+
 var Xl = class extends Br.Plugin {
   async onload() {
+    // Dependencies used by Gr must exist before registering processors or
+    // requesting a view rebuild. onLayoutReady may call back synchronously
+    // when Obsidian's workspace is already open.
+    this.lastTabsCache = new Map();
+    this.lastTabsCache.set("/", 0);
+
     this.registerMarkdownPostProcessor((el, ctx) => {
       const pres = el.querySelectorAll('.tabs-container pre, .tabs-content pre');
       pres.forEach(pre => {
@@ -31058,12 +31348,9 @@ var Xl = class extends Br.Plugin {
                 }
 
                 new ConfirmDeleteModal(this.app, confirmMessage, () => {
-                  window.isTabsExtAuthorizedDelete = true;
                   view.dispatch({ changes: { from: startPos, to: endPos }, userEvent: "delete", scrollIntoView: true });
-                  window.isTabsExtAuthorizedDelete = false;
                 }).open();
             } catch (err) {
-                window.isTabsExtAuthorizedDelete = false;
                 try {
                     // eslint-disable-next-line no-undef
                     new Notice("Tabs Ext Error: " + err.message);
@@ -31076,36 +31363,90 @@ var Xl = class extends Br.Plugin {
         document.addEventListener("mousedown", this.globalClickHandler, { capture: true });
         document.addEventListener("pointerdown", this.globalClickHandler, { capture: true });
         document.addEventListener("click", this.globalClickHandler, { capture: true });
-
-        this.deleteButtonMouseOverHandler = (e) => {
-            if (e.target && typeof e.target.closest === "function" && e.target.closest(".tabs-delete-button")) {
-                window.isTabsExtHoveringDelete = true;
-            }
-        };
-        document.addEventListener("mouseover", this.deleteButtonMouseOverHandler, { capture: true });
-
-        this.deleteButtonMouseOutHandler = (e) => {
-            if (e.target && typeof e.target.closest === "function" && e.target.closest(".tabs-delete-button")) {
-                window.isTabsExtHoveringDelete = false;
-            }
-        };
-        document.addEventListener("mouseout", this.deleteButtonMouseOutHandler, { capture: true });
     }
 
-    (await this.loadSettings(),
-      this.addSettingTab(new Vr(this.app, this)),
-      this.registerCodeBlockProcessors(),
-      this.registerCommands(),
-      (this.tabsEditorModal = new Ml(this, this.app)),
-      this.app.workspace.onLayoutReady(() => {
-        this.settings.autorefreshMarkdownView && this.refreshActiveView();
-      }),
-      (this.lastTabsCache = new Map()),
-      this.lastTabsCache.set("/", 0),
-      this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-        this.lastTabsCache.clear();
-        this.lastTabsCache.set("/", 0);
-      })));
+    await this.loadSettings();
+    // Register the feature's core processor before optional UI and stylesheet
+    // recovery work. A failure in either auxiliary path must not prevent tabs
+    // blocks from being recognized.
+    this.registerCodeBlockProcessors();
+    this.tabsEditorModal = new Ml(this, this.app);
+    this.addSettingTab(new Vr(this.app, this));
+    this.registerCommands();
+    await this.ensurePreviewStylesLoaded();
+    this.app.workspace.onLayoutReady(() => {
+      this.settings.autorefreshMarkdownView && this.refreshActiveView();
+    });
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+      this.lastTabsCache.clear();
+      this.lastTabsCache.set("/", 0);
+    }));
+  }
+  async ensurePreviewStylesLoaded() {
+    if (typeof document === "undefined" || !document.body || !document.head) return;
+
+    const runtimeStyleId = "tabs-extended-runtime-styles";
+    if (document.getElementById(runtimeStyleId)) return;
+
+    // Use Chromium's computed styles as the source of truth. The screenshot's
+    // plain title is exactly what these nodes look like when styles.css wasn't
+    // attached, even though the Markdown processor itself completed.
+    const probe = document.createElement("div");
+    probe.className = "tabs-container";
+    probe.style.cssText = "position:fixed;left:-10000px;top:-10000px;visibility:hidden;";
+    const nav = document.createElement("div");
+    nav.className = "tabs-nav";
+    const item = document.createElement("div");
+    item.className = "tabs-nav-item";
+    nav.appendChild(item);
+    probe.appendChild(nav);
+    document.body.appendChild(probe);
+
+    let previewStylesActive = false;
+    try {
+      const navStyle = window.getComputedStyle(nav);
+      const itemStyle = window.getComputedStyle(item);
+      previewStylesActive =
+        navStyle.display === "inline-flex" &&
+        Math.round(parseFloat(itemStyle.paddingLeft) || 0) >= 15;
+    } finally {
+      probe.remove();
+    }
+
+    if (previewStylesActive) return;
+
+    let cssText = "";
+    let styleSource = "embedded-core";
+    try {
+      const pluginDir = this.manifest && this.manifest.dir
+        ? this.manifest.dir
+        : `.obsidian/plugins/${(this.manifest && this.manifest.id) || "tabs-extended"}`;
+      cssText = await this.app.vault.adapter.read(`${pluginDir}/styles.css`);
+      if (!cssText || !cssText.trim()) throw new Error("styles.css está vacío");
+      styleSource = "styles.css";
+    } catch (err) {
+      cssText = tabsExtendedCorePreviewStyles;
+      console.error(
+        "Tabs Extended: styles.css no está disponible; se usarán estilos esenciales integrados.",
+        err,
+      );
+    }
+
+    const styleEl = document.createElement("style");
+    styleEl.id = runtimeStyleId;
+    styleEl.dataset.tabsExtendedFallback = styleSource;
+    styleEl.textContent = cssText;
+    document.head.appendChild(styleEl);
+    this.runtimeStylesEl = styleEl;
+    this.register(() => {
+      if (styleEl.isConnected) styleEl.remove();
+      if (this.runtimeStylesEl === styleEl) this.runtimeStylesEl = null;
+    });
+    console.warn(
+      styleSource === "styles.css"
+        ? "Tabs Extended: la hoja no estaba aplicada; se cargó styles.css manualmente."
+        : "Tabs Extended: instalación incompleta (falta styles.css); se activó el formato esencial integrado.",
+    );
   }
   registerCodeBlockProcessors() {
     let mainKw = (this.settings.tabsKeyword || "tabs").trim().toLowerCase();
@@ -31117,7 +31458,7 @@ var Xl = class extends Br.Plugin {
           i.addChild(new Gr(t, e, i, this.app, this, isVertical));
         });
       } catch (err) {
-        // Ignored if already registered
+        console.error(`Tabs Extended could not register the ${kw} preview processor:`, err);
       }
     });
   }
@@ -31128,15 +31469,6 @@ var Xl = class extends Br.Plugin {
       document.removeEventListener("click", this.globalClickHandler, { capture: true });
       this.globalClickHandler = null;
     }
-    if (this.deleteButtonMouseOverHandler) {
-      document.removeEventListener("mouseover", this.deleteButtonMouseOverHandler, { capture: true });
-      this.deleteButtonMouseOverHandler = null;
-    }
-    if (this.deleteButtonMouseOutHandler) {
-      document.removeEventListener("mouseout", this.deleteButtonMouseOutHandler, { capture: true });
-      this.deleteButtonMouseOutHandler = null;
-    }
-    window.isTabsExtHoveringDelete = false;
     window.hasTabsExtGlobalDeleteListener = false;
     window.tabsExtActiveViews = [];
   }
