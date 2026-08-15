@@ -29067,6 +29067,10 @@ var Zl = class {
     // layer after the button click/focus cycle has completed.
     const forceNestedTabsRefreshEffect = pt.define();
     this.forceNestedTabsRefreshEffect = forceNestedTabsRefreshEffect;
+    // The bundle contains another CodeMirror state runtime whose minified
+    // EditorSelection is `Z`. The modal is created with `I` + `A`, so every
+    // selection passed to it must come from their matching runtime, `k`.
+    this.ModalSelection = k;
     this.activeLineHighlighter = Zt.fromClass(
       class {
         constructor(t) {
@@ -29801,8 +29805,9 @@ var Zl = class {
     
     {
         let splitStr = this.plugin.settings.split;
+        const ModalSelection = this.ModalSelection;
         const cursorSelectionAt = (position, assoc = 1) =>
-            Z.create([Z.cursor(position, assoc)]);
+            ModalSelection.create([ModalSelection.cursor(position, assoc)]);
         const getSeparatorOffset = (text) => {
             let leadingWhitespace = text.length - text.trimStart().length;
             return text.startsWith(splitStr, leadingWhitespace) ? leadingWhitespace : -1;
@@ -29891,7 +29896,7 @@ var Zl = class {
                 let to = preserveStructure ? target : range.to;
                 return {
                     changes: { from, to, insert: "\n" },
-                    range: Z.cursor(from + 1)
+                    range: ModalSelection.cursor(from + 1)
                 };
             });
 
@@ -29967,8 +29972,8 @@ var Zl = class {
                         let newAnchor = processPos(r.anchor);
                         if (needsVisibleBoundaryAssoc || newHead !== r.head || newAnchor !== r.anchor) {
                             return r.empty
-                              ? Z.cursor(newHead, 1)
-                              : Z.range(newAnchor, newHead);
+                              ? ModalSelection.cursor(newHead, 1)
+                              : ModalSelection.range(newAnchor, newHead);
                         }
                     }
                     return r;
@@ -29980,7 +29985,7 @@ var Zl = class {
                 if (hasChanged) {
                     return {
                         changes: tr.changes,
-                        selection: Z.create(newRanges, resultSelection.mainIndex),
+                        selection: ModalSelection.create(newRanges, resultSelection.mainIndex),
                         effects: tr.effects,
                         annotations: tr.annotations,
                         scrollIntoView: tr.scrollIntoView
@@ -30072,10 +30077,10 @@ var Zl = class {
                         );
                     }
                     if (multiple) {
-                        return startSelection.addRange(Z.cursor(targetPos, hit ? hit.assoc : 0));
+                        return startSelection.addRange(ModalSelection.cursor(targetPos, hit ? hit.assoc : 0));
                     }
                     if (targetPos !== startPos) {
-                        return Z.create([Z.range(startPos, targetPos)]);
+                        return ModalSelection.create([ModalSelection.range(startPos, targetPos)]);
                     }
                     return cursorSelectionAt(targetPos, hit ? hit.assoc : startAssoc);
                 }
@@ -30305,15 +30310,18 @@ var Zl = class {
         ])));
     }
 
-    ((this.state = I.create({
+    this.state = I.create({
       doc: e,
       extensions: exts,
-    })),
-      (this.view = new A({
-        state: this.state,
-        parent: this.tabseditorEl,
-        extensions: [A.lineWrapping],
-      })));
+    });
+    if (!(this.state.selection instanceof this.ModalSelection)) {
+      throw new Error("Tabs Extended modal initialized with an incompatible CodeMirror selection runtime");
+    }
+    this.view = new A({
+      state: this.state,
+      parent: this.tabseditorEl,
+      extensions: [A.lineWrapping],
+    });
       
     if (!window.tabsExtActiveViews) window.tabsExtActiveViews = [];
     if (!window.tabsExtActiveViews.includes(this.view)) window.tabsExtActiveViews.push(this.view);
@@ -30415,7 +30423,9 @@ var Zl = class {
     try {
       this.view.dispatch({
         changes: { from: insertFrom, to: insertTo, insert: insertText },
-        selection: Z.create([Z.cursor(targetCursor, 1)]),
+        selection: this.ModalSelection.create([
+          this.ModalSelection.cursor(targetCursor, 1)
+        ]),
         scrollIntoView: true,
         // Keep the toolbar insertion atomic and independent from selection
         // normalization. The explicit visual refresh below remains responsible
