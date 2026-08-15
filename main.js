@@ -103,12 +103,23 @@ var zr = {
   "settings.tabsContentsMaxHeight.desc":
     "If you set a valid CSS size, such as 250px, 15em, or 50vh, tabs will scroll when their height reaches that size. Do not make the value too small or the tabs may not display properly.",
   "menu.addNewTab": "Add new tab",
+  "menu.renameTab": "Rename tab",
   "menu.deleteTab": "Delete tab",
   "menu.copyTab": "Copy tab",
   "menu.pasteTab": "Paste tab",
   "commands.convertToTabs": "Convert selected text to tabs",
   "commands.refreshAllTabs": "Refresh all tabs in opened files",
   "notice.addNewTabSuccess": "\u{1F7E2} Add new tab successfully",
+  "notice.renameTabSuccess": "\u{1F7E2} Tab renamed successfully",
+  "modal.renameTab.title": "Rename tab",
+  "modal.renameTab.field": "New name",
+  "modal.renameTab.placeholder": "Tab name",
+  "modal.renameTab.cancel": "Cancel",
+  "modal.renameTab.confirm": "Rename",
+  "modal.renameTab.empty": "The tab name cannot be empty.",
+  "modal.renameTab.invalid": "Use a single line without control characters.",
+  "modal.renameTab.editorOpen": "Close the tabs editor before renaming a tab in the same block.",
+  "modal.renameTab.failed": "The tab could not be renamed because its source changed or is no longer valid.",
   "notice.deleteTabSuccess": "\u{1F7E2} Delete {0} successfully",
   "notice.invalidTab": "\u{1F534} Not a valid tab.",
   "notice.copyTabSuccess": "\u{1F7E2} Copied to clipboard successfully.",
@@ -214,15 +225,26 @@ var bs = {
     "\u6807\u7B7E\u9875\u5185\u5BB9\u6700\u5927\u9AD8\u5EA6",
   "settings.tabsContentsMaxHeight.desc":
     "\u5982\u679C\u8BBE\u7F6E\u4E86\u6709\u6548\u7684 CSS \u5C3A\u5BF8\uFF0C\u4F8B\u5982 250px\u300115em \u6216 50vh\uFF0C\u5F53\u6807\u7B7E\u9875\u9AD8\u5EA6\u8FBE\u5230\u8BE5\u503C\u65F6\uFF0C\u8D85\u51FA\u7684\u90E8\u5206\u53EF\u4EE5\u6EDA\u52A8\u3002\u8BF7\u4E0D\u8981\u5C06\u8BE5\u503C\u8BBE\u7F6E\u5F97\u8FC7\u5C0F\uFF0C\u5426\u5219\u6807\u7B7E\u9875\u53EF\u80FD\u65E0\u6CD5\u6B63\u5E38\u663E\u793A\u3002",
-  "menu.editTab": "Editar Bloque (Modal)",
-  "menu.addNewTab": "Añadir nueva pestaña",
-  "menu.deleteTab": "Eliminar pestaña",
-  "menu.copyTab": "Copiar pestaña",
-  "menu.pasteTab": "Pegar pestaña",
+  "menu.editTab": "编辑标签页块（弹窗）",
+  "menu.addNewTab": "添加新标签页",
+  "menu.renameTab": "重命名标签页",
+  "menu.deleteTab": "删除标签页",
+  "menu.copyTab": "复制标签页",
+  "menu.pasteTab": "粘贴标签页",
   "commands.convertToTabs": "Convertir texto seleccionado a pestañas",
   "commands.refreshAllTabs": "Refrescar todas las pestañas de las notas abiertas",
   "notice.addNewTabSuccess":
     "\u{1F7E2} \u65B0\u5EFA\u6807\u7B7E\u9875\u6210\u529F",
+  "notice.renameTabSuccess": "\u{1F7E2} \u6807\u7B7E\u9875\u91CD\u547D\u540D\u6210\u529F",
+  "modal.renameTab.title": "\u91CD\u547D\u540D\u6807\u7B7E\u9875",
+  "modal.renameTab.field": "\u65B0\u540D\u79F0",
+  "modal.renameTab.placeholder": "\u6807\u7B7E\u9875\u540D\u79F0",
+  "modal.renameTab.cancel": "\u53D6\u6D88",
+  "modal.renameTab.confirm": "\u91CD\u547D\u540D",
+  "modal.renameTab.empty": "\u6807\u7B7E\u9875\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A\u3002",
+  "modal.renameTab.invalid": "\u8BF7\u4F7F\u7528\u4E0D\u542B\u63A7\u5236\u5B57\u7B26\u7684\u5355\u884C\u6587\u672C\u3002",
+  "modal.renameTab.editorOpen": "\u91CD\u547D\u540D\u540C\u4E00\u5757\u4E2D\u7684\u6807\u7B7E\u9875\u4E4B\u524D\uFF0C\u8BF7\u5173\u95ED\u6807\u7B7E\u9875\u7F16\u8F91\u5668\u3002",
+  "modal.renameTab.failed": "\u7531\u4E8E\u6E90\u6587\u672C\u5DF2\u66F4\u6539\u6216\u4E0D\u518D\u6709\u6548\uFF0C\u65E0\u6CD5\u91CD\u547D\u540D\u8BE5\u6807\u7B7E\u9875\u3002",
   "notice.deleteTabSuccess": "\u{1F7E2} \u5220\u9664 {0} \u6210\u529F",
   "notice.invalidTab":
     "\u{1F534} \u4E0D\u662F\u6709\u6548\u7684\u6807\u7B7E\u9875\u3002",
@@ -238,6 +260,21 @@ var bs = {
     "\u65E0\u6548\u7684\u64CD\u4F5C\u6309\u94AE\u7C7B\u578B\u3002\u5DF2\u8BBE\u4E3A\u201C\u65E0\u201D\u3002",
 };
 var zr_es = {
+  "menu.addNewTab": "Añadir nueva pestaña",
+  "menu.renameTab": "Renombrar pestaña",
+  "menu.deleteTab": "Eliminar pestaña",
+  "menu.copyTab": "Copiar pestaña",
+  "menu.pasteTab": "Pegar pestaña",
+  "notice.renameTabSuccess": "\u{1F7E2} Pestaña renombrada correctamente",
+  "modal.renameTab.title": "Renombrar pestaña",
+  "modal.renameTab.field": "Nuevo nombre",
+  "modal.renameTab.placeholder": "Nombre de la pestaña",
+  "modal.renameTab.cancel": "Cancelar",
+  "modal.renameTab.confirm": "Renombrar",
+  "modal.renameTab.empty": "El nombre de la pestaña no puede estar vacío.",
+  "modal.renameTab.invalid": "Usa una sola línea sin caracteres de control.",
+  "modal.renameTab.editorOpen": "Cierra el editor de pestañas antes de renombrar una pestaña del mismo bloque.",
+  "modal.renameTab.failed": "No se pudo renombrar la pestaña porque su fuente cambió o dejó de ser válida.",
   "heading_general": "⚙️ Configuración General",
   "heading_general_desc": "Preferencias globales de idioma, notificaciones emergentes, refresco de vista e interacción.",
   "heading_standard": "📑 Creación y Estructura de Pestañas",
@@ -485,6 +522,111 @@ function $(s, ...t) {
       this.contentEl.empty();
     }
   };
+
+var RenameTabModal = class extends U.Modal {
+  constructor(app, currentTitle, onRename) {
+    super(app);
+    this.currentTitle = String(currentTitle == null ? "" : currentTitle).trim();
+    this.onRename = onRename;
+    this.inputEl = null;
+    this.errorEl = null;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: $("modal.renameTab.title") });
+
+    new U.Setting(contentEl)
+      .setName($("modal.renameTab.field"))
+      .addText((text) => {
+        text
+          .setValue(this.currentTitle)
+          .setPlaceholder($("modal.renameTab.placeholder"));
+        this.inputEl = text.inputEl;
+      });
+
+    this.errorEl = contentEl.createDiv({ cls: "setting-item-description" });
+    this.errorEl.setAttr("aria-live", "polite");
+
+    const buttonContainer = contentEl.createDiv({ cls: "modal-button-container" });
+    const cancelButton = buttonContainer.createEl("button", {
+      text: $("modal.renameTab.cancel"),
+    });
+    const renameButton = buttonContainer.createEl("button", {
+      text: $("modal.renameTab.confirm"),
+      cls: "mod-cta",
+    });
+
+    cancelButton.addEventListener("click", () => this.close());
+    renameButton.addEventListener("click", () => this.submit());
+    if (this.inputEl) {
+      this.inputEl.addEventListener("input", () => this.showError(""));
+      this.inputEl.addEventListener("keydown", (event) => {
+        if (event.isComposing) return;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.submit();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          this.close();
+        }
+      });
+      window.requestAnimationFrame(() => {
+        if (!this.inputEl || !this.inputEl.isConnected) return;
+        this.inputEl.focus();
+        this.inputEl.select();
+      });
+    }
+  }
+  showError(message) {
+    if (!this.errorEl) return;
+    this.errorEl.textContent = message;
+  }
+  submit() {
+    if (!this.inputEl) return;
+    const rawTitle = this.inputEl.value;
+    const newTitle = tabsExtendedNormalizeTabTitle(rawTitle);
+    if (newTitle == null) {
+      this.showError(
+        rawTitle.trim() === ""
+          ? $("modal.renameTab.empty")
+          : $("modal.renameTab.invalid"),
+      );
+      this.inputEl.focus();
+      return;
+    }
+    if (newTitle === this.currentTitle) {
+      this.close();
+      return;
+    }
+
+    let renamed = false;
+    let failureMessage = $("modal.renameTab.failed");
+    try {
+      const result = typeof this.onRename === "function"
+        ? this.onRename(newTitle)
+        : false;
+      renamed = result === true;
+      if (!renamed && typeof result === "string" && result) {
+        failureMessage = result;
+      }
+    } catch (error) {
+      console.error("Tabs Extended could not rename a tab:", error);
+    }
+    if (!renamed) {
+      this.showError(failureMessage);
+      this.inputEl.focus();
+      this.inputEl.select();
+      return;
+    }
+    this.close();
+  }
+  onClose() {
+    this.inputEl = null;
+    this.errorEl = null;
+    this.contentEl.empty();
+  }
+};
 
 PluginLocales = {
   en: {
@@ -1971,6 +2113,49 @@ function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {
   };
 }
 
+function tabsExtendedNormalizeTabTitle(value) {
+  const rawTitle = String(value == null ? "" : value);
+  if (
+    /[\r\n\u2028\u2029]/.test(rawTitle) ||
+    /[\u0000-\u001f\u007f]/.test(rawTitle)
+  ) {
+    return null;
+  }
+  const title = rawTitle.trim();
+  return title === "" ? null : title;
+}
+
+function tabsExtendedTabTitleSourceRange(
+  rawText,
+  split,
+  analysis,
+  tabIndex,
+) {
+  const source = String(rawText == null ? "" : rawText);
+  const separator = String(split == null ? "" : split);
+  if (
+    !analysis ||
+    !separator ||
+    !Number.isInteger(tabIndex) ||
+    tabIndex < 0 ||
+    tabIndex >= analysis.sections.length
+  ) {
+    return null;
+  }
+  const section = analysis.sections[tabIndex];
+  const separatorLine = source.slice(
+    section.separatorFrom,
+    section.separatorTo,
+  );
+  if (!separatorLine.startsWith(separator)) return null;
+  const from = section.separatorFrom + separator.length;
+  return {
+    from,
+    to: section.separatorTo,
+    title: source.slice(from, section.separatorTo),
+  };
+}
+
 function tabsExtendedJoinTabSections(prefix, sections, sourceText) {
   const source = String(sourceText == null ? "" : sourceText);
   const lineBreakMatch = source.match(/\r\n|\n|\r/);
@@ -2374,6 +2559,49 @@ var Yr = class extends Dt.Menu {
       });
     });
     this.addItem((i) => {
+      i.setTitle($("menu.renameTab"));
+      i.setIcon("pencil");
+      i.setDisabled(contextTabIndex < 0);
+      i.onClick(() => {
+        const renameSnapshot = contextTabIndex >= 0 &&
+          typeof t.getTabRenameSnapshot === "function"
+          ? t.getTabRenameSnapshot(contextTabIndex)
+          : null;
+        if (!renameSnapshot) {
+          if (!t.plugin.settings.ignoreNotice) {
+            new Dt.Notice($("notice.invalidTab"));
+          }
+          return;
+        }
+        new RenameTabModal(t.app, renameSnapshot.title, (newTitle) => {
+          if (
+            typeof t.hasConflictingTabsEditorModal === "function" &&
+            t.hasConflictingTabsEditorModal()
+          ) {
+            return $("modal.renameTab.editorOpen");
+          }
+          let renamed = false;
+          const applyRename = () => {
+            renamed = typeof t.renameTabAt === "function" &&
+              t.renameTabAt(contextTabIndex, newTitle, renameSnapshot);
+          };
+          if (
+            typeof t.lockScrollPosition === "function" &&
+            t.tabsEl &&
+            t.tabsEl.isConnected
+          ) {
+            t.lockScrollPosition(t.tabsEl, applyRename);
+          } else {
+            applyRename();
+          }
+          if (renamed && !t.plugin.settings.ignoreNotice) {
+            new Dt.Notice($("notice.renameTabSuccess"));
+          }
+          return !!renamed;
+        }).open();
+      });
+    });
+    this.addItem((i) => {
       i.setTitle($("menu.deleteTab"));
       i.setIcon("trash");
       i.setDisabled(
@@ -2390,6 +2618,7 @@ var Yr = class extends Dt.Menu {
         }).open();
       });
     });
+    this.addSeparator();
     this.addItem((i) => {
       i.setTitle($("menu.copyTab"));
       i.setIcon("copy");
@@ -3422,6 +3651,262 @@ var Gr = class extends U.MarkdownRenderChild {
     }
     const section = analyzed.sections[tabIndex];
     return this.rawText.slice(section.from, section.to);
+  }
+  getTabTitleSourceRange(
+    tabIndex,
+    analyzed = this.analyzeCurrentTabSections(),
+  ) {
+    return tabsExtendedTabTitleSourceRange(
+      this.rawText,
+      this.split,
+      analyzed,
+      tabIndex,
+    );
+  }
+  getTabRenameSnapshot(tabIndex) {
+    const analyzed = this.analyzeCurrentTabSections();
+    const tabcontents = this.tabsContents && this.tabsContents.tabcontents;
+    if (
+      !analyzed ||
+      !Array.isArray(tabcontents) ||
+      tabcontents.length !== analyzed.sections.length
+    ) {
+      return null;
+    }
+    const titleRange = this.getTabTitleSourceRange(tabIndex, analyzed);
+    if (!titleRange) return null;
+    return Object.freeze({
+      tabIndex,
+      rawText: this.rawText,
+      rawTitle: titleRange.title,
+      title: titleRange.title.trim(),
+      tabsId: this.tabsId || "",
+    });
+  }
+  getRootTabsInstance() {
+    const visited = new Set();
+    let current = this;
+    while (current && current.parentTabContent) {
+      if (visited.has(current)) return null;
+      visited.add(current);
+      current = current.parentTabContent.ownerTabs;
+    }
+    return current || null;
+  }
+  hasConflictingTabsEditorModal() {
+    const modal = this.plugin ? this.plugin.tabsEditorModal : null;
+    if (
+      !modal ||
+      !modal.tabs ||
+      !modal.modalEl ||
+      !modal.modalEl.isConnected
+    ) {
+      return false;
+    }
+    const currentRoot = this.getRootTabsInstance();
+    const modalRoot = typeof modal.tabs.getRootTabsInstance === "function"
+      ? modal.tabs.getRootTabsInstance()
+      : modal.tabs;
+    if (!currentRoot || !modalRoot) return true;
+    if (currentRoot === modalRoot) return true;
+    const currentPath = currentRoot.context && currentRoot.context.sourcePath;
+    const modalPath = modalRoot.context && modalRoot.context.sourcePath;
+    return !!(
+      currentRoot.tabsId &&
+      currentRoot.tabsId === modalRoot.tabsId &&
+      (!currentPath || !modalPath || currentPath === modalPath)
+    );
+  }
+  stageRenameCacheIdentityTransition(
+    currentAnalysis,
+    nextAnalysis,
+    nextRawText,
+  ) {
+    const cache = this.plugin ? this.plugin.lastTabsCache : null;
+    const tabcontents = this.tabsContents && this.tabsContents.tabcontents;
+    if (
+      !(cache instanceof Map) ||
+      !this.tabsId ||
+      !Array.isArray(tabcontents) ||
+      tabcontents.length !== currentAnalysis.sections.length ||
+      nextAnalysis.sections.length !== currentAnalysis.sections.length
+    ) {
+      return { commit() {}, rollback() {} };
+    }
+
+    const readTitles = (rawText, analysis) => [""].concat(
+      analysis.sections.map((section, index) => {
+        const range = tabsExtendedTabTitleSourceRange(
+          rawText,
+          this.split,
+          analysis,
+          index,
+        );
+        return range ? range.title : "";
+      }),
+    );
+    const currentTitles = readTitles(this.rawText, currentAnalysis);
+    const nextTitles = readTitles(nextRawText, nextAnalysis);
+    const transitions = [];
+
+    for (let index = 0; index < tabcontents.length; index++) {
+      const contentItem = tabcontents[index];
+      const oldIdentity = contentItem && contentItem.cacheIdentity
+        ? contentItem.cacheIdentity
+        : tabsExtendedTabCacheIdentity(currentTitles, index + 1);
+      const newIdentity = tabsExtendedTabCacheIdentity(
+        nextTitles,
+        index + 1,
+      );
+      if (oldIdentity === newIdentity) continue;
+      transitions.push({
+        contentItem,
+        oldIdentity,
+        newIdentity,
+        oldPrefix: this.tabsId + "/tab-" + oldIdentity + "/",
+        newPrefix: this.tabsId + "/tab-" + newIdentity + "/",
+      });
+    }
+    if (transitions.length === 0) {
+      return { commit() {}, rollback() {} };
+    }
+
+    const existingEntries = Array.from(cache.entries());
+    const assignments = new Map();
+    const sourceKeys = new Set();
+    for (const [key, value] of existingEntries) {
+      if (typeof key !== "string") continue;
+      const transition = transitions.find((item) =>
+        key.startsWith(item.oldPrefix),
+      );
+      if (!transition) continue;
+      sourceKeys.add(key);
+      assignments.set(
+        transition.newPrefix + key.slice(transition.oldPrefix.length),
+        value,
+      );
+    }
+
+    const targetSnapshots = new Map();
+    assignments.forEach((value, key) => {
+      targetSnapshots.set(key, {
+        existed: cache.has(key),
+        value: cache.get(key),
+      });
+      cache.set(key, value);
+    });
+
+    return {
+      rollback() {
+        targetSnapshots.forEach((snapshot, key) => {
+          if (snapshot.existed) cache.set(key, snapshot.value);
+          else cache.delete(key);
+        });
+      },
+      commit() {
+        const newPrefixes = transitions.map((item) => item.newPrefix);
+        for (const key of sourceKeys) {
+          if (!newPrefixes.some((prefix) => key.startsWith(prefix))) {
+            cache.delete(key);
+          }
+        }
+        transitions.forEach((item) => {
+          if (item.contentItem) {
+            item.contentItem.cacheIdentity = item.newIdentity;
+          }
+        });
+      },
+    };
+  }
+  renameTabAt(tabIndex, requestedTitle, snapshot = null) {
+    const nextTitle = tabsExtendedNormalizeTabTitle(requestedTitle);
+    if (
+      nextTitle == null ||
+      (this.tabsEl && !this.tabsEl.isConnected) ||
+      this.hasConflictingTabsEditorModal()
+    ) {
+      return false;
+    }
+    if (
+      snapshot &&
+      (snapshot.tabIndex !== tabIndex ||
+        snapshot.rawText !== this.rawText ||
+        snapshot.tabsId !== (this.tabsId || ""))
+    ) {
+      return false;
+    }
+
+    const currentAnalysis = this.analyzeCurrentTabSections();
+    const titleRange = this.getTabTitleSourceRange(tabIndex, currentAnalysis);
+    const tabcontents = this.tabsContents && this.tabsContents.tabcontents;
+    if (
+      !currentAnalysis ||
+      !titleRange ||
+      !Array.isArray(tabcontents) ||
+      tabcontents.length !== currentAnalysis.sections.length ||
+      !Number.isInteger(this.currentIndex) ||
+      this.currentIndex < 0 ||
+      this.currentIndex >= currentAnalysis.sections.length
+    ) {
+      return false;
+    }
+    if (snapshot && snapshot.rawTitle !== titleRange.title) return false;
+    if (titleRange.title.trim() === nextTitle) return true;
+
+    const nextRawText =
+      this.rawText.slice(0, titleRange.from) +
+      nextTitle +
+      this.rawText.slice(titleRange.to);
+    const nextAnalysis = tabsExtendedAnalyzeTabSections(
+      nextRawText,
+      this.split,
+      this.plugin.settings,
+    );
+    const nextTitleRange = tabsExtendedTabTitleSourceRange(
+      nextRawText,
+      this.split,
+      nextAnalysis,
+      tabIndex,
+    );
+    if (
+      !nextAnalysis ||
+      !nextTitleRange ||
+      nextAnalysis.prefix !== currentAnalysis.prefix ||
+      nextAnalysis.sections.length !== currentAnalysis.sections.length ||
+      nextTitleRange.title !== nextTitle ||
+      this.rawText.slice(0, titleRange.from) !==
+        nextRawText.slice(0, nextTitleRange.from) ||
+      this.rawText.slice(titleRange.to) !==
+        nextRawText.slice(nextTitleRange.to)
+    ) {
+      return false;
+    }
+
+    const cacheTransition = this.stageRenameCacheIdentityTransition(
+      currentAnalysis,
+      nextAnalysis,
+      nextRawText,
+    );
+    let renamed = false;
+    try {
+      renamed = this.persistRawTextUpdate(nextRawText, this.currentIndex);
+    } catch (error) {
+      cacheTransition.rollback();
+      console.error("Tabs Extended aborted an unsafe tab rename:", error);
+      return false;
+    }
+    if (!renamed) {
+      cacheTransition.rollback();
+      return false;
+    }
+    try {
+      cacheTransition.commit();
+    } catch (error) {
+      // The source write already succeeded. Cache cleanup is best-effort and
+      // must never turn a valid structural rename into a second source write.
+      console.warn("Tabs Extended could not finish rename cache cleanup:", error);
+    }
+    return true;
   }
   replaceTabSourceSection(tabIndex, replacementText) {
     const analyzed = this.analyzeCurrentTabSections();
