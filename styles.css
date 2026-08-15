@@ -117,7 +117,7 @@ body.theme-dark .tabs-editor-modal {
     pointer-events: auto !important;
     user-select: auto !important;
 }
-.cm-nested-tab-active-fence .cm-nested-tab-ghost-text {
+.tabs-editor-modal .cm-line.cm-nested-tab-active-fence .cm-nested-tab-ghost-text {
     font-weight: bold !important;
     opacity: 1 !important;
     color: var(--text-normal) !important;
@@ -541,8 +541,8 @@ hr.tabs-settings-divider {
     -ms-hyphens: manual !important;
 }
 
-/* Ghost labels are interactive only to normalize the caret at the end of the
-   real Markdown line. Closing fences do not receive a delete button. */
+/* Ghost labels remain hit-testable by CodeMirror's canonical mouse-selection
+   pipeline. Only the nested delete control owns and consumes its pointer event. */
 .tabs-editor-modal .cm-nested-tab-ghost-text {
     pointer-events: auto !important;
     user-select: none !important;

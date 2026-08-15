@@ -29091,6 +29091,32 @@ var Zl = class {
       { decorations: (t) => t.decorations },
     );
     const nestedPairCache = new WeakMap();
+    // Unique active-block invariant: exactly one nested tabs pair may be
+    // visually active. The innermost pair containing the primary cursor wins;
+    // parents and children outside that pair must remain inactive.
+    const getInnermostActivePair = (pairs, cursorLine) => {
+      let active = null;
+      for (let pair of pairs) {
+        if (cursorLine < pair.startLine || cursorLine > pair.endLine) continue;
+        let pairSpan = pair.endLine - pair.startLine;
+        let activeSpan = active ? active.endLine - active.startLine : Infinity;
+        if (!active || pair.depth > active.depth ||
+            (pair.depth === active.depth && pairSpan < activeSpan)) {
+          active = pair;
+        }
+      }
+      return active;
+    };
+    // Keep the active ghost-text invariant inside the EditorView itself. The
+    // external stylesheet mirrors this rule, but correctness must not depend
+    // on styles.css being present in the installed plugin directory.
+    this.activeNestedTabsInvariantTheme = A.theme({
+      ".cm-line.cm-nested-tab-active-fence .cm-nested-tab-ghost-text": {
+        fontWeight: "700 !important",
+        opacity: "1 !important",
+        color: "var(--text-normal) !important"
+      }
+    });
     this.nestedTabsHighlighter = Zt.fromClass(
       class {
         constructor(view) {
@@ -29182,7 +29208,13 @@ var Zl = class {
                              other.lineNo === this.lineNo && other.type === this.type &&
                              other.splitStr === this.splitStr && other.baseDepth === this.baseDepth;
                   }
-                  ignoreEvent(e) { return true; }
+                  ignoreEvent(event) {
+                      // Only the destructive control owns its pointer events.
+                      // Ghost labels and endpoint widgets must participate in
+                      // CodeMirror's normal mouse-selection pipeline.
+                      let target = event && event.target;
+                      return !!(target && target.closest && target.closest(".tabs-delete-button"));
+                  }
                   toDOM() {
                       let span = document.createElement("span");
                       span.className = "cm-nested-tab-ghost-text";
@@ -29192,30 +29224,6 @@ var Zl = class {
                       span.style.marginLeft = "1em";
                       span.innerHTML = this.text + (this.depth !== "" ? " <b>" + this.depth + "</b>" : "");
                       
-                      if (this.view && this.lineNo > 0) {
-                          span.addEventListener("mousedown", (event) => {
-                              if (event.target && event.target.closest && event.target.closest(".tabs-delete-button")) return;
-                              event.preventDefault();
-                              event.stopPropagation();
-                              try {
-                                  let line = this.view.state.doc.line(this.lineNo);
-                                  let assoc = -1;
-                                  if (this.splitStr) {
-                                      let leadingWhitespace = line.text.length - line.text.trimStart().length;
-                                      let protectEnd = line.from + leadingWhitespace + this.splitStr.length;
-                                      if (line.text.startsWith(this.splitStr, leadingWhitespace) && line.to <= protectEnd) {
-                                          assoc = 1;
-                                      }
-                                  }
-                                  this.view.dispatch({
-                                      selection: Z.create([Z.cursor(line.to, assoc)]),
-                                      scrollIntoView: true
-                                  });
-                                  this.view.focus();
-                              } catch (err) {}
-                          });
-                      }
-
                       if (this.type && this.view) {
                           let delBtn = document.createElement("span");
                           delBtn.className = "tabs-delete-button";
@@ -29419,12 +29427,10 @@ var Zl = class {
           }
 
           let cursorLine = doc.lineAt(view.state.selection.main.head).number;
-          let active = null;
-          for (let pair of this.pairs) {
-            if (cursorLine >= pair.startLine && cursorLine <= pair.endLine &&
-                (!active || pair.depth > active.depth)) active = pair;
-          }
-          let nextKey = active ? `${active.startLine}:${active.endLine}` : "root";
+          let active = getInnermostActivePair(this.pairs, cursorLine);
+          let nextKey = active
+            ? `${active.startLine}:${active.endLine}:${active.depth}`
+            : "none";
           if (sameDoc && nextKey === this.activeKey && this.decorations) return this.decorations;
           this.activeKey = nextKey;
           if (!active) return q.none;
@@ -29788,6 +29794,7 @@ var Zl = class {
       this.activeLineHighlighter,
       this.nestedTabsHighlighter,
       this.activeNestedTabsHighlighter,
+      this.activeNestedTabsInvariantTheme,
       ud,
       i,
     ];
@@ -30012,57 +30019,67 @@ var Zl = class {
             }
         }));
 
-        exts.push(A.domEventHandlers({
-            mousedown: (event, view) => {
-                try {
-                    if (event.button !== 0 || event.detail > 1) return false;
-                    if (event.target && event.target.closest && event.target.closest(".tabs-delete-button")) return false;
+        const separatorMouseTarget = (view, event) => {
+            let target = event && event.target;
+            if (target && target.closest && target.closest(".tabs-delete-button")) return null;
 
-                    // `precise: false` keeps hit-testing available when the click
-                    // lands beside an empty title or on the endpoint widget.
-                    let pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
-                    let lineElement = event.target && event.target.closest
-                      ? event.target.closest(".cm-line")
-                      : null;
-                    let line = null;
-                    if (lineElement && view.contentDOM.contains(lineElement)) {
-                        line = view.state.doc.lineAt(view.posAtDOM(lineElement, 0));
-                    } else if (pos !== null) {
-                        line = view.state.doc.lineAt(pos);
+            let pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+            if (pos === null) return null;
+
+            let line = view.state.doc.lineAt(pos);
+            let splitOffset = getSeparatorOffset(line.text);
+            if (splitOffset < 0) return null;
+
+            let protectEnd = line.from + splitOffset + splitStr.length;
+            let targetPos = Math.max(protectEnd, Math.min(pos, line.to));
+            let assoc = targetPos === protectEnd
+              ? 1
+              : targetPos === line.to
+                ? -1
+                : 0;
+            return { pos: targetPos, assoc };
+        };
+
+        // Use CodeMirror's mouse-selection lifecycle instead of cancelling a
+        // mousedown and dispatching an ad-hoc selection. This keeps focus,
+        // dragging, atomic ranges and the synthetic cursor in one pipeline.
+        exts.push(A.mouseSelectionStyle.of((view, event) => {
+            if (event.button !== 0 || event.detail > 1) return null;
+            let startHit = separatorMouseTarget(view, event);
+            if (!startHit) return null;
+
+            let startPos = startHit.pos;
+            let startAssoc = startHit.assoc;
+            let startSelection = view.state.selection;
+            return {
+                update(update) {
+                    if (update.docChanged) {
+                        startPos = update.changes.mapPos(startPos, 1);
+                        startSelection = startSelection.map(update.changes);
                     }
-                    if (!line) return false;
+                    return false;
+                },
+                get(pointerEvent, extend, multiple) {
+                    let hit = separatorMouseTarget(view, pointerEvent);
+                    let targetPos = hit
+                      ? hit.pos
+                      : view.posAtCoords({ x: pointerEvent.clientX, y: pointerEvent.clientY }, false);
+                    if (targetPos === null) targetPos = startPos;
 
-                    let splitStr = this.plugin.settings.split;
-                    let splitOffset = getSeparatorOffset(line.text);
-                    if (splitOffset < 0) return false;
-
-                    let protectEnd = line.from + splitOffset + splitStr.length;
-                    let targetPos = pos === null
-                      ? protectEnd
-                      : Math.max(protectEnd, Math.min(pos, line.to));
-                    let targetAssoc = targetPos === protectEnd
-                      ? 1
-                      : targetPos === line.to
-                        ? -1
-                        : 0;
-
-                    // The browser DOM selection remains ambiguous across the
-                    // replaced prefix and endpoint widget, including positions
-                    // inside the visible title. Make the computed CodeMirror
-                    // position authoritative for the whole separator line.
-                    event.preventDefault();
-                    let nextSelection = event.shiftKey
-                      ? Z.create([Z.range(view.state.selection.main.anchor, targetPos)])
-                      : cursorSelectionAt(targetPos, targetAssoc);
-                    view.dispatch({
-                        selection: nextSelection,
-                        scrollIntoView: true
-                    });
-                    view.focus();
-                    return true;
-                } catch (err) {}
-                return false;
-            }
+                    if (extend) {
+                        return startSelection.replaceRange(
+                          startSelection.main.extend(targetPos, targetPos)
+                        );
+                    }
+                    if (multiple) {
+                        return startSelection.addRange(Z.cursor(targetPos, hit ? hit.assoc : 0));
+                    }
+                    if (targetPos !== startPos) {
+                        return Z.create([Z.range(startPos, targetPos)]);
+                    }
+                    return cursorSelectionAt(targetPos, hit ? hit.assoc : startAssoc);
+                }
+            };
         }));
 
         exts.push(A.inputHandler.of((view, from, to, text) => {
@@ -30076,18 +30093,29 @@ var Zl = class {
                     // registered below. Handling newlines here as well produced
                     // duplicate blank lines.
                     if (text.includes("\n")) return false;
+                    // Let CodeMirror keep ownership of an active IME
+                    // composition and normalize the committed text afterwards.
+                    if (view.composing) return false;
                     let protectEnd = line.from + splitOffset + splitStr.length;
-                    // Own edits at the exact replace boundary as well. Letting
-                    // the browser resolve that DOM boundary can place input on
-                    // the hidden side and make fast text appear out of order.
-                    if (from <= protectEnd || to < protectEnd) {
+                    // Own every single-line title edit, not only the first
+                    // character at protectEnd. Returning later characters to
+                    // the contenteditable DOM lets its caret diverge from the
+                    // endpoint widget while CodeMirror's logical selection keeps
+                    // advancing.
+                    if (from >= line.from && from <= line.to && to <= line.to) {
                         let targetFrom = Math.max(from, protectEnd);
                         let targetTo = Math.max(to, protectEnd);
                         let targetPos = targetFrom + text.length;
-                        let targetAssoc = targetPos === protectEnd ? 1 : -1;
+                        let nextLineEnd = line.to + text.length - (targetTo - targetFrom);
+                        let targetAssoc = targetPos === protectEnd
+                          ? 1
+                          : targetPos === nextLineEnd
+                            ? -1
+                            : 0;
                         view.dispatch({
                             changes: { from: targetFrom, to: targetTo, insert: text },
-                            selection: cursorSelectionAt(targetPos, targetAssoc)
+                            selection: cursorSelectionAt(targetPos, targetAssoc),
+                            userEvent: "input"
                         });
                         return true;
                     }
