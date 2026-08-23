@@ -1,9 +1,10 @@
 # Obsidian plugin runtime settings
 /data.json
 
-# Developer documentation & logs
-docs/
+# Developer logs & scratch
 GEMINI.md
+*.tmp
+*.log
 
 # Local Obsidian Vault testing files
 .obsidian/
@@ -18,8 +19,6 @@ references/
 node_modules/
 dist/
 build/
-*.tmp
-*.log
 
 # IDE & OS metadata
 .vscode/
