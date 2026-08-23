@@ -1,4 +1,8 @@
 // Bundled CodeMirror 6, Lezer Markdown & SortableJS runtime
+import * as TO from 'obsidian';
+import * as pd from 'obsidian';
+import { Menu } from 'obsidian';
+
 var B = class {
     lineAt(t) {
       if (t < 0 || t > this.length)
@@ -18786,9 +18790,7 @@ function Rt(s, t, e) {
         : t + s + e
   );
 }
-var TO = te(require("obsidian"));
-var pd = te(require("obsidian")),
-  Na = class extends pd.Menu {
+var Na = class extends Menu {
     constructor(t) {
       super();
       ((this.editor = t), this.addItem((e) => e.setDisabled(!0)));
@@ -25794,5 +25796,6 @@ var Ty =
 
 export {
   B, to, no, be, I, Re, at, it, An, re, tr, kw, z, In, ra, x, If, hr, en, ut, on, wr, At, ev, cd, fd, TO, is, fs, un, El,
-  pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS
+  pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS,
+  Zt, Rt, Kn, Wd, dd, Na
 };

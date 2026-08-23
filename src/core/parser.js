@@ -210,6 +210,9 @@ function tabsExtendedJoinTabSections(prefix, sections, sourceText) {
   return result;
 }
 
+let tabsExtendedCachedKeyword = null;
+let tabsExtendedCachedKeywords = null;
+
 function tabsExtendedConfiguredKeyword(settings) {
   return String(
     settings && settings.tabsKeyword ? settings.tabsKeyword : "tabs",

@@ -1,31 +1,30 @@
+import { setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
 
 export class TabsConfig {
   constructor(t, e, i, isVertical = false) {
-    ((this.rawConfig = t.trim()),
-      (this.pluginSettings = i),
-      (this.tabsborder = i.defaultTabsBorder),
-      (this.tabsBorderColor = i.defaultTabsBorderColor),
-      (this.hideTabsEditBlockButton = i.hideTabsEditBlockButton),
-      (this.titlePosition = isVertical ? "left" : (i.defaultTitlePosition || "top")),
-      (this.titleLineClamp = i.defaultTitleLineClamp),
-      (this.actionButton = i.actionButtonType),
-      (this.titleLimited = i.defaultTitleLimited),
-      (this.tabsMaxHeight = i.defaultTabsContentsMaxHeight),
-      (this.tabsContentsPadding = i.defaultTabsContentsPadding),
-      (this.verticalTabsColumns = i.verticalTabsColumns || "1"),
-      (this.verticalTitleBehavior = i.verticalTitleBehavior || "hover-scroll"),
-      (this.verticalTabsLeftSpacing = i.verticalTabsLeftSpacing !== undefined ? i.verticalTabsLeftSpacing : 4),
-      (this.verticalTabsRightSpacing = i.verticalTabsRightSpacing !== undefined ? i.verticalTabsRightSpacing : 8),
-      this.parseConfig(t));
+    const configStr = String(t == null ? "" : t);
+    ((this.rawConfig = configStr.trim()),
+      (this.pluginSettings = i || {}),
+      (this.tabsborder = (i && i.defaultTabsBorder) || "border-none"),
+      (this.tabsBorderColor = (i && i.defaultTabsBorderColor) || "#e0e0e0"),
+      (this.hideTabsEditBlockButton = !!(i && i.hideTabsEditBlockButton)),
+      (this.titlePosition = isVertical ? "left" : ((i && i.defaultTitlePosition) || "top")),
+      (this.titleLineClamp = (i && i.defaultTitleLineClamp) || "one"),
+      (this.actionButton = (i && i.actionButtonType) || "action-edit"),
+      (this.titleLimited = !!(i && i.defaultTitleLimited)),
+      (this.tabsMaxHeight = (i && i.defaultTabsContentsMaxHeight) || "none"),
+      (this.tabsContentsPadding = (i && i.defaultTabsContentsPadding) || "1em 2em"),
+      (this.verticalTabsColumns = (i && i.verticalTabsColumns) || "1"),
+      (this.verticalTitleBehavior = (i && i.verticalTitleBehavior) || "hover-scroll"),
+      (this.verticalTabsLeftSpacing = (i && i.verticalTabsLeftSpacing !== undefined) ? i.verticalTabsLeftSpacing : 4),
+      (this.verticalTabsRightSpacing = (i && i.verticalTabsRightSpacing !== undefined) ? i.verticalTabsRightSpacing : 8),
+      this.parseConfig(configStr));
   }
   parseConfig(t) {
-    t.trim()
+    String(t == null ? "" : t).trim()
       .toLowerCase()
-      .split(
-        `
-`,
-      )
+      .split('\n')
       .forEach((e) => {
         e.split(",").forEach((i) => {
           switch (i.trim()) {
@@ -122,4 +121,4 @@ export class TabsConfig {
       t.style.setProperty("--vertical-tabs-right-spacing", Math.max(0, currentRightSpacing) + "px");
     }
   }
-}
+};

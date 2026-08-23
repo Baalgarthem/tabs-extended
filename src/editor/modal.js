@@ -1,4 +1,4 @@
-import { Modal } from 'obsidian';
+import { Modal, Notice } from 'obsidian';
 import { TabsModalEditorEngine } from './engine.js';
 import { $ } from '../i18n/index.js';
 
@@ -69,8 +69,8 @@ export class TabsEditorModal extends Modal {
       this.open();
     } catch (err) {
       console.error("Error in startEditing:", err);
-      // fallback if CO.Notice doesn't exist
-      try { new CO.Notice("Error opening modal editor: " + err.message); } catch(e){}
+      // fallback if Notice doesn't exist
+      try { new Notice("Error opening modal editor: " + err.message); } catch(e){}
     }
   }
   onOpen() {

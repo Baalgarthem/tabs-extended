@@ -1,12 +1,12 @@
 import { Menu, Notice } from 'obsidian';
-import { $ } from '../i18n/index.js';
 import { RenameTabModal } from '../modals/RenameTabModal.js';
 import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal.js';
+import { $ } from '../i18n/index.js';
 
 export class TabContextMenu extends Menu {
   constructor(t, e) {
     super();
-    const contextTabIndex = Yr.findTabIndex(t, e.target);
+    const contextTabIndex = TabContextMenu.findTabIndex(t, e.target);
     this.addItem((i) => {
       i.setTitle($("menu.addNewTab"));
       i.setIcon("plus");
@@ -15,7 +15,7 @@ export class TabContextMenu extends Menu {
           ? (t.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
           : (t.plugin.settings.defaultTabNavItem || "New tab");
         let newContent = t.plugin.settings.defaultTabContent || "New tab content";
-        Yr.updateBlockWithNewTab(t, newTitle, newContent);
+        TabContextMenu.updateBlockWithNewTab(t, newTitle, newContent);
       });
     });
     this.addItem((i) => {
@@ -29,7 +29,7 @@ export class TabContextMenu extends Menu {
           : null;
         if (!renameSnapshot) {
           if (!t.plugin.settings.ignoreNotice) {
-            new Dt.Notice($("notice.invalidTab"));
+            new Notice($("notice.invalidTab"));
           }
           return;
         }
@@ -38,24 +38,16 @@ export class TabContextMenu extends Menu {
             typeof t.hasConflictingTabsEditorModal === "function" &&
             t.hasConflictingTabsEditorModal()
           ) {
-            return $("modal.renameTab.editorOpen");
+            new Notice($("notice.tabRenameBlockedEditorOpen"));
+            return false;
           }
-          let renamed = false;
-          const applyRename = () => {
-            renamed = typeof t.renameTabAt === "function" &&
-              t.renameTabAt(contextTabIndex, newTitle, renameSnapshot);
-          };
-          if (
-            typeof t.lockScrollPosition === "function" &&
-            t.tabsEl &&
-            t.tabsEl.isConnected
-          ) {
-            t.lockScrollPosition(t.tabsEl, applyRename);
-          } else {
-            applyRename();
-          }
+          const renamed = t.renameTabBySourceSection(
+            contextTabIndex,
+            newTitle,
+            renameSnapshot,
+          );
           if (renamed && !t.plugin.settings.ignoreNotice) {
-            new Dt.Notice($("notice.renameTabSuccess"));
+            new Notice($("notice.renameTabSuccess"));
           }
           return !!renamed;
         }).open();
@@ -69,12 +61,12 @@ export class TabContextMenu extends Menu {
       );
       i.onClick(() => {
         if (contextTabIndex === -1) {
-          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
+          if (!t.plugin.settings.ignoreNotice) new Notice($("notice.invalidTab"));
           return;
         }
         let deletedTitle = t.tabsNav.navItems[contextTabIndex].title;
         new ConfirmDeleteModal(t.app, `¿Estás seguro de que deseas eliminar la pestaña "${deletedTitle}"?`, () => {
-          Yr.removeTabFromBlock(t, contextTabIndex, deletedTitle);
+          TabContextMenu.removeTabFromBlock(t, contextTabIndex, deletedTitle);
         }).open();
       });
     });
@@ -88,13 +80,13 @@ export class TabContextMenu extends Menu {
           ? t.getTabSourceSection(contextTabIndex)
           : null;
         if (sourceSection == null) {
-          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.invalidTab"));
+          if (!t.plugin.settings.ignoreNotice) new Notice($("notice.invalidTab"));
           return;
         }
         navigator.clipboard.writeText(sourceSection).then(() => {
-          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabSuccess"));
+          if (!t.plugin.settings.ignoreNotice) new Notice($("notice.copyTabSuccess"));
         }).catch((err) => {
-          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.copyTabFailed"));
+          if (!t.plugin.settings.ignoreNotice) new Notice($("notice.copyTabFailed"));
           console.error(err);
         });
       });
@@ -105,16 +97,16 @@ export class TabContextMenu extends Menu {
       i.onClick(() => {
         navigator.clipboard.readText().then((n) => {
           if (!n || n.trim() === "" || n.trim() === t.split) {
-            if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.noClipboardContent"));
+            if (!t.plugin.settings.ignoreNotice) new Notice($("notice.noClipboardContent"));
             return;
           }
           if (!t.insertClipboardTabs(n)) {
             if (!t.plugin.settings.ignoreNotice) {
-              new Dt.Notice($("notice.pasteTabFailed"));
+              new Notice($("notice.pasteTabFailed"));
             }
           }
         }).catch((err) => {
-          if (!t.plugin.settings.ignoreNotice) new Dt.Notice($("notice.pasteTabFailed"));
+          if (!t.plugin.settings.ignoreNotice) new Notice($("notice.pasteTabFailed"));
           console.error(err);
         });
       });
@@ -141,12 +133,12 @@ export class TabContextMenu extends Menu {
       t.insertNewTab(newTitle, newContent)
     );
     if (updated && !t.plugin.settings.ignoreNotice) {
-      new Dt.Notice($("notice.addNewTabSuccess"));
+      new Notice($("notice.addNewTabSuccess"));
     }
     if (!updated) {
       console.warn("Tabs Extended cancelled an unsafe tab insertion.");
       if (t && !t.plugin.settings.ignoreNotice) {
-        new Dt.Notice($("notice.invalidTab"));
+        new Notice($("notice.invalidTab"));
       }
     }
     return updated;
@@ -159,14 +151,14 @@ export class TabContextMenu extends Menu {
       t.deleteTabAt(tabIndex)
     );
     if (updated && !t.plugin.settings.ignoreNotice) {
-      new Dt.Notice($("notice.deleteTabSuccess", deletedTitle));
+      new Notice($("notice.deleteTabSuccess", deletedTitle));
     }
     if (!updated) {
       console.warn("Tabs Extended cancelled an unsafe tab deletion.");
       if (t && !t.plugin.settings.ignoreNotice) {
-        new Dt.Notice($("notice.invalidTab"));
+        new Notice($("notice.invalidTab"));
       }
     }
     return updated;
   }
-}
+};

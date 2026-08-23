@@ -1,15 +1,16 @@
-import { Plugin, MarkdownView } from 'obsidian';
+import { Plugin, MarkdownView, Notice } from 'obsidian';
 import { Tabs } from './core/model.js';
-import { TabsRenderer } from './core/renderer.js';
 import { TabsExtendedSettingTab } from './settings/SettingTab.js';
 import { DEFAULT_SETTINGS } from './settings/defaultSettings.js';
 import { ChangelogModal } from './modals/ChangelogModal.js';
+import { ConfirmDeleteModal } from './modals/ConfirmDeleteModal.js';
+import { TabsEditorModal } from './editor/modal.js';
 import { tabsExtendedCorePreviewStyles } from './styles/previewStyles.js';
 import { $ } from './i18n/index.js';
 
 export default class TabsExtendedPlugin extends Plugin {
   async onload() {
-    // Dependencies used by Gr must exist before registering processors or
+    // Dependencies used by TabsRenderer must exist before registering processors or
     // requesting a view rebuild. onLayoutReady may call back synchronously
     // when Obsidian's workspace is already open.
     this.lastTabsCache = new Map();
@@ -25,178 +26,150 @@ export default class TabsExtendedPlugin extends Plugin {
           wrapper.appendChild(pre);
         }
       });
-    }, -1000);
+    });
 
-    if (!window.hasTabsExtGlobalDeleteListener) {
-        window.hasTabsExtGlobalDeleteListener = true;
-        this.globalClickHandler = (e) => {
-            let target = e.target;
-            if (!target) return;
-            if (target.nodeType === 3) target = target.parentElement;
-            if (!target || typeof target.closest !== 'function') return;
-            
-            let delBtn = target.closest('.tabs-delete-button');
-            if (!delBtn) return;
-            let actionBtn = delBtn;
-            
-            let view = null;
-            if (window.tabsExtActiveViews) {
-                view = window.tabsExtActiveViews.find(v => v.dom && v.dom.contains(actionBtn));
-            }
-            if (!view) {
-                if (actionBtn.tabsExtView) view = actionBtn.tabsExtView;
-                else {
-                    try { new Notice("TabsExt: Botón clickeado pero no se encontró la vista del editor."); } catch(err) { alert("Sin vista"); }
-                    return;
-                }
-            }
-            
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            
-            try {
-                let type = actionBtn.dataset.type;
-                let splitStr = actionBtn.dataset.split;
-                let baseDepth = parseInt(actionBtn.dataset.baseDepth, 10);
-                
-                let pos = view.posAtDOM(actionBtn);
-                let doc = view.state.doc;
-                let lineNo = doc.lineAt(pos).number;
-                
-                let startPos = doc.line(lineNo).from;
-                let endPos = doc.line(lineNo).to;
-                if (lineNo < doc.lines) endPos = doc.line(lineNo + 1).from;
-                
-                let confirmMessage = "";
-                if (type === "block") {
-                    let blockEndLine = doc.lines;
-                    let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})/);
-                    if (match) {
-                        let fChar = match[0][0];
-                        let cLen = match[0].length;
-                        for (let p = lineNo + 1; p <= doc.lines; p++) {
-                            let lText = doc.line(p).text.trim();
-                            let m = lText.match(/^(`{3,}|~{3,})/);
-                            if (m && lText.startsWith(fChar) && m[0].length >= cLen) {
-                                endPos = p < doc.lines ? doc.line(p + 1).from : doc.length;
-                                blockEndLine = p;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    let tabTitles = [];
-                    for (let p = lineNo + 1; p < blockEndLine; p++) {
-                        let lineRaw = doc.line(p).text;
-                        let sIdx = lineRaw.indexOf(splitStr);
-                        if (sIdx !== -1) {
-                            let prefix = lineRaw.substring(0, sIdx).trim();
-                            if (prefix === "") {
-                                let tTitle = lineRaw.substring(sIdx + splitStr.length).trim();
-                                tabTitles.push(tTitle || "sin título");
-                            }
-                        }
-                    }
-                    
-                    confirmMessage = "¿Estás seguro de que deseas eliminar este bloque de pestañas?";
-                    if (tabTitles.length > 0) {
-                        confirmMessage += "\n\nPestañas por eliminar que contiene el bloque:\n" + tabTitles.map(t => `• "${t}"`).join("\n");
-                    }
-                } else if (type === "tab") {
-                    let lineRaw = doc.line(lineNo).text;
-                    let sIdx = lineRaw.indexOf(splitStr);
-                    let tabTitle = sIdx !== -1 ? lineRaw.substring(sIdx + splitStr.length).trim() : lineRaw.trim();
-                    if (!tabTitle) tabTitle = "sin título";
-                    
-                    confirmMessage = `¿Estás seguro de que deseas eliminar la pestaña "${tabTitle}"?`;
-                    
-                    let fs = [];
-                    let targetDepth = -1;
-                    for (let p = 1; p <= doc.lines; p++) {
-                        let lText = doc.line(p).text.trim();
-                        let m = lText.match(/^(`{3,}|~{3,})(.*)/);
-                        let curr = fs.length > 0 ? fs[fs.length - 1] : null;
-                        
-                        if (m) {
-                            let fc = m[1][0];
-                            let cl = m[1].length;
-                            let info = m[2].trim();
-                            
-                            if (curr && curr.type === "code") {
-                                if (cl >= curr.cl && lText.startsWith(curr.fc)) fs.pop();
-                                continue;
-                            }
-                            if (curr && cl >= curr.cl && lText.startsWith(curr.fc)) {
-                                fs.pop();
-                                if (p > lineNo) {
-                                    endPos = doc.line(p).from;
-                                    break;
-                                }
-                            } else {
-                                if (info === "tabs") fs.push({ fc, cl, type: "tabs" });
-                                else if (curr) fs.push({ fc, cl, type: "code" });
-                            }
-                        } else {
-                            let inT = (curr && curr.type === "tabs") || (baseDepth === 1 && fs.length === 0);
-                            if (inT && lText.startsWith(splitStr)) {
-                                let d = fs.filter(f => f.type === "tabs").length + baseDepth;
-                                if (p === lineNo) {
-                                    targetDepth = d;
-                                } else if (p > lineNo && targetDepth !== -1 && d === targetDepth) {
-                                    endPos = doc.line(p).from;
-                                    break;
-                                }
-                            }
-                        }
-                        if (p === doc.lines && targetDepth !== -1) endPos = doc.length;
-                    }
-                }
+    if (typeof window !== "undefined" && !window.hasTabsExtGlobalDeleteListener) {
+      window.hasTabsExtGlobalDeleteListener = true;
+      window.tabsExtActiveViews = [];
 
-                new ConfirmDeleteModal(this.app, confirmMessage, () => {
-                  view.dispatch({ changes: { from: startPos, to: endPos }, userEvent: "delete", scrollIntoView: true });
-                }).open();
-            } catch (err) {
-                try {
-                    // eslint-disable-next-line no-undef
-                    new Notice("Tabs Ext Error: " + err.message);
-                } catch (e2) {
-                    alert("Tabs Ext Error: " + err.message);
-                }
-                console.error("Tabs Extended Deletion Error:", err);
+      const handleGlobalClick = (evt) => {
+        const btn = evt.target.closest(".tabs-ext-delete-button");
+        if (!btn) return;
+
+        evt.preventDefault();
+        evt.stopPropagation();
+        evt.stopImmediatePropagation();
+
+        const from = parseInt(btn.dataset.from, 10);
+        const to = parseInt(btn.dataset.to, 10);
+        const type = btn.dataset.type || "tab";
+
+        let activeEditor = null;
+        for (let view of (window.tabsExtActiveViews || [])) {
+          if (view && view.dom && view.dom.contains(btn)) {
+            activeEditor = view;
+            break;
+          }
+        }
+        if (!activeEditor && window.tabsExtActiveViews && window.tabsExtActiveViews.length > 0) {
+          activeEditor = window.tabsExtActiveViews[window.tabsExtActiveViews.length - 1];
+        }
+
+        if (!activeEditor || !activeEditor.state || !activeEditor.dispatch) {
+          try {
+            new Notice("TabsExt: Botón clickeado pero no se encontró la vista del editor.");
+          } catch(err) {}
+          return;
+        }
+
+        let label = "la pestaña";
+        if (type === "fence") label = "el bloque de pestañas anidadas";
+        else if (type === "separator") label = "la subpestaña";
+
+        const confirmMessage = `¿Estás seguro de que deseas eliminar ${label}?`;
+
+        try {
+          const doc = activeEditor.state.doc;
+          let deleteFrom = from;
+          let deleteTo = to;
+
+          if (type === "fence") {
+            const startLineObj = doc.lineAt(from);
+            deleteFrom = startLineObj.from;
+            const endLineObj = doc.lineAt(to);
+            deleteTo = endLineObj.to;
+            if (deleteTo < doc.length) {
+              const nextChar = doc.sliceString(deleteTo, deleteTo + 1);
+              if (nextChar === "\n") deleteTo += 1;
             }
-        };
-        document.addEventListener("mousedown", this.globalClickHandler, { capture: true });
-        document.addEventListener("pointerdown", this.globalClickHandler, { capture: true });
-        document.addEventListener("click", this.globalClickHandler, { capture: true });
+          } else {
+            const lineObj = doc.lineAt(from);
+            deleteFrom = lineObj.from;
+            deleteTo = lineObj.to;
+            if (deleteTo < doc.length) {
+              const nextChar = doc.sliceString(deleteTo, deleteTo + 1);
+              if (nextChar === "\n") deleteTo += 1;
+            }
+          }
+
+          let deletedContent = doc.sliceString(deleteFrom, deleteTo).trim();
+          let isEmpty = false;
+
+          if (type === "fence") {
+            let lines = deletedContent.split("\n");
+            if (lines.length <= 3) {
+              let nonFenceLines = lines.slice(1, -1);
+              let joined = nonFenceLines.join("").trim();
+              if (joined.length === 0 || /^tema:[^\n]*$/i.test(joined)) {
+                isEmpty = true;
+              }
+            }
+          } else {
+            let nextSectionMatch = doc.sliceString(deleteTo).match(/^(?:~~~|```|tema:)/m);
+            let contentEnd = nextSectionMatch ? deleteTo + nextSectionMatch.index : doc.length;
+            let sectionBody = doc.sliceString(deleteTo, contentEnd).trim();
+            if (sectionBody.length === 0) {
+              isEmpty = true;
+            }
+          }
+
+          if (isEmpty) {
+            let tr = activeEditor.state.update({
+              changes: { from: deleteFrom, to: deleteTo },
+              effects: []
+            });
+            activeEditor.dispatch(tr);
+            return;
+          }
+
+          new ConfirmDeleteModal(this.app, confirmMessage, () => {
+            let tr = activeEditor.state.update({
+              changes: { from: deleteFrom, to: deleteTo },
+              effects: []
+            });
+            activeEditor.dispatch(tr);
+          }).open();
+        } catch (err) {
+          try {
+            new Notice("Tabs Ext Error: " + err.message);
+          } catch(e) {}
+        }
+      };
+
+      this.globalClickHandler = handleGlobalClick;
+      if (typeof document !== "undefined") {
+        document.addEventListener("mousedown", handleGlobalClick, { capture: true });
+        document.addEventListener("pointerdown", handleGlobalClick, { capture: true });
+        document.addEventListener("click", handleGlobalClick, { capture: true });
+      }
     }
 
     await this.loadSettings();
+
     // Register the feature's core processor before optional UI and stylesheet
     // recovery work. A failure in either auxiliary path must not prevent tabs
     // blocks from being recognized.
     this.registerCodeBlockProcessors();
-    this.tabsEditorModal = new Ml(this, this.app);
+    this.tabsEditorModal = new TabsEditorModal(this, this.app);
     this.addSettingTab(new TabsExtendedSettingTab(this.app, this));
     this.registerCommands();
     await this.ensurePreviewStylesLoaded();
     this.app.workspace.onLayoutReady(() => {
-      this.settings.autorefreshMarkdownView && this.refreshActiveView();
+      this.settings.autorefreshMarkdownView && this.refreshOpenViews();
     });
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+
+    this.registerEvent(this.app.workspace.on("file-open", () => {
       this.lastTabsCache.clear();
       this.lastTabsCache.set("/", 0);
     }));
   }
+
   async ensurePreviewStylesLoaded() {
     if (typeof document === "undefined" || !document.body || !document.head) return;
 
     const runtimeStyleId = "tabs-extended-runtime-styles";
     if (document.getElementById(runtimeStyleId)) return;
 
-    // Use Chromium's computed styles as the source of truth. The screenshot's
-    // plain title is exactly what these nodes look like when styles.css wasn't
-    // attached, even though the Markdown processor itself completed.
     const probe = document.createElement("div");
     probe.className = "tabs-container";
     probe.style.cssText = "position:fixed;left:-10000px;top:-10000px;visibility:hidden;";
@@ -210,13 +183,15 @@ export default class TabsExtendedPlugin extends Plugin {
 
     let previewStylesActive = false;
     try {
-      const navStyle = window.getComputedStyle(nav);
-      const itemStyle = window.getComputedStyle(item);
-      previewStylesActive =
-        navStyle.display === "inline-flex" &&
-        Math.round(parseFloat(itemStyle.paddingLeft) || 0) >= 15;
+      if (typeof window !== "undefined" && window.getComputedStyle) {
+        const navStyle = window.getComputedStyle(nav);
+        const itemStyle = window.getComputedStyle(item);
+        previewStylesActive =
+          navStyle.display === "inline-flex" &&
+          Math.round(parseFloat(itemStyle.paddingLeft) || 0) >= 15;
+      }
     } finally {
-      probe.remove();
+      if (probe.remove) probe.remove();
     }
 
     if (previewStylesActive) return;
@@ -232,60 +207,65 @@ export default class TabsExtendedPlugin extends Plugin {
       styleSource = "styles.css";
     } catch (err) {
       cssText = tabsExtendedCorePreviewStyles;
-      console.error(
-        "Tabs Extended: styles.css no está disponible; se usarán estilos esenciales integrados.",
-        err,
-      );
     }
 
     const styleEl = document.createElement("style");
     styleEl.id = runtimeStyleId;
     styleEl.dataset.tabsExtendedFallback = styleSource;
-    styleEl.textContent = cssText;
+    styleEl.innerHTML = cssText;
     document.head.appendChild(styleEl);
-    this.runtimeStylesEl = styleEl;
-    this.register(() => {
-      if (styleEl.isConnected) styleEl.remove();
-      if (this.runtimeStylesEl === styleEl) this.runtimeStylesEl = null;
-    });
-    console.warn(
-      styleSource === "styles.css"
-        ? "Tabs Extended: la hoja no estaba aplicada; se cargó styles.css manualmente."
-        : "Tabs Extended: instalación incompleta (falta styles.css); se activó el formato esencial integrado.",
-    );
   }
+
   registerCodeBlockProcessors() {
-    let mainKw = (this.settings.tabsKeyword || "tabs").trim().toLowerCase();
+    let mainKw = (this.settings.tabsKeyword || "tabs").trim();
+    if (!mainKw) mainKw = "tabs";
+
     let keywords = new Set([mainKw, mainKw + "-v", "tabs", "tabs-v"]);
+
     keywords.forEach((kw) => {
       let isVertical = kw.endsWith("-v");
       try {
         this.registerMarkdownCodeBlockProcessor(kw, (t, e, i) => {
-          i.addChild(new Gr(t, e, i, this.app, this, isVertical));
+          try {
+            const tabsInstance = new Tabs(t, e, i, this.app, this, isVertical);
+            if (i && typeof i.addChild === 'function') {
+              i.addChild(tabsInstance);
+            }
+          } catch (procErr) {
+            console.error(`Tabs Extended error in ${kw} processor:`, procErr);
+          }
         });
       } catch (err) {
         console.error(`Tabs Extended could not register the ${kw} preview processor:`, err);
       }
     });
   }
+
   onunload() {
     if (this.globalClickHandler) {
-      document.removeEventListener("mousedown", this.globalClickHandler, { capture: true });
-      document.removeEventListener("pointerdown", this.globalClickHandler, { capture: true });
-      document.removeEventListener("click", this.globalClickHandler, { capture: true });
+      if (typeof document !== "undefined") {
+        document.removeEventListener("mousedown", this.globalClickHandler, { capture: true });
+        document.removeEventListener("pointerdown", this.globalClickHandler, { capture: true });
+        document.removeEventListener("click", this.globalClickHandler, { capture: true });
+      }
       this.globalClickHandler = null;
     }
-    window.hasTabsExtGlobalDeleteListener = false;
-    window.tabsExtActiveViews = [];
+    if (typeof window !== "undefined") {
+      window.hasTabsExtGlobalDeleteListener = false;
+      window.tabsExtActiveViews = [];
+    }
   }
+
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.updateGlobalCssVariables();
   }
+
   async saveSettings() {
     await this.saveData(this.settings);
     this.updateGlobalCssVariables();
   }
+
   updateGlobalCssVariables() {
     let s = this.settings || {};
     let rawLeftSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 4;
@@ -316,110 +296,120 @@ export default class TabsExtendedPlugin extends Plugin {
     let paddingParts = (padding || "1em 2em").trim().split(/\s+/);
     let leftPad = paddingParts.length >= 2 ? paddingParts[1] : (paddingParts[0] || "2em");
 
-    document.body.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
-    document.body.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
-    document.body.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
-    document.body.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
-    document.documentElement.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
-    document.documentElement.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
-    document.body.style.setProperty("--tabs-contents-padding", padding);
-    document.body.style.setProperty("--tabs-contents-padding-left", leftPad);
-    document.body.style.setProperty("--tabs-max-height", maxHeight);
-    document.body.style.setProperty("--tabs-border-color", borderColor);
-    document.body.style.setProperty("--vertical-title-align", vAlignCss);
-    document.body.style.setProperty("--vertical-title-justify", vJustifyCss);
-    document.body.style.setProperty("--tab-content-align", cAlignCss);
+    const targets = [typeof document !== "undefined" ? document.body : null, typeof document !== "undefined" ? document.documentElement : null].filter(Boolean);
+    targets.forEach(targetEl => {
+      if (targetEl && targetEl.style) {
+        targetEl.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
+        targetEl.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
+        targetEl.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
+        targetEl.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
+        targetEl.style.setProperty("--tabs-contents-padding", padding);
+        targetEl.style.setProperty("--tabs-contents-padding-left", leftPad);
+        targetEl.style.setProperty("--tabs-max-height", maxHeight);
+        targetEl.style.setProperty("--tabs-border-color", borderColor);
+        targetEl.style.setProperty("--vertical-title-align", vAlignCss);
+        targetEl.style.setProperty("--vertical-title-justify", vJustifyCss);
+        targetEl.style.setProperty("--tab-content-align", cAlignCss);
+      }
+    });
 
     try {
-      document.querySelectorAll(".tabs-container").forEach((el) => {
-        el.style.setProperty("--vertical-tabs-left-spacing", leftSpacing + "px");
-        el.style.setProperty("--vertical-tabs-right-spacing", rightSpacing + "px");
-        el.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
-        el.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
-        el.style.setProperty("--tabs-contents-padding", padding);
-        el.style.setProperty("--tabs-contents-padding-left", leftPad);
-        el.style.setProperty("--tabs-max-height", maxHeight);
-        el.style.setProperty("--tabs-border-color", borderColor);
-        el.style.setProperty("--vertical-title-align", vAlignCss);
-        el.style.setProperty("--vertical-title-justify", vJustifyCss);
-        el.style.setProperty("--tab-content-align", cAlignCss);
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll(".tabs-container").forEach((el) => {
+          if (el && el.style) {
+            el.style.setProperty("--horizontal-tab-font-size", horizontalFontSize + "px");
+            el.style.setProperty("--vertical-tab-font-size", verticalFontSize + "px");
+            el.style.setProperty("--tabs-contents-padding", padding);
+            el.style.setProperty("--tabs-contents-padding-left", leftPad);
+            el.style.setProperty("--tabs-max-height", maxHeight);
+            el.style.setProperty("--tabs-border-color", borderColor);
+            el.style.setProperty("--vertical-title-align", vAlignCss);
+            el.style.setProperty("--vertical-title-justify", vJustifyCss);
+            el.style.setProperty("--tab-content-align", cAlignCss);
 
-        // Content alignment classes
-        el.classList.remove(
-          "tabs-content-align-left",
-          "tabs-content-align-center",
-          "tabs-content-align-right",
-          "tabs-content-align-justify",
-          "tabs-content-align-soft-justify",
-          "tabs-content-align-inherit"
-        );
-        el.classList.add("tabs-content-align-" + cAlign);
+            // Content alignment classes
+            el.classList.remove(
+              "tabs-content-align-left",
+              "tabs-content-align-center",
+              "tabs-content-align-right",
+              "tabs-content-align-justify",
+              "tabs-content-align-soft-justify",
+              "tabs-content-align-inherit"
+            );
+            el.classList.add("tabs-content-align-" + cAlign);
 
-        // Content hyphenation classes
-        el.classList.remove("tabs-content-hyphens-none", "tabs-content-hyphens-auto");
-        el.classList.add("tabs-content-hyphens-" + cHyphen);
+            // Content hyphenation classes
+            el.classList.remove("tabs-content-hyphens-none", "tabs-content-hyphens-auto");
+            el.classList.add("tabs-content-hyphens-" + cHyphen);
 
-        if (el.classList.contains("tabs-nav-left") || el.classList.contains("tabs-nav-right")) {
-          el.classList.remove(
-            "tabs-nav-v-align-left",
-            "tabs-nav-v-align-center",
-            "tabs-nav-v-align-right",
-            "tabs-nav-v-align-soft-justify",
-            "tabs-nav-v-behavior-hover-scroll",
-            "tabs-nav-v-behavior-auto-scroll",
-            "tabs-nav-v-behavior-multi-line",
-            "tabs-nav-v-behavior-shrink",
-            "tabs-nav-v-behavior-truncate",
-            "tabs-nav-v-behavior-double-line",
-            "tabs-nav-v-hover-scroll"
-          );
-          el.classList.add("tabs-nav-v-align-" + vAlign);
-          el.classList.add("tabs-nav-v-behavior-" + vBehavior);
-          if (vBehavior === "hover-scroll") {
-            el.classList.add("tabs-nav-v-hover-scroll");
+            if (el.classList.contains("tabs-nav-left") || el.classList.contains("tabs-nav-right")) {
+              el.classList.remove(
+                "tabs-nav-v-align-left",
+                "tabs-nav-v-align-center",
+                "tabs-nav-v-align-right",
+                "tabs-nav-v-align-soft-justify",
+                "tabs-nav-v-behavior-hover-scroll",
+                "tabs-nav-v-behavior-auto-scroll",
+                "tabs-nav-v-behavior-multi-line",
+                "tabs-nav-v-behavior-shrink",
+                "tabs-nav-v-behavior-truncate",
+                "tabs-nav-v-behavior-double-line",
+                "tabs-nav-v-hover-scroll"
+              );
+              el.classList.add("tabs-nav-v-align-" + vAlign);
+              el.classList.add("tabs-nav-v-behavior-" + vBehavior);
+              if (vBehavior === "hover-scroll") {
+                el.classList.add("tabs-nav-v-hover-scroll");
+              }
+            }
           }
-        }
-      });
+        });
+      }
     } catch (e) {
       // Ignored if DOM query fails
     }
   }
+
   updateVerticalTabsLeftSpacingCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabsLeftSpacing = Math.max(0, val);
     }
     this.updateGlobalCssVariables();
   }
+
   updateVerticalTabsRightSpacingCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabsRightSpacing = Math.max(0, val);
     }
     this.updateGlobalCssVariables();
   }
+
   updateHorizontalTabTitleFontSizeCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.horizontalTabTitleFontSize = Math.max(8, val);
     }
     this.updateGlobalCssVariables();
   }
+
   updateVerticalTabTitleFontSizeCss(val) {
     if (val !== undefined && val !== null && this.settings) {
       this.settings.verticalTabTitleFontSize = Math.max(8, val);
     }
     this.updateGlobalCssVariables();
   }
+
   updateVerticalTitleBehaviorCss(val) {
     if (val && this.settings) {
       this.settings.verticalTitleBehavior = val;
     }
     this.updateGlobalCssVariables();
   }
+
   async registerCommands() {
-    (this.addCommand({
+    this.addCommand({
       id: "convert-to-tabs",
       name: $("commands.convertToTabs"),
       editorCallback: (editor, view) => {
-        // ── 1. Determine cursor's AST depth in the live CM6 document ──────────
         let cmView = view?.editor?.cm;
         let cursorDepth = 0;
         let parentFenceLen = 3;
@@ -457,12 +447,9 @@ export default class TabsExtendedPlugin extends Plugin {
           parentFenceLen = parent ? parent.fence.length : 3;
         }
 
-        // ── 2. Compute fence length for the NEW block ─────────────────────────
-        // At root (depth=0): 3 backticks. Inside a parent: parentFenceLen - 1, min 3.
         let newFenceLen = cursorDepth === 0 ? 3 : Math.max(3, parentFenceLen - 1);
         let fence = "`".repeat(newFenceLen);
 
-        // ── 3. Build and insert the block ──────────────────────────────────────
         let selection = editor.getSelection();
         let split = this.settings.split;
         let defaultNav = this.settings.defaultTabNavItem;
@@ -478,7 +465,6 @@ export default class TabsExtendedPlugin extends Plugin {
         if (selection.trim() === "") {
           editor.replaceSelection(fence + kw + "\n" + split + defaultNav + "\n" + defaultContent + "\n" + fence);
         } else if (selection.includes("`") || selection.includes("~")) {
-          // Find longest consecutive fence char run to guarantee wrapping
           let maxRun = 0, run = 0;
           for (let ch of selection) {
             if (ch === "`" || ch === "~") { run++; maxRun = Math.max(maxRun, run); } else run = 0;
@@ -495,20 +481,20 @@ export default class TabsExtendedPlugin extends Plugin {
             editor.replaceSelection(fence + kw + "\n" + split + defaultNav + "\n" + selection + "\n" + fence);
         }
       },
-    }),
-      this.addCommand({
-        id: "refresh-all-tabs",
-        name: $("commands.refreshAllTabs"),
-        callback: () => {
-          this.refreshOpenViews();
-        },
-      }));
+    });
+
+    this.addCommand({
+      id: "refresh-all-tabs",
+      name: $("commands.refreshAllTabs"),
+      callback: () => {
+        this.refreshOpenViews();
+      },
+    });
   }
 
   convertHeadingTextToTabs(selection, split, kw, minFenceLen = 3) {
     if (!selection || !/^#{1,6}\s+/m.test(selection)) return null;
 
-    // Track maximum consecutive fence char run in selection for outer fence calculation
     let maxRun = 0, run = 0;
     for (let ch of selection) {
       if (ch === "`" || ch === "~") { run++; maxRun = Math.max(maxRun, run); } else run = 0;
@@ -627,10 +613,11 @@ export default class TabsExtendedPlugin extends Plugin {
       return (console.error(t), !1);
     }
   }
+
   refreshActiveView() {
     try {
-      let t = this.app.workspace.getActiveViewOfType(Br.MarkdownView);
-      return (t && t.leaf.rebuildView(), !0);
+      let t = this.app.workspace.getActiveViewOfType(MarkdownView);
+      return (t && t.leaf && t.leaf.rebuildView(), !0);
     } catch (t) {
       return (console.error(t), !1);
     }

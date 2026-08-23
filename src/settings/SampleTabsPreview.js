@@ -1,3 +1,4 @@
+import { Setting, setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
 
 export class SettingsSampleTabs {
@@ -58,7 +59,7 @@ export class SettingsSampleTabs {
         ));
       let t = this.containerEl.createDiv("edit-block-button");
       (t.setAttribute("aria-label", "Edit this block"),
-        (0, U.setIcon)(t, "code"));
+        (0, setIcon)(t, "code"));
     }
     createSampleTabNav() {
       this.tabsnavEl.className = "tabs-nav";
@@ -89,9 +90,9 @@ export class SettingsSampleTabs {
         let i = this.tabsnavEl.createDiv();
         ((i.className = "tabs-nav-button"),
           this.plugin.settings.actionButtonType === "action-add"
-            ? (0, U.setIcon)(i, "plus")
+            ? (0, setIcon)(i, "plus")
             : this.plugin.settings.actionButtonType === "action-edit" &&
-              (0, U.setIcon)(i, "pencil"));
+              (0, setIcon)(i, "pencil"));
       }
     }
     createSampleTabContent() {

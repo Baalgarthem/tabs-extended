@@ -22,11 +22,10 @@ tabs-extended/
 │   │   ├── SampleTabsPreview.js             # Componente SettingsSampleTabs para previsualización interactiva
 │   │   └── SettingTab.js                    # Panel UI TabsExtendedSettingTab dividido en categorías semánticas
 │   │
-│   ├── core/                                # Núcleo del modelo de datos y parseo estructural
+│   ├── core/                                # Núcleo del modelo de datos y renderizado
 │   │   ├── parser.js                        # Análisis AST de cercas (~ / `), delimitadores, secciones y hashes
 │   │   ├── config.js                        # Parser de configuración YAML/inline en cabeceras de bloque (TabsConfig)
-│   │   ├── model.js                         # Modelo de pestañas reactivo (Tabs), escrituras y gestión de estado
-│   │   └── renderer.js                      # Integración MarkdownRenderChild (TabsRenderer) para el ciclo de vida DOM
+│   │   └── model.js                         # Modelo de pestañas reactivo y MarkdownRenderChild (Tabs)
 │   │
 │   ├── components/                          # Componentes de interfaz de usuario de las pestañas
 │   │   ├── TabItem.js                       # Elemento individual de navegación de pestaña

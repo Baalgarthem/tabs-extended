@@ -1,5 +1,7 @@
-import { MarkdownRenderer, Component } from 'obsidian';
+import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
 import { cleanVirtualLinksFromElement } from '../core/model.js';
+import { tabsExtendedFindDirectNestedBlocks, tabsExtendedConfiguredKeyword, tabsExtendedNormalizeSource } from '../core/parser.js';
+import { $ } from '../i18n/index.js';
 
 export class TabContentItem {
     constructor(t, e, i, n, r, ownerTabs = null, cacheIdentity = "") {
@@ -29,17 +31,18 @@ export class TabContentItem {
       ((this.contentEl = createDiv()),
         (this.contentEl.className = "tabs-content markdown-rendered"));
       this.contentEl.tabsExtendedContentModel = this;
-      let n = new ys.MarkdownRenderChild(this.contentEl);
+      let n = new MarkdownRenderChild(this.contentEl);
       // Pre-process the content so that any top-level tabs fenced blocks use a fence
       // longer than all inner same-character closing fences.  Without this,
       // CommonMark's parser closes the outer ~~~tabs at the FIRST ~~~  it encounters
       // (which belongs to an inner block), causing content to escape as plain text.
       const safeContent = this.fixNestedFences(t);
-      const renderPromise = ys.MarkdownRenderer.render(
+      const sourcePath = (i && typeof i.sourcePath === "string") ? i.sourcePath : "";
+      const renderPromise = MarkdownRenderer.render(
         e,
         safeContent,
         this.contentEl,
-        i == null ? void 0 : i.sourcePath,
+        sourcePath,
         n,
       );
       Promise.resolve(renderPromise)
@@ -48,7 +51,9 @@ export class TabContentItem {
           console.error("Tabs Extended could not finish rendering tab content:", error);
         });
       if (i && typeof i.addChild === 'function') {
-        i.addChild(n);
+        try {
+          i.addChild(n);
+        } catch (err) {}
       }
     }
     getDirectNestedBlocks(sourceText = this.content) {
@@ -180,4 +185,38 @@ export class TabContentItem {
       }
       return out.join('\n');
     }
+  };
+
+export class TabsContents {
+  constructor(t, e) {
+    this.currentTab = 0;
+    ((this.plugin = t),
+      (this.tabcontents = e),
+      (this.tabcontentsEl = this.createTabContentsEl()),
+      this.tabcontents.length > 0 &&
+        ((this.tabcontents[0].isActiveed = !0),
+        this.tabcontents[0].contentEl.classList.add("tabs-content-active")));
   }
+  createTabContentsEl() {
+    let t = document.createElement("div");
+    return (
+      (t.className = "tabs-contents"),
+      this.tabcontents.forEach((e) => {
+        t.appendChild(e.contentEl);
+      }),
+      t
+    );
+  }
+  refreshActiveTabContent(t) {
+    if (!this.tabcontents || this.tabcontents.length === 0) return;
+    if (this.tabcontents[this.currentTab]) {
+      this.tabcontents[this.currentTab].isActiveed = !1;
+      this.tabcontents[this.currentTab].contentEl.classList.remove("tabs-content-active");
+    }
+    if (this.tabcontents[t]) {
+      this.tabcontents[t].isActiveed = !0;
+      this.tabcontents[t].contentEl.classList.add("tabs-content-active");
+      this.currentTab = t;
+    }
+  }
+};
