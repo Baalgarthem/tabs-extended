@@ -105,7 +105,11 @@ export class Tabs extends MarkdownRenderChild {
       this.plugin.lastTabsCache.set("/", 0);
     }
     if (!this.plugin.lastTabsCache.has(this.tabsId)) {
-      this.plugin.lastTabsCache.set(this.tabsId, 0);
+      if (typeof this.plugin.setTabCache === "function") {
+        this.plugin.setTabCache(this.tabsId, 0);
+      } else {
+        this.plugin.lastTabsCache.set(this.tabsId, 0);
+      }
     }
     this.tabsConfig = new TabsConfig(a[0], this.tabsEl, this.plugin.settings, isVertical);
     this.tabsNav = new TabsNav(
@@ -208,39 +212,31 @@ export class Tabs extends MarkdownRenderChild {
     });
     return [titles, contents];
   }
-  findOuterClosingLine(editor, expectedRawText = this.rawText) {
-    if (!editor || !this.sectionInfo) return -1;
-    const startLine = this.sectionInfo.lineStart;
+  findOuterBlockRange(editor, expectedRawText = this.rawText) {
+    if (!editor) return { startLine: -1, closingLine: -1 };
     const lineCount = typeof editor.lineCount === "function"
       ? editor.lineCount()
-      : startLine + 1;
-    if (startLine < 0 || startLine >= lineCount) return -1;
-    const opening = String(editor.getLine(startLine) || "")
-      .trim()
-      .match(/^(`{3,}|~{3,})(.*)$/);
-    if (!opening) return -1;
-    const openingChar = opening[1][0];
-    const openingLength = opening[1].length;
+      : 0;
+    if (lineCount <= 0) return { startLine: -1, closingLine: -1 };
+
     const expectedBody = tabsExtendedNormalizeSource(expectedRawText);
-    const candidateMatches = (lineNumber) => {
-      if (
-        lineNumber <= startLine ||
-        lineNumber >= lineCount
-      ) {
-        return false;
-      }
-      const fence = tabsExtendedFenceInfo(editor.getLine(lineNumber));
-      if (
-        !fence ||
-        fence.info !== "" ||
-        fence.char !== openingChar ||
-        fence.length < openingLength
-      ) {
-        return false;
-      }
+    const keywords = ['tabs', 'tabs-v'];
+    const isTabsOpening = (lineText) => {
+      const trimmed = String(lineText || "").trim();
+      const match = trimmed.match(/^(`{3,}|~{3,})(.*)$/);
+      if (!match) return null;
+      const fenceChar = match[1][0];
+      const fenceLen = match[1].length;
+      const info = match[2].trim().toLowerCase();
+      const isTab = info === "" || keywords.some((kw) => info.startsWith(kw));
+      return { fenceChar, fenceLen, isTab, info };
+    };
+
+    const candidateMatches = (startLine, closingLine) => {
+      if (closingLine <= startLine || closingLine >= lineCount) return false;
       const candidateBodyWithBoundary = editor.getRange(
         { line: startLine + 1, ch: 0 },
-        { line: lineNumber, ch: 0 },
+        { line: closingLine, ch: 0 },
       );
       const candidateBody = String(candidateBodyWithBoundary).replace(
         /(?:\r\n|\n|\r)$/,
@@ -249,20 +245,58 @@ export class Tabs extends MarkdownRenderChild {
       return tabsExtendedNormalizeSource(candidateBody) === expectedBody;
     };
 
-    // sectionInfo is maintained after every controlled write. Validate that
-    // O(1) candidate first and only scan the block when external edits made it
-    // stale.
-    const expectedClosingLine = this.sectionInfo.lineEnd;
-    if (candidateMatches(expectedClosingLine)) return expectedClosingLine;
-
-    for (let lineNumber = startLine + 1; lineNumber < lineCount; lineNumber++) {
-      if (lineNumber === expectedClosingLine) continue;
-      // A pasted fenced block can contain a closing run equal to the outer
-      // delimiter. Only the candidate whose complete body matches the source
-      // owned by this tabs instance may close the outer block.
-      if (candidateMatches(lineNumber)) return lineNumber;
+    // 1. Fast Path: Check sectionInfo if present
+    if (this.sectionInfo && this.sectionInfo.lineStart >= 0 && this.sectionInfo.lineStart < lineCount) {
+      const startLine = this.sectionInfo.lineStart;
+      const opening = isTabsOpening(editor.getLine(startLine));
+      if (opening && opening.isTab) {
+        const expectedEnd = this.sectionInfo.lineEnd;
+        if (expectedEnd > startLine && expectedEnd < lineCount) {
+          const fence = tabsExtendedFenceInfo(editor.getLine(expectedEnd));
+          if (fence && fence.info === "" && fence.char === opening.fenceChar && fence.length >= opening.fenceLen) {
+            if (candidateMatches(startLine, expectedEnd)) {
+              return { startLine, closingLine: expectedEnd };
+            }
+          }
+        }
+        for (let lineNo = startLine + 1; lineNo < lineCount; lineNo++) {
+          const fence = tabsExtendedFenceInfo(editor.getLine(lineNo));
+          if (fence && fence.info === "" && fence.char === opening.fenceChar && fence.length >= opening.fenceLen) {
+            if (candidateMatches(startLine, lineNo)) {
+              this.sectionInfo.lineEnd = lineNo;
+              return { startLine, closingLine: lineNo };
+            }
+          }
+        }
+      }
     }
-    return -1;
+
+    // 2. Document-wide Recovery Scan: Find matching tabs block anywhere in document
+    for (let lineNo = 0; lineNo < lineCount; lineNo++) {
+      const opening = isTabsOpening(editor.getLine(lineNo));
+      if (!opening || !opening.isTab || opening.info === "") continue;
+
+      for (let closeNo = lineNo + 1; closeNo < lineCount; closeNo++) {
+        const fence = tabsExtendedFenceInfo(editor.getLine(closeNo));
+        if (fence && fence.info === "" && fence.char === opening.fenceChar && fence.length >= opening.fenceLen) {
+          if (candidateMatches(lineNo, closeNo)) {
+            if (this.sectionInfo) {
+              this.sectionInfo.lineStart = lineNo;
+              this.sectionInfo.lineEnd = closeNo;
+            } else {
+              this.sectionInfo = { lineStart: lineNo, lineEnd: closeNo };
+            }
+            return { startLine: lineNo, closingLine: closeNo };
+          }
+        }
+      }
+    }
+
+    return { startLine: -1, closingLine: -1 };
+  }
+  findOuterClosingLine(editor, expectedRawText = this.rawText) {
+    const range = this.findOuterBlockRange(editor, expectedRawText);
+    return range.closingLine;
   }
   getWritableView() {
     const expectedPath = this.context && this.context.sourcePath
@@ -272,6 +306,16 @@ export class Tabs extends MarkdownRenderChild {
       ? this.app.workspace.getActiveViewOfType(MarkdownView)
       : null;
     const candidates = [currentView, this.activeView];
+    if (this.app && this.app.workspace && typeof this.app.workspace.getLeavesOfType === "function") {
+      try {
+        const leaves = this.app.workspace.getLeavesOfType("markdown");
+        if (Array.isArray(leaves)) {
+          for (const leaf of leaves) {
+            if (leaf && leaf.view) candidates.push(leaf.view);
+          }
+        }
+      } catch (err) {}
+    }
     const visited = new Set();
     for (const view of candidates) {
       if (!view || visited.has(view) || !view.editor) continue;
@@ -282,16 +326,18 @@ export class Tabs extends MarkdownRenderChild {
     return null;
   }
   readOuterSourceBody() {
-    if (!this.sectionInfo) return null;
     const view = this.getWritableView();
     if (!view) return null;
-    const closingLine = this.findOuterClosingLine(view.editor);
-    if (closingLine < 0) return null;
+    const blockRange = this.findOuterBlockRange(view.editor);
+    if (blockRange.startLine < 0 || blockRange.closingLine < 0) return null;
     const bodyWithBoundary = view.editor.getRange(
-      { line: this.sectionInfo.lineStart + 1, ch: 0 },
-      { line: closingLine, ch: 0 },
+      { line: blockRange.startLine + 1, ch: 0 },
+      { line: blockRange.closingLine, ch: 0 },
     );
-    this.sectionInfo.lineEnd = closingLine;
+    this.sectionInfo = {
+      lineStart: blockRange.startLine,
+      lineEnd: blockRange.closingLine
+    };
     return String(bodyWithBoundary).replace(/(?:\r\n|\n|\r)$/, "");
   }
   canPersistTabOrder() {
@@ -637,24 +683,29 @@ export class Tabs extends MarkdownRenderChild {
   }
   replaceTabSourceSection(tabIndex, replacementText) {
     const analyzed = this.analyzeCurrentTabSections();
-    if (
-      !analyzed ||
-      tabIndex < 0 ||
-      tabIndex >= analyzed.sections.length
-    ) {
-      return false;
-    }
-
     const replacement = String(replacementText == null ? "" : replacementText);
     const replacementAnalysis = tabsExtendedAnalyzeTabSections(
       replacement,
       this.split,
       this.plugin.settings,
     );
+
+    // If the tabs block originally had NO separator lines (e.g. single tab block without separator)
+    if (!analyzed) {
+      return this.persistRawTextUpdate(replacement, 0);
+    }
+
     if (
-      !replacementAnalysis ||
-      replacementAnalysis.prefix !== "" ||
-      replacementAnalysis.sections.length === 0
+      tabIndex < 0 ||
+      tabIndex >= analyzed.sections.length
+    ) {
+      return false;
+    }
+
+    // If replacement has non-whitespace prefix before the first separator, reject unsafe structure
+    if (
+      replacementAnalysis &&
+      replacementAnalysis.prefix.trim() !== ""
     ) {
       return false;
     }
@@ -668,19 +719,6 @@ export class Tabs extends MarkdownRenderChild {
       sections,
       this.rawText,
     );
-    const nextAnalysis = tabsExtendedAnalyzeTabSections(
-      nextRawText,
-      this.split,
-      this.plugin.settings,
-    );
-    const expectedSectionCount =
-      analyzed.sections.length - 1 + replacementAnalysis.sections.length;
-    if (
-      !nextAnalysis ||
-      nextAnalysis.sections.length !== expectedSectionCount
-    ) {
-      return false;
-    }
     return this.persistRawTextUpdate(nextRawText, tabIndex);
   }
   buildNewTabSource(title, content) {
@@ -895,37 +933,31 @@ export class Tabs extends MarkdownRenderChild {
     };
   }
   writeRootRawText(rootTabs, nextRawText) {
-    if (!rootTabs || rootTabs.parentTabContent || !rootTabs.sectionInfo) {
+    if (!rootTabs || rootTabs.parentTabContent) {
       return false;
     }
     const view = rootTabs.getWritableView();
     if (!view) return false;
-    const closingLine = rootTabs.findOuterClosingLine(
+    const blockRange = rootTabs.findOuterBlockRange(
       view.editor,
       rootTabs.rawText,
     );
-    if (closingLine < 0) return false;
+    if (blockRange.startLine < 0 || blockRange.closingLine < 0) return false;
+    const startLine = blockRange.startLine;
+    const closingLine = blockRange.closingLine;
+
     const currentBodyWithBoundary = view.editor.getRange(
-      { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
+      { line: startLine + 1, ch: 0 },
       { line: closingLine, ch: 0 },
     );
     const currentBody = String(currentBodyWithBoundary).replace(
       /(?:\r\n|\n|\r)$/,
       "",
     );
-    if (
-      tabsExtendedNormalizeSource(currentBody) !==
-      tabsExtendedNormalizeSource(rootTabs.rawText)
-    ) {
-      console.warn(
-        "Tabs Extended cancelled a stale source operation because the document changed after rendering.",
-      );
-      return false;
-    }
 
     const nextBody = String(nextRawText);
     const openingLine = String(
-      view.editor.getLine(rootTabs.sectionInfo.lineStart) || "",
+      view.editor.getLine(startLine) || "",
     );
     const openingMatch = openingLine.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
     if (!openingMatch) return false;
@@ -957,23 +989,27 @@ export class Tabs extends MarkdownRenderChild {
         nextOpeningLine + "\n" + nextBody + "\n" + nextClosingLine;
       view.editor.replaceRange(
         nextBlock,
-        { line: rootTabs.sectionInfo.lineStart, ch: 0 },
+        { line: startLine, ch: 0 },
         { line: closingLine, ch: closingLineText.length },
       );
       rootTabs.backquote = fenceChar;
       rootTabs.backquoteCount = requiredFenceLength;
-      rootTabs.sectionInfo.lineEnd =
-        rootTabs.sectionInfo.lineStart + nextBlock.split("\n").length - 1;
+      rootTabs.sectionInfo = {
+        lineStart: startLine,
+        lineEnd: startLine + nextBlock.split("\n").length - 1
+      };
     } else {
       view.editor.replaceRange(
         nextBody + "\n",
-        { line: rootTabs.sectionInfo.lineStart + 1, ch: 0 },
+        { line: startLine + 1, ch: 0 },
         { line: closingLine, ch: 0 },
       );
       const oldLineCount = currentBody.split(/\r?\n/).length;
       const newLineCount = nextBody.split(/\r?\n/).length;
-      rootTabs.sectionInfo.lineEnd =
-        closingLine + newLineCount - oldLineCount;
+      rootTabs.sectionInfo = {
+        lineStart: startLine,
+        lineEnd: closingLine + newLineCount - oldLineCount
+      };
     }
     return true;
   }
@@ -1110,33 +1146,26 @@ export class Tabs extends MarkdownRenderChild {
       action();
       return;
     }
-    let scroller = anchorEl.closest(".cm-scroller, .markdown-preview-view, .markdown-reading-view") || document.scrollingElement || document.documentElement;
-    let targetEl = anchorEl.closest(".cm-embed-block, .cm-line, .tabs-container") || anchorEl;
+    const scroller = anchorEl.closest(".cm-scroller, .markdown-preview-view, .markdown-reading-view") || document.scrollingElement || document.documentElement;
+    const targetEl = anchorEl.closest(".cm-embed-block, .cm-line, .tabs-container") || anchorEl;
     
-    let initialScrollTop = scroller ? scroller.scrollTop : 0;
-    let initialBoundingTop = targetEl ? targetEl.getBoundingClientRect().top : 0;
-
-    // Calculate desired top of targetEl in the viewport after tab switch:
-    // If the top of the tab container was scrolled ABOVE the viewport (initialBoundingTop < 0),
-    // switching to a short tab means content collapsed. We bring the tab header to the top of the viewport
-    // (e.g. 8px padding) so the user can immediately read the new tab without jumping to line 1 of the note!
-    // If it was visible (initialBoundingTop >= 0), keep it at its exact initial position.
-    let desiredBoundingTop = initialBoundingTop < 0 ? 8 : initialBoundingTop;
+    const initialBoundingTop = targetEl ? targetEl.getBoundingClientRect().top : 0;
+    const desiredBoundingTop = initialBoundingTop < 0 ? 8 : initialBoundingTop;
 
     action();
 
     if (!scroller) return;
 
     const enforceAnchor = () => {
-      let currentEl = (targetEl && targetEl.isConnected) ? targetEl : ((anchorEl && anchorEl.isConnected) ? anchorEl : scroller.querySelector(".tabs-container"));
+      const currentEl = (targetEl && targetEl.isConnected) ? targetEl : ((anchorEl && anchorEl.isConnected) ? anchorEl : null);
       if (!currentEl || !currentEl.isConnected) return;
 
-      let currentBoundingTop = currentEl.getBoundingClientRect().top;
-      let diff = currentBoundingTop - desiredBoundingTop;
+      const currentBoundingTop = currentEl.getBoundingClientRect().top;
+      const diff = currentBoundingTop - desiredBoundingTop;
 
       if (Math.abs(diff) > 1) {
-        let maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-        let newScrollTop = Math.max(0, Math.min(maxScroll, scroller.scrollTop + diff));
+        const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+        const newScrollTop = Math.max(0, Math.min(maxScroll, scroller.scrollTop + diff));
         scroller.scrollTop = newScrollTop;
       }
     };
@@ -1146,9 +1175,6 @@ export class Tabs extends MarkdownRenderChild {
       this.scrollAnchorFrame = null;
       enforceAnchor();
     });
-    this.scrollAnchorTimers = [20, 60, 120, 250, 450].map((delay) =>
-      window.setTimeout(enforceAnchor, delay),
-    );
   }
   registerEventHandlers() {
     const dragEnabled =

@@ -1,5 +1,4 @@
 import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
-import { cleanVirtualLinksFromElement } from '../core/model.js';
 import { tabsExtendedFindDirectNestedBlocks, tabsExtendedConfiguredKeyword, tabsExtendedNormalizeSource } from '../core/parser.js';
 import { $ } from '../i18n/index.js';
 
@@ -46,7 +45,9 @@ export class TabContentItem {
         n,
       );
       Promise.resolve(renderPromise)
-        .then(() => this.ensureCodeBlockWrappers(this.contentEl))
+        .then(() => {
+          this.ensureCodeBlockWrappers(this.contentEl);
+        })
         .catch((error) => {
           console.error("Tabs Extended could not finish rendering tab content:", error);
         });

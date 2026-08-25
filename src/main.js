@@ -44,6 +44,12 @@ export default class TabsExtendedPlugin extends Plugin {
         const to = parseInt(btn.dataset.to, 10);
         const type = btn.dataset.type || "tab";
 
+        if (Array.isArray(window.tabsExtActiveViews)) {
+          window.tabsExtActiveViews = window.tabsExtActiveViews.filter(
+            (v) => v && !v.destroyed && v.dom && v.dom.isConnected
+          );
+        }
+
         let activeEditor = null;
         for (let view of (window.tabsExtActiveViews || [])) {
           if (view && view.dom && view.dom.contains(btn)) {
@@ -155,13 +161,28 @@ export default class TabsExtendedPlugin extends Plugin {
     this.registerCommands();
     await this.ensurePreviewStylesLoaded();
     this.app.workspace.onLayoutReady(() => {
-      this.settings.autorefreshMarkdownView && this.refreshOpenViews();
+      this.settings.autorefreshMarkdownView && this.refreshActiveView();
     });
+  }
 
-    this.registerEvent(this.app.workspace.on("file-open", () => {
+  clearTabsCache() {
+    if (this.lastTabsCache instanceof Map) {
       this.lastTabsCache.clear();
       this.lastTabsCache.set("/", 0);
-    }));
+    }
+  }
+
+  setTabCache(id, index) {
+    if (!(this.lastTabsCache instanceof Map)) {
+      this.lastTabsCache = new Map();
+    }
+    if (this.lastTabsCache.size > 1000) {
+      const keysToDelete = Array.from(this.lastTabsCache.keys()).slice(0, 500);
+      for (const k of keysToDelete) {
+        if (k !== "/") this.lastTabsCache.delete(k);
+      }
+    }
+    this.lastTabsCache.set(id, index);
   }
 
   async ensurePreviewStylesLoaded() {
@@ -212,8 +233,13 @@ export default class TabsExtendedPlugin extends Plugin {
     const styleEl = document.createElement("style");
     styleEl.id = runtimeStyleId;
     styleEl.dataset.tabsExtendedFallback = styleSource;
-    styleEl.innerHTML = cssText;
+    styleEl.textContent = cssText;
     document.head.appendChild(styleEl);
+    this.runtimeStylesEl = styleEl;
+    this.register(() => {
+      if (styleEl && styleEl.isConnected) styleEl.remove();
+      if (this.runtimeStylesEl === styleEl) this.runtimeStylesEl = null;
+    });
   }
 
   registerCodeBlockProcessors() {

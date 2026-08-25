@@ -101,6 +101,7 @@ function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {
   const source = String(rawText == null ? "" : rawText);
   const separator = String(split == null ? "" : split);
   if (!separator) return null;
+  const cleanSep = separator.trim();
   const lines = tabsExtendedSourceLines(source);
   const keywords = tabsExtendedTabKeywords(settings);
   const fenceStack = [];
@@ -109,9 +110,14 @@ function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {
   for (const line of lines) {
     const isTableLine =
       line.text.includes("|") || /^\s*:?-{2,}:?/.test(line.text);
+    const trimmedStart = line.text.trimStart();
+    const isSeparatorLine =
+      trimmedStart.startsWith(separator) ||
+      (cleanSep && (trimmedStart.startsWith(cleanSep + ":") || trimmedStart.startsWith(cleanSep + " ")));
+
     if (
       fenceStack.length === 0 &&
-      line.text.startsWith(separator) &&
+      isSeparatorLine &&
       !isTableLine
     ) {
       separatorLines.push(line);
@@ -336,7 +342,10 @@ function tabsExtendedCompleteDanglingTabFences(sectionText, settings) {
 function tabsExtendedNormalizeSource(text) {
   return String(text == null ? "" : text)
     .replace(/\r\n?/g, "\n")
-    .replace(/\n+$/, "");
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trim();
 }
 
 function tabsExtendedTabCacheIdentity(titles, index) {

@@ -90,7 +90,9 @@ export class TabsEditorModal extends Modal {
     }
     if (this.saveTimeout) activeWindow.clearTimeout(this.saveTimeout);
     this.saveTimeout = null;
-    if (this.editor && this.editor.docChange) this.saveEditorData();
+    if (this.editor && (this.editor.docChange || (this.editor.view && this.editor.view.state.doc.toString() !== this.initialEditorText))) {
+      this.saveEditorData();
+    }
     if (this.editor && this.editor.view) {
       if (window.tabsExtActiveViews) {
         let idx = window.tabsExtActiveViews.indexOf(this.editor.view);
@@ -98,11 +100,17 @@ export class TabsEditorModal extends Modal {
       }
       this.editor.view.destroy();
     }
+    this.editor = null;
+    this.tabs = null;
+    this.initialEditorText = null;
+    if (this.contentEl && typeof this.contentEl.empty === "function") {
+      this.contentEl.empty();
+    }
   }
   saveEditorData() {
     if (!this.editor || !this.editor.view || !this.tabs) return false;
     const editorText = this.editor.view.state.doc.toString();
-    if (!this.editor.docChange || editorText === this.initialEditorText) {
+    if (editorText === this.initialEditorText && !this.editor.docChange) {
       this.editor.docChange = false;
       return true;
     }

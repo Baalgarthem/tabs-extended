@@ -2,6 +2,44 @@
 
 *Nota: Toda nueva información se agregará al comienzo de este archivo según las reglas de desarrollo.*
 
+## 25 de agosto de 2026 — Corrección de congelamiento intermitente al cambiar de pestañas (Bug 83)
+
+- **Optimización de Anclaje de Scroll (`lockScrollPosition`)**: Se eliminó la cascada de 5 temporizadores continuos (`[20, 60, 120, 250, 450]ms`) que provocaba *layout thrashing* repetitivo y reflows síncronos en el hilo principal. Se reemplazó por un único `requestAnimationFrame` fluido.
+- **Preservación de Caché de Pestañas entre Notas**: Se eliminó el borrado forzado de `lastTabsCache` ante el evento `active-leaf-change`, manteniendo en memoria los índices activos de cada bloque y evitando que las pestañas de notas inactivas se reseteen o re-rendericen al alternar de archivo.
+
+## 25 de agosto de 2026 — Corrección de congelamiento/bloqueo de Obsidian al cargar y renderizar (Bug 82)
+
+- **Eliminación del Rebuild Masivo en `onLayoutReady`**: Se sustituyó `refreshOpenViews()` (que forzaba la reconstrucción síncrona de todas las hojas Markdown abiertas en la bóveda) por `refreshActiveView()`, reconstruyendo únicamente la vista activa actual y evitando sobrecargar el hilo principal durante el arranque de Obsidian.
+- **Supresión de Normalización DOM Destructiva en Contenidos**: Se retiró `cleanVirtualLinksFromElement(this.contentEl)` del pipeline de renderizado de pestañas en `src/components/TabsContent.js`. Esta función aplicaba `replaceWith` y `normalize()` sobre todo el contenedor de contenidos, rompiendo referencias de nodos utilizadas por Obsidian y plugins de terceros.
+- **Estabilización de Eventos de Caché**: Se consolidó la invalidación de caché de pestañas estrictamente en `active-leaf-change`.
+
+## 25 de agosto de 2026 — Arquitectura de distribución exclusiva en `dist/`, Root limpio y Separadores ASCII
+
+- **Purga de la Raíz y Aislamiento en `dist/`**: Se eliminaron los duplicados `main.js` y `styles.css` de la raíz del proyecto. El archivo fuente de estilos fue reubicado formalmente en `src/styles.css`, garantizando que en el directorio raíz solo residan archivos de configuración indispensables.
+- **Flujo de Empaquetado `esbuild` hacia `dist/`**: Se adaptó `esbuild.config.mjs` para que todos los artefactos compilados (`main.js`, `manifest.json`, `styles.css`) se depositen única y exclusivamente en `dist/` sin contaminar la raíz.
+- **Separadores ASCII Elegantes en el Bundle**: Se perfeccionó el post-procesador de `esbuild` para inyectar delimitadores de bloque en formato de caja ASCII elegante (`/* ╔════════... */`) identificando visualmente cada módulo empaquetado en `dist/main.js`.
+- **Sincronización Total de Versiones (`npm version`)**: Se trasladó `scripts/version-bump.mjs` a la carpeta `scripts/` y se validó el flujo de alineación estricta entre `package.json`, `manifest.json`, `dist/manifest.json` y `versions.json`.
+- **Formalización en `AGENTS.md`**: Se incorporó la Sección 10 con las reglas de arquitectura de build, root limpio y separadores modulares.
+
+## 25 de agosto de 2026 — Auditoría de 6 áreas legacy y optimizaciones de memoria y carga
+
+- **Revisión Exhaustiva de 6 Áreas Clave**:
+  1. *Lógica de Apertura y Cierre*: Se blindó `TabsEditorModal.onClose()` con la liberación inmediata de referencias en memoria (`editor`, `tabs`, `initialEditorText`, `contentEl.empty()`) y desconexión de `styleObserver` y timeouts para facilitar la recolección de basura (GC).
+  2. *Lógica de Texto Fantasma*: Se validó `DepthWidget`, `nestedTabsHighlighter` y `activeNestedTabsHighlighter`, confirmando la renderización atómica y libre de fugas de memoria en decoraciones.
+  3. *Lógica de Seguridad de Separadores*: Se verificó la protección de `Backspace` estructural (`protectStructuralBackspace`), el cálculo de inserción de saltos de línea seguros (`safeLineBreakTarget` / `insertSingleLineBreak`) y la normalización de cursor con `transactionFilter`.
+  4. *Lógica de Mensaje de Confirmación de Eliminación*: Se verificó `ConfirmDeleteModal` y `handleGlobalClick`, asegurando el escaneo de títulos contenidos y podado de vistas destruidas en `tabsExtActiveViews`.
+  5. *Lógica de Renderizado*: Se constató el ciclo de vida de `TabsNav`, `TabsContents`, la extensión de delimitadores en `fixNestedFences` y la normalización de enlaces virtuales.
+  6. *Lógica de Arrastrar y Soltar (Drag & Drop)*: Se auditó `dragstart`, `dragover`, `dragleave`, `dragend` y `drop`, garantizando la actualización atómica de la fuente y preservación de índices activos.
+- **Optimizaciones de Memoria y Carga**:
+  - Se implementó un límite acotado (Bounded Cache / LRU) en `lastTabsCache` con `setTabCache()` y `clearTabsCache()` para prevenir el crecimiento desmedido del mapa de caché en bóvedas grandes.
+  - Se implementó el podado automático de vistas destruidas o desconectadas (`isConnected`) en `window.tabsExtActiveViews`.
+
+## 25 de agosto de 2026 — Corrección de persistencia y guardado en editor modal (Bug 81) y formalización de AGENTS.md
+
+- **Persistencia en Editor Modal (Bug 81)**: Se corrigió la falla que impedía guardar y renderizar nuevos separadores creados dentro del editor modal. Se flexibilizó `tabsExtendedAnalyzeTabSections` para tolerar separadores con indentación y variaciones de espaciado, se ajustó `replaceTabSourceSection` para admitir bloques de pestañas unitarios sin separadores previos y soportar prefijos de espacios en blanco legítimos, y se amplió `getWritableView` para buscar en todas las hojas Markdown del workspace de Obsidian.
+- **Protocolo de Investigación para Agentes (`AGENTS.md` y `GEMINI.md`)**: Se formalizó la regla estricta que exige consultar el bug-trace (`docs/bug_log.md`) como **primera instancia de investigación** para recopilar antecedentes antes de proceder a la investigación profunda de raíz en los módulos de `src/`.
+- **Estandarización 100% a Tablas Markdown**: Todos los registros históricos en `docs/bug_log.md` (Bugs 1 al 81) quedaron certificados en formato tabla Markdown.
+
 ## 15 de agosto de 2026 — Endurecimiento final del renombrado contextual
 
 - El modal pequeño conserva una instantánea inmutable de la fuente y el título seleccionados. Una modificación externa ocurrida mientras está abierto invalida la operación completa.

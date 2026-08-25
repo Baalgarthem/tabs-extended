@@ -16,12 +16,11 @@ const isProd = process.argv[2] === "production";
 
 // Format aesthetic ASCII section banners for each bundled module
 function formatAsciiBanner(modulePath) {
-  const width = 76;
+  const width = 80;
   const title = `📦 MÓDULO: ${modulePath}`;
   const padding = Math.max(0, width - title.length - 4);
-  const topBorder = "═".repeat(width);
-  const bottomBorder = "═".repeat(width);
-  return `\n/* ╔${topBorder}╗\n * ║  ${title}${" ".repeat(padding)}║\n * ╚${bottomBorder}╝ */\n`;
+  const border = "═".repeat(width);
+  return `\n/* ╔${border}╗\n * ║  ${title}${" ".repeat(padding)}║\n * ╚${border}╝ */\n`;
 }
 
 // Post-process the generated bundle to inject aesthetic ASCII module separators
@@ -29,9 +28,12 @@ function injectAsciiSeparators(filePath) {
   if (!fs.existsSync(filePath)) return;
   let code = fs.readFileSync(filePath, "utf8");
 
-  // Replace "// src/path/file.js" with aesthetic ASCII box
-  code = code.replace(/(?:^|\n)\/\/\s+(src\/[^\n\r]+)/g, (match, p1) => {
-    return "\n" + formatAsciiBanner(p1);
+  // Replace "// src/..." with aesthetic ASCII box
+  code = code.replace(/(?:^|\n)\/\/\s+((?:src\/|[a-zA-Z0-9_\-\.\/]+\.js)[^\n\r]*)/g, (match, p1) => {
+    if (p1.startsWith("src/") || p1.includes("i18n") || p1.includes("core") || p1.includes("editor") || p1.includes("components") || p1.includes("modals") || p1.includes("settings") || p1.includes("styles")) {
+      return "\n" + formatAsciiBanner(p1);
+    }
+    return match;
   });
 
   fs.writeFileSync(filePath, code, "utf8");
@@ -45,7 +47,9 @@ function copyStaticAssets() {
   if (fs.existsSync("manifest.json")) {
     fs.copyFileSync("manifest.json", "dist/manifest.json");
   }
-  if (fs.existsSync("styles.css")) {
+  if (fs.existsSync("src/styles.css")) {
+    fs.copyFileSync("src/styles.css", "dist/styles.css");
+  } else if (fs.existsSync("styles.css")) {
     fs.copyFileSync("styles.css", "dist/styles.css");
   }
 }
@@ -76,25 +80,20 @@ const context = await esbuild.context({
             // 1. Inject aesthetic ASCII banners into dist/main.js
             injectAsciiSeparators("dist/main.js");
 
-            // 2. Copy static assets to dist/
+            // 2. Ensure all 3 required files exist in dist/ (main.js, manifest.json, styles.css)
             copyStaticAssets();
 
-            // 3. Maintain synchronized root main.js for local Obsidian live dev
-            if (fs.existsSync("dist/main.js")) {
-              fs.copyFileSync("dist/main.js", "main.js");
-            }
-
-            // 4. Auto-sync to active vault if present
+            // 3. Auto-sync to active Obsidian vault if present
             const vaultPluginDir = "D:/PKM/.obsidian/plugins/tabs-extended";
             if (fs.existsSync(vaultPluginDir) && path.resolve(vaultPluginDir) !== path.resolve(".")) {
               fs.copyFileSync("dist/main.js", path.join(vaultPluginDir, "main.js"));
-              fs.copyFileSync("manifest.json", path.join(vaultPluginDir, "manifest.json"));
-              if (fs.existsSync("styles.css")) {
-                fs.copyFileSync("styles.css", path.join(vaultPluginDir, "styles.css"));
+              fs.copyFileSync("dist/manifest.json", path.join(vaultPluginDir, "manifest.json"));
+              if (fs.existsSync("dist/styles.css")) {
+                fs.copyFileSync("dist/styles.css", path.join(vaultPluginDir, "styles.css"));
               }
               console.log("🚀 Sincronizado automáticamente con la bóveda de Obsidian en D:/PKM!");
             }
-            console.log("✨ Build completado con éxito: Separadores ASCII generados -> dist/ y root actualizados.");
+            console.log("✨ Build completado con éxito: main.js, manifest.json y styles.css generados en dist/.");
           }
         });
       }
