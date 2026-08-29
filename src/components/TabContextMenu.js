@@ -21,19 +21,27 @@ export class TabContextMenu extends Menu {
     this.addItem((i) => {
       i.setTitle($("menu.renameTab"));
       i.setIcon("pencil");
-      i.setDisabled(contextTabIndex < 0);
+      i.setDisabled(contextTabIndex < 0 && (!t.tabsNav || !t.tabsNav.navItems || t.tabsNav.navItems.length === 0));
       i.onClick(() => {
-        const renameSnapshot = contextTabIndex >= 0 &&
-          typeof t.getTabRenameSnapshot === "function"
-          ? t.getTabRenameSnapshot(contextTabIndex)
+        const targetIndex = contextTabIndex >= 0
+          ? contextTabIndex
+          : (typeof t.currentIndex === "number" && t.currentIndex >= 0 ? t.currentIndex : 0);
+        const navItem = t.tabsNav && Array.isArray(t.tabsNav.navItems)
+          ? t.tabsNav.navItems[targetIndex]
           : null;
-        if (!renameSnapshot) {
+        if (!navItem) {
           if (!t.plugin.settings.ignoreNotice) {
             new Notice($("notice.invalidTab"));
           }
           return;
         }
-        new RenameTabModal(t.app, renameSnapshot.title, (newTitle) => {
+
+        const snapshot = typeof t.getTabRenameSnapshot === "function"
+          ? t.getTabRenameSnapshot(targetIndex)
+          : null;
+        const currentTitle = (snapshot && snapshot.title) || navItem.title || "";
+
+        new RenameTabModal(t.app, currentTitle, (newTitle) => {
           if (
             typeof t.hasConflictingTabsEditorModal === "function" &&
             t.hasConflictingTabsEditorModal()
@@ -42,7 +50,7 @@ export class TabContextMenu extends Menu {
             return false;
           }
           const renamed = typeof t.renameTabAt === "function" &&
-            t.renameTabAt(contextTabIndex, newTitle, renameSnapshot);
+            t.renameTabAt(targetIndex, newTitle);
           if (renamed && !t.plugin.settings.ignoreNotice) {
             new Notice($("notice.renameTabSuccess"));
           }
@@ -114,13 +122,28 @@ export class TabContextMenu extends Menu {
     if (!tabs || !tabs.tabsNav || !Array.isArray(tabs.tabsNav.navItems)) {
       return -1;
     }
-    return tabs.tabsNav.navItems.findIndex((item) => {
+    const directIndex = tabs.tabsNav.navItems.findIndex((item) => {
       const itemEl = item && item.tabitemEl;
       return !!(
         itemEl &&
         (itemEl === target || (target && itemEl.contains(target)))
       );
     });
+    if (directIndex >= 0) return directIndex;
+
+    if (target && typeof target.closest === "function") {
+      const closestTabItemEl = target.closest(".tabs-nav-item");
+      if (closestTabItemEl) {
+        const found = tabs.tabsNav.navItems.findIndex(
+          (item) => item && item.tabitemEl === closestTabItemEl
+        );
+        if (found >= 0) return found;
+      }
+    }
+
+    return typeof tabs.currentIndex === "number" && tabs.currentIndex >= 0
+      ? tabs.currentIndex
+      : 0;
   }
 
   static updateBlockWithNewTab(t, newTitle, newContent) {

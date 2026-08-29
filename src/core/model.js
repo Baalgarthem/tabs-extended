@@ -439,22 +439,18 @@ export class Tabs extends MarkdownRenderChild {
     );
   }
   getTabRenameSnapshot(tabIndex) {
-    const analyzed = this.analyzeCurrentTabSections();
-    const tabcontents = this.tabsContents && this.tabsContents.tabcontents;
-    if (
-      !analyzed ||
-      !Array.isArray(tabcontents) ||
-      tabcontents.length !== analyzed.sections.length
-    ) {
+    const analyzed = this.analyzeCurrentTabSections() || this.analyzeSourceTabSections();
+    const navItem = this.tabsNav && this.tabsNav.navItems && this.tabsNav.navItems[tabIndex];
+    if (!analyzed && !navItem) {
       return null;
     }
-    const titleRange = this.getTabTitleSourceRange(tabIndex, analyzed);
-    if (!titleRange) return null;
+    const titleRange = analyzed ? this.getTabTitleSourceRange(tabIndex, analyzed) : null;
+    const rawTitle = titleRange ? titleRange.title : (navItem ? navItem.title : "");
     return Object.freeze({
       tabIndex,
       rawText: this.rawText,
-      rawTitle: titleRange.title,
-      title: titleRange.title.trim(),
+      rawTitle: rawTitle,
+      title: String(rawTitle).trim(),
       tabsId: this.tabsId || "",
     });
   }

@@ -2,6 +2,11 @@
 
 *Nota: Toda nueva información se agregará al comienzo de este archivo según las reglas de desarrollo.*
 
+## 29 de agosto de 2026 — Corrección de aviso «Not a valid tab» al renombrar pestañas (Bug 86)
+
+- **Resolución Robusta de Pestaña Contextual (`findTabIndex`)**: Se optimizó la función `findTabIndex` en `src/components/TabContextMenu.js` para utilizar `target.closest(".tabs-nav-item")` y un fallback automático al índice activo `t.currentIndex`, asegurando que cualquier clic en la barra de navegación reconozca la pestaña correcta.
+- **Desacoplamiento y Flexibilización de Snapshots**: Se eliminó el bloqueo que impedía abrir el modal cuando `getTabRenameSnapshot` devolvía `null`, utilizando de forma directa el título en memoria del `navItem`. Asimismo, `getTabRenameSnapshot` en `src/core/model.js` ahora recurre a `analyzeSourceTabSections()` garantizando la disponibilidad del snapshot en cualquier estado del DOM.
+
 ## 29 de agosto de 2026 — Corrección y reactividad total al renombrar pestañas (Bug 78)
 
 - **Normalización Flexible del Prefijo de Separador (`tabsExtendedTabTitleSourceRange`)**: Se implementó una detección por expresión regular en `src/core/parser.js` que admite sangría inicial, separadores sin dos puntos explícitos y espacios adicionales, garantizando que el cálculo de `from` y `to` sea 100% exacto para cualquier bloque.
