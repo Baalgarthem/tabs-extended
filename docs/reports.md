@@ -2,6 +2,10 @@
 
 *Nota: Toda nueva información se agregará al comienzo de este archivo según las reglas de desarrollo.*
 
+## 29 de agosto de 2026 — Cierre y validación de persistencia al crear separadores en modal (Bug 81)
+
+- **Validación del Usuario Exitosa**: Se confirmó la total estabilidad y persistencia de datos al crear separadores y editar bloques dentro del editor modal (`TabsEditorModal`), cerrando oficialmente el [Bug 81](file:///D:/Scripts/obsidian-plugins/tabs-extended/docs/bug_log.md#81-bug-solucionado-persistencia-al-crear-separadores-en-el-editor-modal-replacetabsourcesection-y-guardado-al-salir) con estado ✅ Solucionado.
+
 ## 29 de agosto de 2026 — Corrección de aviso «Not a valid tab» al renombrar pestañas (Bug 86)
 
 - **Resolución Robusta de Pestaña Contextual (`findTabIndex`)**: Se optimizó la función `findTabIndex` en `src/components/TabContextMenu.js` para utilizar `target.closest(".tabs-nav-item")` y un fallback automático al índice activo `t.currentIndex`, asegurando que cualquier clic en la barra de navegación reconozca la pestaña correcta.
