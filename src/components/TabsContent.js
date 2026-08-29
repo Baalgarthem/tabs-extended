@@ -1,5 +1,6 @@
 import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
 import { tabsExtendedFindDirectNestedBlocks, tabsExtendedConfiguredKeyword, tabsExtendedNormalizeSource } from '../core/parser.js';
+import { augmentContentWithDocumentDefinitions, extractReferenceDefinitions, setupLinkInteractions } from '../links/index.js';
 import { $ } from '../i18n/index.js';
 
 export class TabContentItem {
@@ -31,15 +32,14 @@ export class TabContentItem {
         (this.contentEl.className = "tabs-content markdown-rendered"));
       this.contentEl.tabsExtendedContentModel = this;
       let n = new MarkdownRenderChild(this.contentEl);
-      // Pre-process the content so that any top-level tabs fenced blocks use a fence
-      // longer than all inner same-character closing fences.  Without this,
-      // CommonMark's parser closes the outer ~~~tabs at the FIRST ~~~  it encounters
-      // (which belongs to an inner block), causing content to escape as plain text.
+
       const safeContent = this.fixNestedFences(t);
+      const augmentedContent = augmentContentWithDocumentDefinitions(safeContent, e, i, this.ownerTabs);
       const sourcePath = (i && typeof i.sourcePath === "string") ? i.sourcePath : "";
+
       const renderPromise = MarkdownRenderer.render(
         e,
-        safeContent,
+        augmentedContent,
         this.contentEl,
         sourcePath,
         n,
@@ -47,14 +47,38 @@ export class TabContentItem {
       Promise.resolve(renderPromise)
         .then(() => {
           this.ensureCodeBlockWrappers(this.contentEl);
+          setupLinkInteractions(this.contentEl, e, sourcePath);
         })
         .catch((error) => {
           console.error("Tabs Extended could not finish rendering tab content:", error);
         });
+
       if (i && typeof i.addChild === 'function') {
         try {
           i.addChild(n);
         } catch (err) {}
+      }
+
+      // Asynchronous cache resolution if active view editor was not available synchronously
+      if (i && typeof i.sourcePath === "string" && e && e.vault && typeof e.vault.getAbstractFileByPath === "function") {
+        const file = e.vault.getAbstractFileByPath(i.sourcePath);
+        if (file && typeof e.vault.cachedRead === "function") {
+          e.vault.cachedRead(file).then((fullDocText) => {
+            const docAugmented = extractReferenceDefinitions(fullDocText);
+            const currentDefs = new Set(extractReferenceDefinitions(augmentedContent));
+            const hasNewDefs = docAugmented.some((def) => !currentDefs.has(def));
+            if (hasNewDefs && this.contentEl && this.contentEl.isConnected) {
+              const fullAugmented = safeContent + "\n\n" + docAugmented.join("\n");
+              this.contentEl.empty();
+              MarkdownRenderer.render(e, fullAugmented, this.contentEl, sourcePath, n)
+                .then(() => {
+                  this.ensureCodeBlockWrappers(this.contentEl);
+                  setupLinkInteractions(this.contentEl, e, sourcePath);
+                })
+                .catch(() => {});
+            }
+          }).catch(() => {});
+        }
       }
     }
     getDirectNestedBlocks(sourceText = this.content) {

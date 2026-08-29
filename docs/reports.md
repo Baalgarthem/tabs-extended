@@ -2,6 +2,23 @@
 
 *Nota: Toda nueva información se agregará al comienzo de este archivo según las reglas de desarrollo.*
 
+## 29 de agosto de 2026 — Suite de pruebas unitarias e integración automatizada (`tests/`)
+
+- **Directorio de Pruebas y Runner Automatizado (`tests/`)**:
+  - [`tests/parser.test.mjs`](file:///D:/Scripts/obsidian-plugins/tabs-extended/tests/parser.test.mjs): Pruebas unitarias de detección de cercas, rangos de títulos, análisis de secciones y normalización.
+  - [`tests/links.test.mjs`](file:///D:/Scripts/obsidian-plugins/tabs-extended/tests/links.test.mjs): Pruebas unitarias para extracción de enlaces referenciados, notas al pie e inyección en pestañas.
+  - [`tests/integration.test.mjs`](file:///D:/Scripts/obsidian-plugins/tabs-extended/tests/integration.test.mjs): Pruebas de integración de extremo a extremo con documentos académicos, callouts, tablas, enlaces y renombrado.
+  - [`tests/run-all.mjs`](file:///D:/Scripts/obsidian-plugins/tabs-extended/tests/run-all.mjs): Ejecutor maestro con reporte de métricas y aserciones.
+  - **Comando `npm test`**: Integrado en `package.json` para ejecución inmediata en consola con 100% de tests aprobados.
+
+## 29 de agosto de 2026 — Creación del módulo especializado en enlaces y notas al pie (`src/links/`)
+
+- **Arquitectura Modular Especializada (`src/links/`)**:
+  - [`src/links/definitions.js`](file:///D:/Scripts/obsidian-plugins/tabs-extended/src/links/definitions.js): Motor de análisis para extraer enlaces referenciados (`[id]: url`) y notas al pie (`[^id]: text`) multi-línea, e inyección dinámica no destructiva mediante `augmentContentWithDocumentDefinitions()`.
+  - [`src/links/navigation.js`](file:///D:/Scripts/obsidian-plugins/tabs-extended/src/links/navigation.js): Controlador de navegación universal e interactiva (`setupLinkInteractions()`) compatible con enlaces externos, wikilinks internos (`[[Nota]]`), anclas de notas al pie (`#fn-...`, `#fnref-...`) con resalte visual (`is-flashing`), previsualizaciones hover (*Obsidian popover preview*) y compatibilidad con plugins como Linker.
+  - [`src/links/index.js`](file:///D:/Scripts/obsidian-plugins/tabs-extended/src/links/index.js): Punto de entrada único y limpio para la API de enlaces del plugin.
+- **Integración Reactiva en `TabsContent.js`**: Se desacopló toda la lógica de enlaces de `src/components/TabsContent.js`, delegando directamente en el módulo `src/links/`.
+
 ## 29 de agosto de 2026 — Cierre y validación de persistencia al crear separadores en modal (Bug 81)
 
 - **Validación del Usuario Exitosa**: Se confirmó la total estabilidad y persistencia de datos al crear separadores y editar bloques dentro del editor modal (`TabsEditorModal`), cerrando oficialmente el [Bug 81](file:///D:/Scripts/obsidian-plugins/tabs-extended/docs/bug_log.md#81-bug-solucionado-persistencia-al-crear-separadores-en-el-editor-modal-replacetabsourcesection-y-guardado-al-salir) con estado ✅ Solucionado.
