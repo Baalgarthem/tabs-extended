@@ -83,9 +83,10 @@ const context = await esbuild.context({
             // 2. Ensure all 3 required files exist in dist/ (main.js, manifest.json, styles.css)
             copyStaticAssets();
 
-            // 3. Auto-sync to active Obsidian vault if present
+            // 3. Sync only when the caller explicitly authorizes it.
             const vaultPluginDir = "D:/PKM/.obsidian/plugins/tabs-extended";
-            if (fs.existsSync(vaultPluginDir) && path.resolve(vaultPluginDir) !== path.resolve(".")) {
+            const syncToPkm = process.env.TABS_EXTENDED_SYNC_PKM === "1";
+            if (syncToPkm && fs.existsSync(vaultPluginDir) && path.resolve(vaultPluginDir) !== path.resolve(".")) {
               fs.copyFileSync("dist/main.js", path.join(vaultPluginDir, "main.js"));
               fs.copyFileSync("dist/manifest.json", path.join(vaultPluginDir, "manifest.json"));
               if (fs.existsSync("dist/styles.css")) {

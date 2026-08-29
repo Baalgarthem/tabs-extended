@@ -2,6 +2,19 @@
 
 *Nota: Toda nueva información se agregará al comienzo de este archivo según las reglas de desarrollo.*
 
+## 29 de agosto de 2026 — Corrección y reactividad total al renombrar pestañas (Bug 78)
+
+- **Normalización Flexible del Prefijo de Separador (`tabsExtendedTabTitleSourceRange`)**: Se implementó una detección por expresión regular en `src/core/parser.js` que admite sangría inicial, separadores sin dos puntos explícitos y espacios adicionales, garantizando que el cálculo de `from` y `to` sea 100% exacto para cualquier bloque.
+- **Soporte Completo de Confirmación en Modal (`RenameTabModal.js`)**: Se convirtió el flujo de envío en asíncrono, permitiendo confirmar y persistir el nuevo nombre tanto mediante la pulsación de la tecla `Enter` como haciendo clic en el botón de confirmación.
+- **Actualización Reactiva Inmediata del DOM y Modelos (`src/core/model.js`)**: Al confirmar el renombrado, el componente actualiza el texto de la fuente en el editor de Obsidian, re-renderiza de forma síncrona el contenido visual en `tabitemMDEl` y sincroniza `tabsEditorModal.initialEditorText` si el modal de edición está abierto.
+
+## 25 de agosto de 2026 — Optimización de memoria, tolerancia a fallos y eliminación de cuellos de botella en renderizado
+
+- **Ciclo de Vida Limpio y Liberación de Memoria (`onunload` en `Tabs`)**: Se implementó el método `onunload()` en la clase principal `Tabs` (`MarkdownRenderChild`), desconectando activamente todos los `MutationObserver` de títulos de pestañas, cancelando animaciones en vuelo y vaciando referencias de navegación y contenidos para evitar fugas de memoria al navegar o cerrar notas.
+- **Sincronización Defensiva y Tolerante a Fallos en Pestañas**: Se refactorizaron `refreshActiveTabContent` (`TabsContent.js`) y `refreshActiveTabNav` (`TabsNav.js`) con una pasada determinista $O(N)$ acotada con `Math.max(0, Math.min(len - 1, target))`, eliminando desfases visuales de clases activas ante mutaciones dinámicas.
+- **Protección contra Re-Entrada en Observers (`setupVirtualLinkExemption`)**: Se añadió un guard booleano `cleaning` y desconexión segura en `TabItem.js` para impedir bucles de mutación recursivos al limpiar enlaces virtuales en títulos.
+- **Manejo Seguro de Delegación Global (`handleGlobalClick`)**: Se blindó la resolución de elementos DOM para admitir clics en elementos SVG y nodos anidados sin arrojar excepciones de tipo.
+
 ## 25 de agosto de 2026 — Corrección de congelamiento intermitente al cambiar de pestañas (Bug 83)
 
 - **Optimización de Anclaje de Scroll (`lockScrollPosition`)**: Se eliminó la cascada de 5 temporizadores continuos (`[20, 60, 120, 250, 450]ms`) que provocaba *layout thrashing* repetitivo y reflows síncronos en el hilo principal. Se reemplazó por un único `requestAnimationFrame` fluido.

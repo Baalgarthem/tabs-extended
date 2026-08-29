@@ -52,7 +52,7 @@ export class RenameTabModal extends Modal {
       });
     }
   }
-  submit() {
+  async submit() {
     const newTitle = this.inputEl ? this.inputEl.value.trim() : "";
     if (newTitle === "") {
       if (this.errorEl) {
@@ -61,9 +61,22 @@ export class RenameTabModal extends Modal {
       }
       return;
     }
-    this.close();
-    if (typeof this.onRename === "function") {
-      this.onRename(newTitle);
+    let renamed = false;
+    try {
+      if (typeof this.onRename === "function") {
+        const res = await this.onRename(newTitle);
+        renamed = res === true || res === undefined;
+      }
+    } catch (error) {
+      console.error("Tabs Extended tab rename failed:", error);
+    }
+    if (renamed) {
+      this.close();
+      return;
+    }
+    if (this.errorEl) {
+      this.errorEl.setText($("modal.renameTab.failed"));
+      this.errorEl.style.color = "var(--text-error)";
     }
   }
   onClose() {

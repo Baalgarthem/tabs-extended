@@ -177,16 +177,29 @@ function tabsExtendedTabTitleSourceRange(
     return null;
   }
   const section = analysis.sections[tabIndex];
+  if (section.separatorFrom == null || section.separatorTo == null) return null;
+
   const separatorLine = source.slice(
     section.separatorFrom,
     section.separatorTo,
   );
-  if (!separatorLine.startsWith(separator)) return null;
-  const from = section.separatorFrom + separator.length;
+
+  const cleanSep = separator.trim().replace(/[:\s]+$/, "");
+  const escapedClean = cleanSep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedFull = separator.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const prefixRegex = new RegExp(`^(\\s*)(?:${escapedClean}:|${escapedFull}:|${escapedFull}|${escapedClean})(\\s*)`);
+  const match = separatorLine.match(prefixRegex);
+  if (!match) return null;
+
+  const prefixLen = match[0].length;
+  const from = section.separatorFrom + prefixLen;
+  const to = section.separatorTo;
+
   return {
     from,
-    to: section.separatorTo,
-    title: source.slice(from, section.separatorTo),
+    to,
+    title: source.slice(from, to),
   };
 }
 

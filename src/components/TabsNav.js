@@ -58,16 +58,20 @@ export class TabsNav {
     }
   }
   refreshActiveTabNav(t) {
-    if (!this.navItems || this.navItems.length === 0) return;
-    if (this.navItems[this.currentTab]) {
-      this.navItems[this.currentTab].isActiveed = !1;
-      this.navItems[this.currentTab].tabitemEl.classList.remove("tabs-nav-item-active");
+    if (!Array.isArray(this.navItems) || this.navItems.length === 0) return;
+    const targetIndex = Math.max(0, Math.min(this.navItems.length - 1, t));
+    for (let i = 0; i < this.navItems.length; i++) {
+      const item = this.navItems[i];
+      if (!item || !item.tabitemEl) continue;
+      const isActive = i === targetIndex;
+      item.isActiveed = isActive;
+      if (isActive) {
+        item.tabitemEl.classList.add("tabs-nav-item-active");
+      } else {
+        item.tabitemEl.classList.remove("tabs-nav-item-active");
+      }
     }
-    if (this.navItems[t]) {
-      this.navItems[t].isActiveed = !0;
-      this.navItems[t].tabitemEl.classList.add("tabs-nav-item-active");
-      this.currentTab = t;
-    }
+    this.currentTab = targetIndex;
 
     if (this.titleRefreshFrame != null) {
       window.cancelAnimationFrame(this.titleRefreshFrame);

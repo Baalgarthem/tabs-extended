@@ -38,14 +38,11 @@ export class TabContextMenu extends Menu {
             typeof t.hasConflictingTabsEditorModal === "function" &&
             t.hasConflictingTabsEditorModal()
           ) {
-            new Notice($("notice.tabRenameBlockedEditorOpen"));
+            new Notice($("modal.renameTab.editorOpen"));
             return false;
           }
-          const renamed = t.renameTabBySourceSection(
-            contextTabIndex,
-            newTitle,
-            renameSnapshot,
-          );
+          const renamed = typeof t.renameTabAt === "function" &&
+            t.renameTabAt(contextTabIndex, newTitle, renameSnapshot);
           if (renamed && !t.plugin.settings.ignoreNotice) {
             new Notice($("notice.renameTabSuccess"));
           }

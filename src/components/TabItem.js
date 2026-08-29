@@ -3,7 +3,6 @@ import { cleanVirtualLinksFromElement } from '../core/model.js';
 import { tabsExtendedAnalyzeTabSections } from '../core/parser.js';
 import { TabContextMenu } from './TabContextMenu.js';
 import { RenameTabModal } from '../modals/RenameTabModal.js';
-import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal.js';
 import { $ } from '../i18n/index.js';
 
 export class TabItem {
@@ -141,6 +140,7 @@ export class TabItem {
 
       const maxAllowedWidth = Math.max(30, availWidth - 8);
 
+
       if (singleLineWidth > maxAllowedWidth) {
         mdEl.style.whiteSpace = "normal";
         mdEl.style.wordBreak = "break-word";
@@ -206,7 +206,13 @@ export class TabItem {
   setupVirtualLinkExemption() {
     if (!this.tabitemMDEl) return;
     try {
+      if (this.virtualLinkObserver) {
+        this.virtualLinkObserver.disconnect();
+        this.virtualLinkObserver = null;
+      }
+      let cleaning = false;
       const observer = new MutationObserver((mutations) => {
+        if (cleaning || this.isDisposed) return;
         let needsClean = false;
         for (const m of mutations) {
           for (const added of m.addedNodes) {
@@ -226,8 +232,13 @@ export class TabItem {
           }
           if (needsClean) break;
         }
-        if (needsClean) {
-          cleanVirtualLinksFromElement(this.tabitemMDEl);
+        if (needsClean && !this.isDisposed) {
+          cleaning = true;
+          try {
+            cleanVirtualLinksFromElement(this.tabitemMDEl);
+          } finally {
+            cleaning = false;
+          }
         }
       });
       observer.observe(this.tabitemMDEl, { childList: true, subtree: true });

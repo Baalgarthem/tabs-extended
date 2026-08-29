@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, MarkdownView, Notice, setIcon } from 'obsidian';
+import { MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, setIcon } from 'obsidian';
 import { TabItem } from '../components/TabItem.js';
 import { TabsNav, TabsButton } from '../components/TabsNav.js';
 import { TabContentItem, TabsContents } from '../components/TabsContent.js';
@@ -31,9 +31,11 @@ function cleanVirtualLinksFromElement(el) {
     const virtualLinks = el.querySelectorAll(".virtual-link, .virtual-link-a, .virtual-link-span, .glossary-entry");
     if (virtualLinks && virtualLinks.length > 0) {
       virtualLinks.forEach((vl) => {
+        if (!vl || !vl.parentNode) return;
         const icon = vl.querySelector(".linker-suffix-icon, sup");
-        if (icon) icon.remove();
-        const textNode = document.createTextNode(vl.textContent || "");
+        if (icon && icon.parentNode) icon.remove();
+        const textContent = vl.textContent || "";
+        const textNode = document.createTextNode(textContent);
         vl.replaceWith(textNode);
       });
       el.normalize();
@@ -595,8 +597,7 @@ export class Tabs extends MarkdownRenderChild {
     const nextTitle = tabsExtendedNormalizeTabTitle(requestedTitle);
     if (
       nextTitle == null ||
-      (this.tabsEl && !this.tabsEl.isConnected) ||
-      this.hasConflictingTabsEditorModal()
+      (this.tabsEl && !this.tabsEl.isConnected)
     ) {
       return false;
     }
@@ -609,21 +610,20 @@ export class Tabs extends MarkdownRenderChild {
       return false;
     }
 
-    const currentAnalysis = this.analyzeCurrentTabSections();
-    const titleRange = this.getTabTitleSourceRange(tabIndex, currentAnalysis);
-    const tabcontents = this.tabsContents && this.tabsContents.tabcontents;
+    const currentAnalysis = this.analyzeCurrentTabSections() || this.analyzeSourceTabSections();
     if (
       !currentAnalysis ||
-      !titleRange ||
-      !Array.isArray(tabcontents) ||
-      tabcontents.length !== currentAnalysis.sections.length ||
-      !Number.isInteger(this.currentIndex) ||
-      this.currentIndex < 0 ||
-      this.currentIndex >= currentAnalysis.sections.length
+      !Number.isInteger(tabIndex) ||
+      tabIndex < 0 ||
+      tabIndex >= currentAnalysis.sections.length
     ) {
       return false;
     }
-    if (snapshot && snapshot.rawTitle !== titleRange.title) return false;
+
+    const titleRange = this.getTabTitleSourceRange(tabIndex, currentAnalysis);
+    if (!titleRange) {
+      return false;
+    }
     if (titleRange.title.trim() === nextTitle) return true;
 
     const nextRawText =
@@ -635,22 +635,9 @@ export class Tabs extends MarkdownRenderChild {
       this.split,
       this.plugin.settings,
     );
-    const nextTitleRange = tabsExtendedTabTitleSourceRange(
-      nextRawText,
-      this.split,
-      nextAnalysis,
-      tabIndex,
-    );
     if (
       !nextAnalysis ||
-      !nextTitleRange ||
-      nextAnalysis.prefix !== currentAnalysis.prefix ||
-      nextAnalysis.sections.length !== currentAnalysis.sections.length ||
-      nextTitleRange.title !== nextTitle ||
-      this.rawText.slice(0, titleRange.from) !==
-        nextRawText.slice(0, nextTitleRange.from) ||
-      this.rawText.slice(titleRange.to) !==
-        nextRawText.slice(nextTitleRange.to)
+      nextAnalysis.sections.length !== currentAnalysis.sections.length
     ) {
       return false;
     }
@@ -660,9 +647,17 @@ export class Tabs extends MarkdownRenderChild {
       nextAnalysis,
       nextRawText,
     );
+    const targetActiveIndex = Math.max(
+      0,
+      Math.min(
+        currentAnalysis.sections.length - 1,
+        Number.isInteger(this.currentIndex) ? this.currentIndex : tabIndex,
+      ),
+    );
+
     let renamed = false;
     try {
-      renamed = this.persistRawTextUpdate(nextRawText, this.currentIndex);
+      renamed = this.persistRawTextUpdate(nextRawText, targetActiveIndex);
     } catch (error) {
       cacheTransition.rollback();
       console.error("Tabs Extended aborted an unsafe tab rename:", error);
@@ -675,10 +670,35 @@ export class Tabs extends MarkdownRenderChild {
     try {
       cacheTransition.commit();
     } catch (error) {
-      // The source write already succeeded. Cache cleanup is best-effort and
-      // must never turn a valid structural rename into a second source write.
       console.warn("Tabs Extended could not finish rename cache cleanup:", error);
     }
+
+    // Update in-memory models and live DOM representation immediately
+    this.rawText = nextRawText;
+    if (this.tabsNav && Array.isArray(this.tabsNav.navItems) && this.tabsNav.navItems[tabIndex]) {
+      const item = this.tabsNav.navItems[tabIndex];
+      item.title = nextTitle;
+      if (item.tabitemMDEl) {
+        item.tabitemMDEl.empty();
+        const renderChild = new MarkdownRenderChild(item.tabitemMDEl);
+        MarkdownRenderer.render(
+          this.app,
+          nextTitle,
+          item.tabitemMDEl,
+          (this.context && this.context.sourcePath) || "",
+          renderChild,
+        ).then(() => {
+          if (typeof item.scheduleTitleBehavior === "function") {
+            item.scheduleTitleBehavior();
+          }
+        }).catch(() => {});
+      }
+    }
+
+    if (this.plugin && this.plugin.tabsEditorModal && this.plugin.tabsEditorModal.tabs === this) {
+      this.plugin.tabsEditorModal.initialEditorText = nextRawText;
+    }
+
     return true;
   }
   replaceTabSourceSection(tabIndex, replacementText) {
@@ -1319,5 +1339,28 @@ export class Tabs extends MarkdownRenderChild {
         this.headerTag = openMatch[2].trim() || (this.isVertical ? "tabs-v" : "tabs");
       }
     }
+  }
+  onunload() {
+    this.cancelScrollAnchorSchedule();
+    if (this.tabsNav && Array.isArray(this.tabsNav.navItems)) {
+      this.tabsNav.navItems.forEach((item) => {
+        if (item && item.virtualLinkObserver) {
+          try {
+            item.virtualLinkObserver.disconnect();
+          } catch(e) {}
+          item.virtualLinkObserver = null;
+        }
+        if (item) item.isDisposed = true;
+      });
+    }
+    if (this.tabsContents) {
+      this.tabsContents.tabcontents = [];
+    }
+    this.tabsNav = null;
+    this.tabsContents = null;
+    this.tabsConfig = null;
+    this.context = null;
+    this.activeView = null;
+    super.onunload();
   }
 };

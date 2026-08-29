@@ -33,16 +33,21 @@ export default class TabsExtendedPlugin extends Plugin {
       window.tabsExtActiveViews = [];
 
       const handleGlobalClick = (evt) => {
-        const btn = evt.target.closest(".tabs-ext-delete-button");
-        if (!btn) return;
+        const targetEl = evt.target instanceof Element ? evt.target : (evt.target && evt.target.parentElement instanceof Element ? evt.target.parentElement : null);
+        const btn = targetEl ? targetEl.closest(".tabs-editor-modal .tabs-delete-button") : null;
+        if (!btn || !btn.closest(".tabs-editor-modal")) return;
 
         evt.preventDefault();
         evt.stopPropagation();
         evt.stopImmediatePropagation();
 
-        const from = parseInt(btn.dataset.from, 10);
-        const to = parseInt(btn.dataset.to, 10);
-        const type = btn.dataset.type || "tab";
+        const widgetType = btn.dataset.type;
+        const type = widgetType === "block" || widgetType === "fence"
+          ? "fence"
+          : widgetType === "tab" || widgetType === "separator"
+            ? "separator"
+            : null;
+        if (!type) return;
 
         if (Array.isArray(window.tabsExtActiveViews)) {
           window.tabsExtActiveViews = window.tabsExtActiveViews.filter(
@@ -68,70 +73,152 @@ export default class TabsExtendedPlugin extends Plugin {
           return;
         }
 
-        let label = "la pestaña";
-        if (type === "fence") label = "el bloque de pestañas anidadas";
-        else if (type === "separator") label = "la subpestaña";
-
-        const confirmMessage = `¿Estás seguro de que deseas eliminar ${label}?`;
-
         try {
           const doc = activeEditor.state.doc;
-          let deleteFrom = from;
-          let deleteTo = to;
-
-          if (type === "fence") {
-            const startLineObj = doc.lineAt(from);
-            deleteFrom = startLineObj.from;
-            const endLineObj = doc.lineAt(to);
-            deleteTo = endLineObj.to;
-            if (deleteTo < doc.length) {
-              const nextChar = doc.sliceString(deleteTo, deleteTo + 1);
-              if (nextChar === "\n") deleteTo += 1;
-            }
-          } else {
-            const lineObj = doc.lineAt(from);
-            deleteFrom = lineObj.from;
-            deleteTo = lineObj.to;
-            if (deleteTo < doc.length) {
-              const nextChar = doc.sliceString(deleteTo, deleteTo + 1);
-              if (nextChar === "\n") deleteTo += 1;
-            }
+          const buttonPos = activeEditor.posAtDOM(btn);
+          if (!Number.isInteger(buttonPos) || buttonPos < 0 || buttonPos > doc.length) {
+            throw new Error("no se pudo localizar el control de eliminación en el documento");
           }
 
-          let deletedContent = doc.sliceString(deleteFrom, deleteTo).trim();
-          let isEmpty = false;
+          const targetLine = doc.lineAt(buttonPos);
+          const split = btn.dataset.split || this.settings.split;
+          const configuredKeyword = (this.settings.tabsKeyword || "tabs").trim();
+          const safeKeyword = configuredKeyword.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+          const tabsInfoRegex = new RegExp(`^(?:${safeKeyword}(?:-v)?|tabs(?:-v)?)$`, "i");
+          const stack = [];
+          let targetTabsDepth = null;
+          let containingTabs = null;
+          let matchingFenceLine = null;
+          let targetBlock = null;
+          const blockSeparators = [];
 
-          if (type === "fence") {
-            let lines = deletedContent.split("\n");
-            if (lines.length <= 3) {
-              let nonFenceLines = lines.slice(1, -1);
-              let joined = nonFenceLines.join("").trim();
-              if (joined.length === 0 || /^tema:[^\n]*$/i.test(joined)) {
-                isEmpty = true;
+          for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
+            const scanLine = doc.line(lineNo);
+            const trimmed = scanLine.text.trim();
+            const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/);
+            const current = stack.length ? stack[stack.length - 1] : null;
+
+            if (fenceMatch) {
+              const fence = fenceMatch[1];
+              const info = fenceMatch[2].trim();
+              const closesCurrent = current && info === "" &&
+                fence[0] === current.fence[0] && fence.length >= current.fence.length;
+
+              if (closesCurrent) {
+                const closing = stack.pop();
+                if (closing.type === "tabs" && closing.startLine === targetLine.number) {
+                  matchingFenceLine = scanLine;
+                }
+                if (containingTabs === closing) {
+                  containingTabs.endLine = scanLine;
+                }
+              } else if (!current || current.type !== "code") {
+                stack.push({
+                  type: tabsInfoRegex.test(info) ? "tabs" : "code",
+                  fence,
+                  startLine: lineNo,
+                  endLine: null,
+                  orientation: info.toLowerCase().endsWith("-v") ? "vertical" : "horizontal",
+                });
               }
             }
-          } else {
-            let nextSectionMatch = doc.sliceString(deleteTo).match(/^(?:~~~|```|tema:)/m);
-            let contentEnd = nextSectionMatch ? deleteTo + nextSectionMatch.index : doc.length;
-            let sectionBody = doc.sliceString(deleteTo, contentEnd).trim();
-            if (sectionBody.length === 0) {
-              isEmpty = true;
+
+            if (lineNo === targetLine.number) {
+              if (type === "fence") {
+                const opened = stack[stack.length - 1];
+                if (!opened || opened.type !== "tabs" || opened.startLine !== lineNo) {
+                  throw new Error("la cerca de pestañas ya no coincide con el control mostrado");
+                }
+                targetBlock = opened;
+                targetTabsDepth = stack.filter((entry) => entry.type === "tabs").length;
+              } else {
+                const openTabs = stack.filter((entry) => entry.type === "tabs");
+                containingTabs = openTabs.length ? openTabs[openTabs.length - 1] : null;
+                targetTabsDepth = openTabs.length;
+              }
             }
+
+            if (type === "fence" && targetBlock && lineNo > targetLine.number &&
+                stack.includes(targetBlock) && !fenceMatch && trimmed.startsWith(split)) {
+              const activeContainer = stack.length ? stack[stack.length - 1] : null;
+              if (activeContainer && activeContainer.type === "tabs") {
+                const separatorTitle = trimmed.slice(split.length).trim();
+                blockSeparators.push({
+                  title: separatorTitle || "(sin título)",
+                  depth: stack.filter((entry) => entry.type === "tabs").length,
+                });
+              }
+            }
+
+            if (lineNo > targetLine.number && type !== "fence" && containingTabs) {
+              const openTabs = stack.filter((entry) => entry.type === "tabs");
+              const sameContainerOpen = openTabs.includes(containingTabs);
+              if (sameContainerOpen && openTabs.length === targetTabsDepth && trimmed.startsWith(split)) {
+                containingTabs.nextSeparatorLine = scanLine;
+                break;
+              }
+              if (!sameContainerOpen && containingTabs.endLine) break;
+            }
+
+            if (type === "fence" && matchingFenceLine) break;
           }
 
-          if (isEmpty) {
-            let tr = activeEditor.state.update({
-              changes: { from: deleteFrom, to: deleteTo },
-              effects: []
-            });
-            activeEditor.dispatch(tr);
-            return;
+          let deleteFrom = targetLine.from;
+          let deleteTo;
+
+          if (type === "fence") {
+            if (!matchingFenceLine) throw new Error("no se encontró la cerca de cierre correspondiente");
+            deleteTo = matchingFenceLine.to;
+            if (deleteTo < doc.length) {
+              const nextChar = doc.sliceString(deleteTo, deleteTo + 1);
+              if (nextChar === "\n") deleteTo += 1;
+            }
+          } else {
+            if (!containingTabs) throw new Error("no se encontró el bloque contenedor de la pestaña");
+            const boundaryLine = containingTabs.nextSeparatorLine || containingTabs.endLine;
+            if (!boundaryLine) throw new Error("no se encontró el límite estructural de la pestaña");
+            deleteTo = boundaryLine.from;
+          }
+
+          let confirmMessage;
+          if (type === "fence") {
+            const orientation = targetBlock.orientation === "vertical" ? "vertical" : "horizontal";
+            confirmMessage = [
+              "¿Estás seguro de que deseas eliminar este bloque de pestañas anidadas?",
+              "",
+              `Tipo: bloque de pestañas anidadas ${orientation}.`,
+              `Línea de apertura: ${targetLine.number}.`,
+            ].join("\n");
+
+            if (blockSeparators.length > 0) {
+              const separatorList = blockSeparators.map((separator) => {
+                const relativeDepth = Math.max(1, separator.depth - targetTabsDepth + 1);
+                const levelLabel = relativeDepth === 1 ? "nivel principal" : `nivel anidado ${relativeDepth}`;
+                return `- ${separator.title} (${levelLabel})`;
+              });
+              confirmMessage += "\n\nSe eliminarán los siguientes separadores (pestañas):\n" + separatorList.join("\n");
+            }
+          } else {
+            const separatorTitle = targetLine.text.trimStart().slice(split.length).trim() || "(sin título)";
+            const orientation = containingTabs.orientation === "vertical" ? "vertical" : "horizontal";
+            confirmMessage = [
+              "¿Estás seguro de que deseas eliminar este separador y su contenido?",
+              "",
+              `Separador (pestaña): ${separatorTitle}`,
+              `Bloque contenedor: pestañas anidadas ${orientation}.`,
+              `Línea: ${targetLine.number}.`,
+            ].join("\n");
           }
 
           new ConfirmDeleteModal(this.app, confirmMessage, () => {
+            if (activeEditor.destroyed || activeEditor.state.doc !== doc) {
+              new Notice("Tabs Extended: el contenido cambió antes de confirmar; vuelve a intentar la eliminación.");
+              return;
+            }
             let tr = activeEditor.state.update({
               changes: { from: deleteFrom, to: deleteTo },
-              effects: []
+              effects: [],
+              userEvent: "delete"
             });
             activeEditor.dispatch(tr);
           }).open();
@@ -144,9 +231,7 @@ export default class TabsExtendedPlugin extends Plugin {
 
       this.globalClickHandler = handleGlobalClick;
       if (typeof document !== "undefined") {
-        document.addEventListener("mousedown", handleGlobalClick, { capture: true });
         document.addEventListener("pointerdown", handleGlobalClick, { capture: true });
-        document.addEventListener("click", handleGlobalClick, { capture: true });
       }
     }
 
@@ -270,9 +355,7 @@ export default class TabsExtendedPlugin extends Plugin {
   onunload() {
     if (this.globalClickHandler) {
       if (typeof document !== "undefined") {
-        document.removeEventListener("mousedown", this.globalClickHandler, { capture: true });
         document.removeEventListener("pointerdown", this.globalClickHandler, { capture: true });
-        document.removeEventListener("click", this.globalClickHandler, { capture: true });
       }
       this.globalClickHandler = null;
     }

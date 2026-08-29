@@ -209,15 +209,19 @@ export class TabsContents {
     );
   }
   refreshActiveTabContent(t) {
-    if (!this.tabcontents || this.tabcontents.length === 0) return;
-    if (this.tabcontents[this.currentTab]) {
-      this.tabcontents[this.currentTab].isActiveed = !1;
-      this.tabcontents[this.currentTab].contentEl.classList.remove("tabs-content-active");
+    if (!Array.isArray(this.tabcontents) || this.tabcontents.length === 0) return;
+    const targetIndex = Math.max(0, Math.min(this.tabcontents.length - 1, t));
+    for (let i = 0; i < this.tabcontents.length; i++) {
+      const item = this.tabcontents[i];
+      if (!item || !item.contentEl) continue;
+      const isActive = i === targetIndex;
+      item.isActiveed = isActive;
+      if (isActive) {
+        item.contentEl.classList.add("tabs-content-active");
+      } else {
+        item.contentEl.classList.remove("tabs-content-active");
+      }
     }
-    if (this.tabcontents[t]) {
-      this.tabcontents[t].isActiveed = !0;
-      this.tabcontents[t].contentEl.classList.add("tabs-content-active");
-      this.currentTab = t;
-    }
+    this.currentTab = targetIndex;
   }
 };
