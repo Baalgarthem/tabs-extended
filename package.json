@@ -1,6 +1,6 @@
 {
   "name": "obsidian-tabs-extended",
-  "version": "1.10.4",
+  "version": "1.10.5",
   "description": "Tabs Extended plugin for Obsidian",
   "main": "main.js",
   "scripts": {
