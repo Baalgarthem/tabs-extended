@@ -28,7 +28,7 @@ export function setupLinkInteractions(container, app, sourcePath) {
     if (!rawHref) return;
 
     // 1. Footnote jumps (#fn-..., #fnref-...)
-    if (rawHref.startsWith("#")) {
+    if (/^#fn(ref)?-/i.test(rawHref)) {
       evt.preventDefault();
       evt.stopPropagation();
       const targetEl = container.querySelector(rawHref) || document.querySelector(rawHref);
@@ -69,7 +69,7 @@ export function setupLinkInteractions(container, app, sourcePath) {
     if (!link) return;
 
     const linktext = link.dataset.href || link.getAttribute("href") || "";
-    if (!linktext || linktext.startsWith("#") || /^(https?:\/\/|mailto:|file:)/i.test(linktext)) {
+    if (!linktext || /^(https?:\/\/|mailto:|file:)/i.test(linktext)) {
       return;
     }
 
