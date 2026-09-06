@@ -12,7 +12,7 @@ const startTime = Date.now();
 try {
   runParserTests();
   runLinksTests();
-  runCodeblocksTests();
+  await runCodeblocksTests();
   runIntegrationTests();
 
   const duration = Date.now() - startTime;

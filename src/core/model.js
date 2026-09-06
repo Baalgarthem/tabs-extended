@@ -62,6 +62,7 @@ export class Tabs extends MarkdownRenderChild {
     (e.classList.add("tabs-container"),
       (this.plugin = r),
       (this.tabsEl = e),
+      (this.tabsEl.tabsExtendedModel = this),
       (this.split = this.plugin.settings.split),
       (this.app = n),
       (this.activeView = n.workspace.getActiveViewOfType(MarkdownView)),

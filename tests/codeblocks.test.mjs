@@ -117,7 +117,7 @@ if (typeof globalThis.document === 'undefined') {
   };
 }
 
-export function runCodeblocksTests() {
+export async function runCodeblocksTests() {
   console.log('--- Running Interactive Code Blocks & Tree Tests ---');
 
   // Test 1: ensureCodeBlockWrappers wraps pre and injects edit-block-button
@@ -172,9 +172,10 @@ export function runCodeblocksTests() {
     assert.ok(startedEditingWith, 'startEditing should have been called');
     assert.equal(startedEditingWith.tabs, mockOwnerTabs);
     assert.equal(startedEditingWith.targetInfo.language, 'tree');
-    assert.equal(startedEditingWith.targetInfo.tabIndex, 1);
+    assert.equal(startedEditingWith.targetInfo.tabIndex, 0, 'tabIndex must be 0-based for ownerTabs');
+    assert.equal(startedEditingWith.targetInfo.blockIndex, 0, 'blockIndex should be 0 for the first code block');
     assert.ok(startedEditingWith.targetInfo.snippet.includes('root/'));
-    console.log('✓ ensureCodeBlockWrappers wraps pre and edit button triggers startEditing with language and snippet');
+    console.log('✓ ensureCodeBlockWrappers wraps pre and edit button triggers startEditing with language and snippet (0-based)');
   }
 
   // Test 2: Custom codeblock containers like div.block-language-tree are also wrapped
@@ -228,14 +229,10 @@ export function runCodeblocksTests() {
     const container = new MockElement('div');
     const pre = new MockElement('pre');
     pre.className = 'language-js';
-    pre.appendChild(new MockElement('code'));
     container.appendChild(pre);
 
     const item = Object.create(TabContentItem.prototype);
-    item.ownerTabs = { plugin: {} };
-    item.index = 0;
-
-    item.ensureCodeBlockWrappers(container);
+    item.ownerTabs = { plugin: null };
     item.ensureCodeBlockWrappers(container);
     item.ensureCodeBlockWrappers(container);
 
@@ -246,26 +243,31 @@ export function runCodeblocksTests() {
     console.log('✓ ensureCodeBlockWrappers is idempotent');
   }
 
-  // Test 4: Focus target block locating logic
+  // Test 4: Focus target block locating logic with ordinal blockIndex
   {
     const sampleDoc = [
       '# My Tab',
-      'Here is an introductory paragraph.',
-      '',
+      'First tree block:',
       '```tree',
       'src/',
       '  index.js',
       '```',
-      '',
-      'More text after the tree.'
+      'Second tree block:',
+      '```tree',
+      'docs/',
+      '  guide.md',
+      '```'
     ].join('\n');
 
-    const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*tree\\b", "i");
-    const match = sampleDoc.match(fenceRegex);
-    assert.ok(match, 'Language fence regex should match ```tree');
-    const offset = match[0].startsWith('\n') ? match.index + 1 : match.index;
-    assert.ok(offset > 0, 'Offset should point to the code block fence line');
-    console.log('✓ Target code block location resolution verified');
+    const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*tree\\b", "gi");
+    let match;
+    const positions = [];
+    while ((match = fenceRegex.exec(sampleDoc)) !== null) {
+      positions.push(match[0].startsWith('\n') ? match.index + 1 : match.index);
+    }
+    assert.equal(positions.length, 2, 'Should find both ```tree blocks');
+    assert.ok(positions[1] > positions[0], 'Second block is further down');
+    console.log('✓ Target code block location and blockIndex resolution verified');
   }
 
   // Test 5: Modal editor codeblock live preview detection and cursor intersection logic
@@ -295,6 +297,69 @@ export function runCodeblocksTests() {
     const isInsideInside = cursorInside >= startLineFrom && cursorInside <= endLineTo;
     assert.equal(isInsideInside, true, 'Cursor inside code block must reveal raw code for editing');
     console.log('✓ Modal editor codeblock live preview cursor intersection logic verified');
+  }
+
+  // Test 6: Accurate 0-based tab index resolution from tabcontents array
+  {
+    let startedEditingWith = null;
+    const mockOwnerTabs = {
+      plugin: {
+        tabsEditorModal: {
+          startEditing: (tabs, targetInfo) => {
+            startedEditingWith = { tabs, targetInfo };
+          }
+        }
+      },
+      currentIndex: 0,
+      setCurrentIndex: (idx) => { mockOwnerTabs.currentIndex = idx; },
+      tabsContents: {
+        tabcontents: []
+      }
+    };
+
+    const item0 = Object.create(TabContentItem.prototype);
+    item0.ownerTabs = mockOwnerTabs;
+    item0.index = 1; // 1-based historical index
+
+    const item1 = Object.create(TabContentItem.prototype);
+    item1.ownerTabs = mockOwnerTabs;
+    item1.index = 2; // 1-based historical index
+
+    mockOwnerTabs.tabsContents.tabcontents = [item0, item1];
+
+    const container1 = new MockElement('div');
+    const pre = new MockElement('pre');
+    pre.className = 'language-tree';
+    container1.appendChild(pre);
+
+    item1.ensureCodeBlockWrappers(container1);
+    const btn = container1.querySelector('.edit-block-button');
+    btn.dispatchEvent({ type: 'click', preventDefault: () => {}, stopPropagation: () => {} });
+
+    assert.ok(startedEditingWith, 'startEditing should have been called');
+    assert.equal(startedEditingWith.targetInfo.tabIndex, 1, 'Second tab must have 0-based index 1');
+    assert.equal(mockOwnerTabs.currentIndex, 1, 'ownerTabs.currentIndex must be updated to 1');
+    console.log('✓ Multi-tab 0-based index resolution via tabcontents array verified');
+  }
+
+  // Test 7: StateField decoration definition without ViewPlugin block decoration errors
+  {
+    if (typeof globalThis.document === 'undefined') {
+      globalThis.document = { documentElement: { style: {} }, createElement: () => ({ style: {} }) };
+    } else if (!globalThis.document.documentElement) {
+      globalThis.document.documentElement = { style: {} };
+    }
+    const cm = await import('../src/vendor/codemirror-bundle.js');
+    assert.ok(cm.Wt, 'Wt (StateField) must be exported from codemirror-bundle');
+    assert.equal(typeof cm.Wt.define, 'function', 'Wt.define must be a function');
+    const testField = cm.Wt.define({
+      create: () => cm.q.none,
+      update: (deco) => deco,
+      provide: (f) => cm.A.decorations.from(f)
+    });
+    const state = cm.I.create({ doc: 'test', extensions: [testField] });
+    assert.ok(state, 'EditorState must create successfully with StateField decorations');
+    console.log('✓ CodeMirror 6 StateField block decoration provider verified without errors');
   }
 
   console.log('All Codeblocks tests passed!\n');

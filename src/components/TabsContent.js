@@ -54,7 +54,10 @@ export class TabContentItem {
       });
     }
     handleCodeBlockEdit(wrapper) {
-      if (!this.ownerTabs || !this.ownerTabs.plugin) return;
+      const tabsContainer = wrapper ? wrapper.closest('.tabs-container') : null;
+      const ownerTabs = this.ownerTabs || (tabsContainer ? (tabsContainer.tabsExtendedModel || tabsContainer._tabsInstance) : null);
+      if (!ownerTabs || !ownerTabs.plugin) return;
+
       let codeSnippet = "";
       let lang = "";
 
@@ -67,19 +70,46 @@ export class TabContentItem {
       const langMatch = allClassNames.match(/(?:language|block-language)-([a-zA-Z0-9_-]+)/);
       if (langMatch) {
         lang = langMatch[1];
+      } else if (allClassNames.includes("tree-container")) {
+        lang = "tree";
       }
 
-      if (typeof this.ownerTabs.setCurrentIndex === "function") {
-        this.ownerTabs.setCurrentIndex(this.index);
+      // Determine 0-based activeIndex for ownerTabs
+      let activeIndex = 0;
+      if (ownerTabs.tabsContents && Array.isArray(ownerTabs.tabsContents.tabcontents)) {
+        const found = ownerTabs.tabsContents.tabcontents.indexOf(this);
+        if (found !== -1) {
+          activeIndex = found;
+        } else if (typeof this.index === "number") {
+          activeIndex = Math.max(0, this.index - 1);
+        }
+      } else if (typeof this.index === "number") {
+        activeIndex = Math.max(0, this.index - 1);
+      }
+
+      if (typeof ownerTabs.setCurrentIndex === "function") {
+        ownerTabs.setCurrentIndex(activeIndex);
       } else {
-        this.ownerTabs.currentIndex = this.index;
+        ownerTabs.currentIndex = activeIndex;
       }
 
-      if (this.ownerTabs.plugin.tabsEditorModal) {
-        this.ownerTabs.plugin.tabsEditorModal.startEditing(this.ownerTabs, {
+      // Count blockIndex among wrappers in this tab content with the same language
+      const allWrappers = this.contentEl ? Array.from(this.contentEl.querySelectorAll('.tabs-codeblock-wrapper')) : [];
+      let langBlockIndex = 0;
+      for (let i = 0; i < allWrappers.length; i++) {
+        if (allWrappers[i] === wrapper) break;
+        const wClasses = [allWrappers[i].className, ...(Array.from(allWrappers[i].querySelectorAll('*')).map(e => e.className || ""))].join(" ");
+        if (lang && (wClasses.includes("block-language-" + lang) || wClasses.includes("language-" + lang) || (lang === "tree" && wClasses.includes("tree-container")))) {
+          langBlockIndex++;
+        }
+      }
+
+      if (ownerTabs.plugin.tabsEditorModal) {
+        ownerTabs.plugin.tabsEditorModal.startEditing(ownerTabs, {
           snippet: codeSnippet,
           language: lang,
-          tabIndex: this.index
+          tabIndex: activeIndex,
+          blockIndex: langBlockIndex
         });
       }
     }

@@ -1,7 +1,7 @@
 import {
   B, to, no, be, I, Re, at, it, An, re, tr, kw, z, In, ra, x, If, hr, en, ut, on, wr, At, ev, cd, fd, TO, is, fs, un, El,
   pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS,
-  Zt, Rt, Kn, Wd, dd, Na
+  Zt, Rt, Kn, Wd, dd, Na, Wt
 } from '../vendor/codemirror-bundle.js';
 import { MarkdownRenderer, setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
@@ -106,76 +106,74 @@ export class TabsModalEditorEngine {
       }
     }
 
-    this.codeBlockLivePreviewPlugin = Zt.fromClass(
-      class {
-        constructor(view) {
-          this.decorations = this.getDeco(view);
-        }
-        update(update) {
-          if (update.docChanged || update.selectionSet) {
-            this.decorations = this.getDeco(update.view);
-          }
-        }
-        getDeco(view) {
-          let deco = [];
-          let doc = view.state.doc;
-          let selection = view.state.selection;
-          let fenceStack = [];
-          let modalTabsRegex = modalTabsInfoRegex;
+    const buildCodeBlockPreviewDeco = (state) => {
+      let deco = [];
+      let doc = state.doc;
+      let selection = state.selection;
+      let fenceStack = [];
+      let modalTabsRegex = modalTabsInfoRegex;
 
-          for (let p = 1; p <= doc.lines; p++) {
-            let line = doc.line(p);
-            let text = line.text.trim();
-            let match = text.match(/^(`{3,}|~{3,})(.*)/);
+      for (let p = 1; p <= doc.lines; p++) {
+        let line = doc.line(p);
+        let text = line.text.trim();
+        let match = text.match(/^(`{3,}|~{3,})(.*)/);
 
-            if (match) {
-              let fenceStr = match[1];
-              let info = match[2].trim();
-              let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
+        if (match) {
+          let fenceStr = match[1];
+          let info = match[2].trim();
+          let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
 
-              if (current && current.type === "code") {
-                if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0]) {
-                  let popped = fenceStack.pop();
-                  let startLine = doc.line(popped.lineNo);
-                  let endLine = line;
+          if (current && current.type === "code") {
+            if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0]) {
+              let popped = fenceStack.pop();
+              let startLine = doc.line(popped.lineNo);
+              let endLine = line;
 
-                  let isCursorInside = selection.ranges.some(
-                    (r) => Math.max(r.from, startLine.from) <= Math.min(r.to, endLine.to)
-                  );
+              let isCursorInside = selection.ranges.some(
+                (r) => Math.max(r.from, startLine.from) <= Math.min(r.to, endLine.to)
+              );
 
-                  if (!isCursorInside) {
-                    let rawText = doc.sliceString(startLine.from, endLine.to);
-                    deco.push(
-                      q.replace({
-                        widget: new CodeBlockLivePreviewWidget(t, rawText, popped.info, startLine.from, endLine.to),
-                        block: true
-                      }).range(startLine.from, endLine.to)
-                    );
-                  }
-                }
-                continue;
-              }
-
-              if (current && current.type === "tabs") {
-                if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && !modalTabsRegex.test(info)) {
-                  fenceStack.pop();
-                }
-                continue;
-              }
-
-              if (modalTabsRegex.test(info)) {
-                fenceStack.push({ fence: fenceStr, type: "tabs", lineNo: p, info });
-              } else {
-                fenceStack.push({ fence: fenceStr, type: "code", lineNo: p, info });
+              if (!isCursorInside) {
+                let rawText = doc.sliceString(startLine.from, endLine.to);
+                deco.push(
+                  q.replace({
+                    widget: new CodeBlockLivePreviewWidget(t, rawText, popped.info, startLine.from, endLine.to),
+                    block: true
+                  }).range(startLine.from, endLine.to)
+                );
               }
             }
+            continue;
           }
 
-          return q.set(deco, true);
+          if (current && current.type === "tabs") {
+            if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && !modalTabsRegex.test(info)) {
+              fenceStack.pop();
+            }
+            continue;
+          }
+
+          if (modalTabsRegex.test(info)) {
+            fenceStack.push({ fence: fenceStr, type: "tabs", lineNo: p, info });
+          } else {
+            fenceStack.push({ fence: fenceStr, type: "code", lineNo: p, info });
+          }
         }
+      }
+
+      return q.set(deco, true);
+    };
+
+    this.codeBlockLivePreviewField = Wt.define({
+      create: (state) => buildCodeBlockPreviewDeco(state),
+      update: (deco, tr) => {
+        if (tr.docChanged || tr.selection) {
+          return buildCodeBlockPreviewDeco(tr.state);
+        }
+        return deco.map(tr.changes);
       },
-      { decorations: (v) => v.decorations }
-    );
+      provide: (f) => A.decorations.from(f)
+    });
 
     this.activeLineHighlighter = Zt.fromClass(
       class {
@@ -904,7 +902,7 @@ export class TabsModalEditorEngine {
       this.nestedTabsHighlighter,
       this.activeNestedTabsHighlighter,
       this.activeNestedTabsInvariantTheme,
-      this.codeBlockLivePreviewPlugin,
+      this.codeBlockLivePreviewField,
       ud,
       i,
     ];
@@ -1438,14 +1436,26 @@ export class TabsModalEditorEngine {
     try {
       const doc = this.view.state.doc;
       const docText = doc.toString();
-      const { snippet, language } = targetBlockInfo;
+      const { snippet, language, blockIndex } = targetBlockInfo;
       let targetPos = -1;
 
       if (language) {
-        const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*" + language.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\b", "i");
-        const match = docText.match(fenceRegex);
-        if (match && match.index !== undefined) {
-          targetPos = match[0].startsWith("\n") ? match.index + 1 : match.index;
+        const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*" + language.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\b", "gi");
+        let match;
+        let count = 0;
+        const targetIndex = typeof blockIndex === "number" ? blockIndex : 0;
+        let firstMatchPos = -1;
+        while ((match = fenceRegex.exec(docText)) !== null) {
+          const pos = match[0].startsWith("\n") ? match.index + 1 : match.index;
+          if (firstMatchPos === -1) firstMatchPos = pos;
+          if (count === targetIndex) {
+            targetPos = pos;
+            break;
+          }
+          count++;
+        }
+        if (targetPos === -1 && firstMatchPos !== -1) {
+          targetPos = firstMatchPos;
         }
       }
 
