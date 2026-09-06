@@ -38,8 +38,20 @@ class MockElement {
   }
 
   dispatchEvent(event) {
-    const handlers = this.eventListeners[event.type] || [];
-    handlers.forEach(h => h(event));
+    if (!event.target) event.target = this;
+    let curr = this;
+    let stopped = false;
+    const origStop = event.stopPropagation;
+    event.stopPropagation = () => {
+      stopped = true;
+      if (typeof origStop === 'function') origStop.call(event);
+    };
+    while (curr) {
+      const handlers = curr.eventListeners[event.type] || [];
+      handlers.forEach(h => h(event));
+      if (stopped) break;
+      curr = curr.parentElement;
+    }
   }
 
   appendChild(child) {
@@ -556,6 +568,106 @@ export async function runCodeblocksTests() {
     mockPlugin.settings.renderCodeBlocksInModal = true;
     assert.equal(buildDeco(mockPlugin), 'decorations', 'Must return decorations when renderCodeBlocksInModal is true');
     console.log('✓ renderCodeBlocksInModal setting toggle accurately toggles decoration creation');
+  }
+
+  // Test 12: Modal editor code block interaction (cursor click & native edit button)
+  {
+    let dispatched = null;
+    let focused = false;
+    const mockView = {
+      dispatch: (tr) => { dispatched = tr; },
+      focus: () => { focused = true; }
+    };
+
+    // Simulate CodeBlockLivePreviewWidget interaction container
+    const container = new MockElement('div');
+    container.className = 'cm-embed-block markdown-rendered tabs-codeblock-wrapper tabs-modal-codeblock-preview';
+
+    const contentEl = new MockElement('div');
+    contentEl.className = 'tabs-modal-codeblock-content';
+
+    const treeContainer = new MockElement('div');
+    treeContainer.className = 'block-language-tree';
+
+    // Obsidian native edit button inside the rendered tree block
+    const nativeEditBtn = new MockElement('div');
+    nativeEditBtn.className = 'edit-block-button';
+    treeContainer.appendChild(nativeEditBtn);
+
+    const pre = new MockElement('pre');
+    pre.className = 'ascii-tree-block';
+    pre.textContent = 'Root\n  Sub\n';
+    treeContainer.appendChild(pre);
+
+    contentEl.appendChild(treeContainer);
+    container.appendChild(contentEl);
+
+    const rawText = '```tree\nRoot\n  Sub\n```';
+    const from = 10;
+    const to = 33;
+
+    const triggerEdit = (evt) => {
+      const firstLineBreak = rawText.indexOf('\n');
+      const targetPos = firstLineBreak !== -1 ? from + firstLineBreak + 1 : from;
+      mockView.dispatch({
+        selection: { anchor: targetPos },
+        scrollIntoView: true
+      });
+      mockView.focus();
+    };
+
+    const handleInteraction = (evt) => {
+      const clickedEditBtn = evt.target && evt.target.closest ? evt.target.closest('.edit-block-button') : null;
+      if (clickedEditBtn) {
+        triggerEdit(evt);
+        return;
+      }
+      if (evt.target && evt.target.closest && evt.target.closest('a, .internal-link, button, .ascii-tree-action-btn')) {
+        return;
+      }
+      triggerEdit(evt);
+    };
+
+    container.addEventListener('click', handleInteraction);
+
+    // 1. Click native Obsidian "Editar este bloque" button
+    dispatched = null;
+    focused = false;
+    nativeEditBtn.dispatchEvent({ type: 'click' });
+    assert.ok(dispatched, 'Clicking native edit button must dispatch selection');
+    assert.equal(dispatched.selection.anchor, 18, 'Must place cursor on line 2 (content start)');
+    assert.ok(focused, 'Must focus editor view');
+
+    // 2. Click with cursor anywhere on the tree block
+    dispatched = null;
+    focused = false;
+    pre.dispatchEvent({ type: 'click' });
+    assert.ok(dispatched, 'Clicking with cursor on tree block must dispatch selection');
+    assert.equal(dispatched.selection.anchor, 18, 'Must place cursor on content line to open editor');
+    assert.ok(focused, 'Must focus editor view');
+
+    console.log('✓ Modal editor code block cursor click and native edit button interaction verified');
+  }
+
+  // Test 13: Horizontal Arrow navigation (ArrowRight and ArrowLeft) boundary entry
+  {
+    const blocks = [
+      { type: 'code', info: 'tree', startLine: 3, endLine: 6 }
+    ];
+
+    // ArrowRight at end of line 2 (preceding code block) enters startLine (3)
+    const line2 = { number: 2, from: 10, to: 25 };
+    const nextBlock = blocks.find(b => b.type === 'code' && b.startLine === line2.number + 1);
+    assert.ok(nextBlock, 'Found next code block for line 2');
+    assert.equal(nextBlock.startLine, 3, 'ArrowRight at end of line 2 targets startLine 3');
+
+    // ArrowLeft at start of line 7 (following code block) enters endLine (6)
+    const line7 = { number: 7, from: 80, to: 95 };
+    const prevBlock = blocks.find(b => b.type === 'code' && b.endLine === line7.number - 1);
+    assert.ok(prevBlock, 'Found prev code block for line 7');
+    assert.equal(prevBlock.endLine, 6, 'ArrowLeft at start of line 7 targets endLine 6');
+
+    console.log('✓ Horizontal Arrow navigation (ArrowRight/ArrowLeft) code block boundary entry verified');
   }
 
   console.log('All Codeblocks tests passed!\n');

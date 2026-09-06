@@ -63,11 +63,45 @@ export class TabsModalEditorEngine {
 
         const triggerEdit = (evt) => {
           if (evt) {
-            evt.preventDefault();
-            evt.stopPropagation();
+            if (typeof evt.preventDefault === "function") evt.preventDefault();
+            if (typeof evt.stopPropagation === "function") evt.stopPropagation();
           }
-          const firstLineBreak = this.rawText.indexOf("\n");
-          const targetPos = firstLineBreak !== -1 ? this.from + firstLineBreak + 1 : this.from;
+          let targetPos = null;
+          if (evt && typeof evt.clientX === "number") {
+            try {
+              let range = null;
+              if (typeof document.caretRangeFromPoint === "function") {
+                range = document.caretRangeFromPoint(evt.clientX, evt.clientY);
+              } else if (typeof document.caretPositionFromPoint === "function") {
+                const pos = document.caretPositionFromPoint(evt.clientX, evt.clientY);
+                if (pos && pos.offsetNode) {
+                  range = document.createRange();
+                  range.setStart(pos.offsetNode, pos.offset);
+                }
+              }
+              if (range && range.startContainer) {
+                const pre = container.querySelector("pre, code, .block-language-tree, .ascii-tree-wrapper");
+                if (pre && pre.contains(range.startContainer)) {
+                  const r = document.createRange();
+                  r.setStart(pre, 0);
+                  r.setEnd(range.startContainer, range.startOffset);
+                  const textBefore = r.toString();
+                  const lineCount = (textBefore.match(/\n/g) || []).length;
+                  const lines = this.rawText.split("\n");
+                  const targetLineIdx = Math.max(1, Math.min(lineCount + 1, lines.length - 2));
+                  let offset = 0;
+                  for (let i = 0; i < targetLineIdx; i++) {
+                    offset += lines[i].length + 1;
+                  }
+                  targetPos = this.from + offset;
+                }
+              }
+            } catch (e) {}
+          }
+          if (targetPos === null || targetPos < this.from || targetPos > this.to) {
+            const firstLineBreak = this.rawText.indexOf("\n");
+            targetPos = firstLineBreak !== -1 ? this.from + firstLineBreak + 1 : this.from;
+          }
           view.dispatch({
             selection: { anchor: targetPos },
             scrollIntoView: true
@@ -82,21 +116,51 @@ export class TabsModalEditorEngine {
         contentEl.className = "tabs-modal-codeblock-content";
         container.appendChild(contentEl);
 
-        container.addEventListener("click", (evt) => {
-          if (evt.target.closest("a, .internal-link, .edit-block-button")) return;
+        const handleInteraction = (evt) => {
+          // 1. If clicking ANY edit-block-button (Obsidian native button or fallback)
+          const clickedEditBtn = evt.target && evt.target.closest ? evt.target.closest(".edit-block-button") : null;
+          if (clickedEditBtn) {
+            triggerEdit(evt);
+            return;
+          }
+          // 2. If clicking on links or action buttons (e.g. sort, next layout, fullscreen), allow them to work
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+            return;
+          }
+          // 3. Otherwise, clicking anywhere on the code block with the cursor opens it to modify it
           triggerEdit(evt);
-        });
+        };
+
+        container.addEventListener("click", handleInteraction, true);
+        container.addEventListener("mousedown", (evt) => {
+          if (evt.button !== 0) return; // left click only
+          const clickedEditBtn = evt.target && evt.target.closest ? evt.target.closest(".edit-block-button") : null;
+          if (clickedEditBtn) {
+            triggerEdit(evt);
+            return;
+          }
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+            return;
+          }
+          triggerEdit(evt);
+        }, true);
 
         try {
           const activeFile = this.plugin && this.plugin.app && this.plugin.app.workspace ? this.plugin.app.workspace.getActiveFile() : null;
           const sourcePath = activeFile ? activeFile.path : "";
-          MarkdownRenderer.render(
+          const renderPromise = MarkdownRenderer.render(
             this.plugin.app,
             this.rawText,
             contentEl,
             sourcePath,
             this.plugin
           );
+          Promise.resolve(renderPromise).then(() => {
+            const innerBtn = contentEl.querySelector(".edit-block-button");
+            if (innerBtn && editBtn.parentElement === container) {
+              editBtn.remove();
+            }
+          }).catch(() => {});
         } catch (err) {
           console.error("Tabs Extended: error rendering code block preview in modal:", err);
           contentEl.textContent = this.rawText;
@@ -1338,6 +1402,18 @@ export class TabsModalEditorEngine {
                                     return true;
                                 }
                             }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                if (sel.head === line.from && line.number > 1) {
+                                    let codeBlocks = getDocumentCodeBlocks(view.state.doc);
+                                    let prevBlock = codeBlocks.find(b => b.type === "code" && b.endLine === line.number - 1);
+                                    if (prevBlock) {
+                                        let targetLine = view.state.doc.line(prevBlock.endLine);
+                                        view.dispatch({ selection: cursorSelectionAt(targetLine.to, -1), scrollIntoView: true });
+                                        return true;
+                                    }
+                                }
+                            }
                         }
                     } catch (err) {}
                     return false;
@@ -1358,6 +1434,18 @@ export class TabsModalEditorEngine {
                                 if (sel.head >= protectStart && sel.head < protectEnd) {
                                     view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                     return true;
+                                }
+                            }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                if (sel.head === line.to && line.number < view.state.doc.lines) {
+                                    let codeBlocks = getDocumentCodeBlocks(view.state.doc);
+                                    let nextBlock = codeBlocks.find(b => b.type === "code" && b.startLine === line.number + 1);
+                                    if (nextBlock) {
+                                        let targetLine = view.state.doc.line(nextBlock.startLine);
+                                        view.dispatch({ selection: cursorSelectionAt(targetLine.from, 1), scrollIntoView: true });
+                                        return true;
+                                    }
                                 }
                             }
                         }
