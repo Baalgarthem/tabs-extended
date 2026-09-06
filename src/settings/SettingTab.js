@@ -481,6 +481,15 @@ export class TabsExtendedSettingTab extends PluginSettingTab {
                 this.plugin.saveSettings();
             })
           );
+        new Setting(t)
+          .setName(_("render_code_blocks_in_modal_name"))
+          .setDesc(_("render_code_blocks_in_modal_desc"))
+          .addToggle((e) =>
+            e.setValue(this.plugin.settings.renderCodeBlocksInModal !== false).onChange((i) => {
+                this.plugin.settings.renderCodeBlocksInModal = i;
+                this.plugin.saveSettings();
+            })
+          );
         t.createEl("hr", { cls: "tabs-settings-divider" });
 
         // ==========================================

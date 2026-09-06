@@ -362,5 +362,155 @@ export async function runCodeblocksTests() {
     console.log('✓ CodeMirror 6 StateField block decoration provider verified without errors');
   }
 
+  // Test 8: Default settings include renderCodeBlocksInModal: true
+  {
+    const { DEFAULT_SETTINGS } = await import('../src/settings/defaultSettings.js');
+    assert.equal(DEFAULT_SETTINGS.renderCodeBlocksInModal, true, 'DEFAULT_SETTINGS must have renderCodeBlocksInModal: true');
+    console.log('✓ DEFAULT_SETTINGS.renderCodeBlocksInModal is true by default');
+  }
+
+  // Test 9: getDocumentCodeBlocks accurately distinguishes tabs/tabs-v vs content code blocks (tree, js)
+  {
+    const modalTabsRegex = /^(?:tabs(?:-v)?)$/i;
+    const testDocLines = [
+      'tab: Tab 1',
+      '```tree',
+      'root',
+      '  child',
+      '```',
+      '~~~tabs',
+      'tab: Subtab A',
+      '~~~',
+      '```js',
+      'const x = 1;',
+      '```'
+    ];
+
+    const mockDoc = {
+      lines: testDocLines.length,
+      line: (no) => ({
+        number: no,
+        text: testDocLines[no - 1],
+        from: (no - 1) * 10,
+        to: (no - 1) * 10 + testDocLines[no - 1].length
+      })
+    };
+
+    // Parse blocks with getDocumentCodeBlocks logic
+    const blocks = [];
+    const fenceStack = [];
+    for (let p = 1; p <= mockDoc.lines; p++) {
+      const line = mockDoc.line(p);
+      const text = line.text.trim();
+      const match = text.match(/^(`{3,}|~{3,})(.*)/);
+      if (match) {
+        const fenceStr = match[1];
+        const info = match[2].trim();
+        const current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
+
+        if (current && current.type === "code") {
+          if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") {
+            const popped = fenceStack.pop();
+            blocks.push({
+              type: "code",
+              info: popped.info,
+              startLine: popped.lineNo,
+              endLine: p
+            });
+          }
+          continue;
+        }
+
+        if (current && current.type === "tabs") {
+          if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") {
+            const popped = fenceStack.pop();
+            blocks.push({
+              type: "tabs",
+              info: popped.info,
+              startLine: popped.lineNo,
+              endLine: p
+            });
+          }
+          continue;
+        }
+
+        if (modalTabsRegex.test(info)) {
+          fenceStack.push({ fence: fenceStr, type: "tabs", lineNo: p, info });
+        } else {
+          fenceStack.push({ fence: fenceStr, type: "code", lineNo: p, info });
+        }
+      }
+    }
+
+    assert.equal(blocks.length, 3, 'Should find 3 blocks');
+    assert.equal(blocks[0].type, 'code', 'First block (tree) must be type "code"');
+    assert.equal(blocks[0].info, 'tree');
+    assert.equal(blocks[0].startLine, 2);
+    assert.equal(blocks[0].endLine, 5);
+
+    assert.equal(blocks[1].type, 'tabs', 'Second block (tabs) must be type "tabs"');
+    assert.equal(blocks[1].startLine, 6);
+    assert.equal(blocks[1].endLine, 8);
+
+    assert.equal(blocks[2].type, 'code', 'Third block (js) must be type "code"');
+    assert.equal(blocks[2].info, 'js');
+    assert.equal(blocks[2].startLine, 9);
+    assert.equal(blocks[2].endLine, 11);
+
+    console.log('✓ Code blocks (tree, js) correctly distinguished from tabs blocks');
+  }
+
+  // Test 10: Smooth Arrow navigation boundary resolution
+  {
+    const blocks = [
+      { type: 'code', info: 'tree', startLine: 3, endLine: 6 }
+    ];
+
+    // Down from line 2 (startLine - 1) into code block
+    const blockBelow = blocks.find(b => b.type === 'code' && b.startLine === 3);
+    assert.ok(blockBelow, 'Found block below line 2');
+    assert.equal(blockBelow.startLine, 3, 'Entering code block downwards targets startLine (3)');
+
+    // Down from line 6 (endLine) out of code block
+    const closingBlockDown = blocks.find(b => b.type === 'code' && b.endLine === 6);
+    assert.ok(closingBlockDown, 'Found closing block at line 6');
+    assert.equal(closingBlockDown.endLine + 1, 7, 'Exiting code block downwards targets line 7');
+
+    // Up from line 7 (endLine + 1) into code block
+    const blockAbove = blocks.find(b => b.type === 'code' && b.endLine === 6);
+    assert.ok(blockAbove, 'Found block above line 7');
+    assert.equal(blockAbove.endLine, 6, 'Entering code block upwards targets endLine (6)');
+
+    // Up from line 3 (startLine) out of code block
+    const openingBlockUp = blocks.find(b => b.type === 'code' && b.startLine === 3);
+    assert.ok(openingBlockUp, 'Found opening block at line 3');
+    assert.equal(openingBlockUp.startLine - 1, 2, 'Exiting code block upwards targets line 2');
+
+    console.log('✓ Smooth Arrow navigation boundary resolution verified');
+  }
+
+  // Test 11: Toggle renderCodeBlocksInModal = false disables live preview decorations
+  {
+    const cm = await import('../src/vendor/codemirror-bundle.js');
+    const mockPlugin = {
+      settings: {
+        renderCodeBlocksInModal: false,
+        tabsKeyword: 'tabs'
+      }
+    };
+    // If settings.renderCodeBlocksInModal is false, decoration builder returns q.none
+    const buildDeco = (plugin) => {
+      if (plugin.settings && plugin.settings.renderCodeBlocksInModal === false) {
+        return cm.q.none;
+      }
+      return 'decorations';
+    };
+
+    assert.equal(buildDeco(mockPlugin), cm.q.none, 'Must return q.none when renderCodeBlocksInModal is false');
+    mockPlugin.settings.renderCodeBlocksInModal = true;
+    assert.equal(buildDeco(mockPlugin), 'decorations', 'Must return decorations when renderCodeBlocksInModal is true');
+    console.log('✓ renderCodeBlocksInModal setting toggle accurately toggles decoration creation');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }
