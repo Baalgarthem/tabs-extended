@@ -9,10 +9,22 @@ export class TabsEditorModal extends Modal {
       (this.plugin = t),
       this.modalEl.addClass("tabs-editor-modal"));
   }
-  startEditing(t) {
+  startEditing(t, targetBlockInfo = null) {
     try {
       this.contentEl.empty();
       this.tabs = t;
+      if (targetBlockInfo && typeof targetBlockInfo.tabIndex === "number") {
+        t.currentIndex = targetBlockInfo.tabIndex;
+      }
+      const maxIndex = (t.tabsNav && Array.isArray(t.tabsNav.navItems) && t.tabsNav.navItems.length > 0)
+        ? t.tabsNav.navItems.length - 1
+        : ((t.tabsContents && Array.isArray(t.tabsContents.tabcontents) && t.tabsContents.tabcontents.length > 0)
+          ? t.tabsContents.tabcontents.length - 1
+          : 0);
+      if (typeof t.currentIndex !== "number" || t.currentIndex < 0 || t.currentIndex > maxIndex) {
+        t.currentIndex = 0;
+      }
+
       let titleStr = "";
       if (t.tabsNav && t.tabsNav.navItems && t.tabsNav.navItems[t.currentIndex]) {
           titleStr = t.tabsNav.navItems[t.currentIndex].title;
@@ -27,7 +39,7 @@ export class TabsEditorModal extends Modal {
           : null;
       let e = sourceSection != null
         ? sourceSection
-        : (t.split || "") + titleStr + "\n" + contentStr;
+        : ((titleStr || contentStr) ? ((t.split || "") + titleStr + "\n" + contentStr) : (t.rawText || ""));
       this.initialEditorText = e;
       
       let s = this.plugin.settings;
@@ -65,7 +77,7 @@ export class TabsEditorModal extends Modal {
           }
       }
       
-      this.editor = new TabsModalEditorEngine(this.plugin, this.contentEl, e);
+      this.editor = new TabsModalEditorEngine(this.plugin, this.contentEl, e, targetBlockInfo);
       this.open();
     } catch (err) {
       console.error("Error in startEditing:", err);

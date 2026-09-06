@@ -1,4 +1,4 @@
-import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
+import { MarkdownRenderer, MarkdownRenderChild, setIcon } from 'obsidian';
 import { tabsExtendedFindDirectNestedBlocks, tabsExtendedConfiguredKeyword, tabsExtendedNormalizeSource } from '../core/parser.js';
 import { augmentContentWithDocumentDefinitions, extractReferenceDefinitions, setupLinkInteractions } from '../links/index.js';
 import { $ } from '../i18n/index.js';
@@ -17,20 +17,147 @@ export class TabContentItem {
     }
     ensureCodeBlockWrappers(container) {
       if (!container) return;
-      const pres = container.querySelectorAll('pre');
-      pres.forEach(pre => {
-        if (pre.parentElement && !pre.parentElement.classList.contains('tabs-codeblock-wrapper')) {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'tabs-codeblock-wrapper';
-          pre.parentNode.insertBefore(wrapper, pre);
-          wrapper.appendChild(pre);
+      const targets = container.querySelectorAll('pre, [class*="block-language-"], .tree-container, .ascii-tree-wrapper');
+      targets.forEach(el => {
+        if (el.closest('.tabs-codeblock-wrapper')) {
+          return;
         }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tabs-codeblock-wrapper';
+        el.parentNode.insertBefore(wrapper, el);
+        wrapper.appendChild(el);
       });
+
+      const wrappers = container.querySelectorAll('.tabs-codeblock-wrapper');
+      wrappers.forEach(wrapper => {
+        const isTree = !!(
+          wrapper.querySelector('[class*="block-language-tree"], .ascii-tree-wrapper, .tree-container, pre.ascii-tree-block') ||
+          (wrapper.className && wrapper.className.includes('tree'))
+        );
+
+        // Find any edit-block-button located inside the code block itself
+        const allEditBtns = Array.from(wrapper.querySelectorAll('.edit-block-button'));
+        const innerEditBtns = allEditBtns.filter(btn => btn.parentElement !== wrapper);
+
+        if (isTree || innerEditBtns.length > 0) {
+          // The button inside the tree block must prevail: remove any duplicate outer button
+          const outerBtns = Array.from(wrapper.querySelectorAll(':scope > .edit-block-button'));
+          outerBtns.forEach(btn => btn.remove());
+
+          // Attach handler to the button inside the tree block
+          innerEditBtns.forEach(btn => {
+            if (!btn.__tabsEditBound) {
+              btn.__tabsEditBound = true;
+              btn.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                this.handleCodeBlockEdit(wrapper);
+              }, true);
+            }
+          });
+          return;
+        }
+
+        if (wrapper.querySelector('.edit-block-button')) {
+          return;
+        }
+
+        const editBtn = document.createElement('div');
+        editBtn.className = 'edit-block-button';
+        const label = $("editBlockButton") || "Edit this block";
+        editBtn.setAttribute('aria-label', label);
+        editBtn.setAttribute('title', label);
+        try {
+          (0, setIcon)(editBtn, "code");
+        } catch (err) {
+          editBtn.textContent = "</>";
+        }
+
+        editBtn.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.handleCodeBlockEdit(wrapper);
+        });
+
+        wrapper.appendChild(editBtn);
+      });
+    }
+    handleCodeBlockEdit(wrapper) {
+      const tabsContainer = wrapper ? wrapper.closest('.tabs-container') : null;
+      const ownerTabs = this.ownerTabs || (tabsContainer ? (tabsContainer.tabsExtendedModel || tabsContainer._tabsInstance) : null);
+      if (!ownerTabs || !ownerTabs.plugin) return;
+
+      let codeSnippet = "";
+      let lang = "";
+
+      const codeEl = wrapper.querySelector('code') || wrapper.querySelector('pre') || wrapper;
+      if (codeEl) {
+        codeSnippet = codeEl.textContent || "";
+      }
+
+      const allClassNames = [wrapper.className, ...(Array.from(wrapper.querySelectorAll('*')).map(e => e.className || ""))].join(" ");
+      const langMatch = allClassNames.match(/(?:language|block-language)-([a-zA-Z0-9_-]+)/);
+      if (langMatch) {
+        lang = langMatch[1];
+      } else if (allClassNames.includes("tree-container") || allClassNames.includes("ascii-tree-wrapper") || allClassNames.includes("ascii-tree-block")) {
+        lang = "tree";
+      }
+
+      // Determine 0-based activeIndex for ownerTabs
+      let activeIndex = 0;
+      if (ownerTabs.tabsContents && Array.isArray(ownerTabs.tabsContents.tabcontents)) {
+        const found = ownerTabs.tabsContents.tabcontents.indexOf(this);
+        if (found !== -1) {
+          activeIndex = found;
+        } else if (typeof this.index === "number") {
+          activeIndex = Math.max(0, this.index - 1);
+        }
+      } else if (typeof this.index === "number") {
+        activeIndex = Math.max(0, this.index - 1);
+      }
+
+      if (typeof ownerTabs.setCurrentIndex === "function") {
+        ownerTabs.setCurrentIndex(activeIndex);
+      } else {
+        ownerTabs.currentIndex = activeIndex;
+      }
+
+      // Count blockIndex among wrappers in this tab content with the same language
+      const allWrappers = this.contentEl ? Array.from(this.contentEl.querySelectorAll('.tabs-codeblock-wrapper')) : [];
+      let langBlockIndex = 0;
+      for (let i = 0; i < allWrappers.length; i++) {
+        if (allWrappers[i] === wrapper) break;
+        const wClasses = [allWrappers[i].className, ...(Array.from(allWrappers[i].querySelectorAll('*')).map(e => e.className || ""))].join(" ");
+        if (lang && (wClasses.includes("block-language-" + lang) || wClasses.includes("language-" + lang) || (lang === "tree" && (wClasses.includes("tree-container") || wClasses.includes("ascii-tree-wrapper") || wClasses.includes("ascii-tree-block"))))) {
+          langBlockIndex++;
+        }
+      }
+
+      if (ownerTabs.plugin.tabsEditorModal) {
+        ownerTabs.plugin.tabsEditorModal.startEditing(ownerTabs, {
+          snippet: codeSnippet,
+          language: lang,
+          tabIndex: activeIndex,
+          blockIndex: langBlockIndex
+        });
+      }
     }
     createTabContentEl(t, e, i) {
       ((this.contentEl = createDiv()),
         (this.contentEl.className = "tabs-content markdown-rendered"));
       this.contentEl.tabsExtendedContentModel = this;
+
+      this.contentEl.addEventListener('click', (evt) => {
+        const editBtn = evt.target && evt.target.closest ? evt.target.closest('.edit-block-button') : null;
+        if (!editBtn) return;
+        const wrapper = editBtn.closest('.tabs-codeblock-wrapper') || editBtn.closest('[class*="block-language-"], .tree-container, .ascii-tree-wrapper, pre');
+        if (wrapper) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.handleCodeBlockEdit(wrapper);
+        }
+      }, true);
+
       let n = new MarkdownRenderChild(this.contentEl);
 
       const safeContent = this.fixNestedFences(t);
@@ -132,7 +259,8 @@ export class TabContentItem {
     // increases its fence length (and its matching close) to be strictly greater
     // than the longest intermediate same-character no-info fence inside the block.
     fixNestedFences(text) {
-      if (!text || !text.includes('tabs')) return text;
+      const mainKw = (this.ownerTabs?.plugin?.settings?.tabsKeyword || "tabs").trim();
+      if (!text || (!text.includes('tabs') && (!mainKw || !text.includes(mainKw)))) return text;
       const lines = text.split('\n');
       const out = [...lines];
       // Stack for fences at the content's top level (to skip non-tabs blocks)
@@ -141,12 +269,13 @@ export class TabContentItem {
       while (i < lines.length) {
         const trimmed = lines[i].trim();
         if (trimmed.startsWith('|')) { i++; continue; }
-        const fm = trimmed.match(/^(`{3,}|~{3,})(.*)/);
+        const fm = trimmed.match(/^(?:>[ \t]*)*(`{3,}|~{3,})(.*)/);
         if (!fm) { i++; continue; }
         const fenceStr = fm[1], fenceChar = fenceStr[0];
         const fenceLen = fenceStr.length, info = fm[2].trim();
         if (outerStack.length === 0) {
-          if (info.startsWith('tabs')) {
+          const isTabsBlock = info.startsWith('tabs') || (mainKw && info.startsWith(mainKw));
+          if (isTabsBlock) {
             // Top-level tabs block — scan forward for matching close
             const leadIdx = lines[i].indexOf(fenceChar);
             const indent = leadIdx >= 0 ? lines[i].substring(0, leadIdx) : '';
@@ -159,7 +288,7 @@ export class TabContentItem {
             while (j < lines.length && innerStack.length > 0) {
               const it = lines[j].trim();
               if (it.startsWith('|')) { j++; continue; }
-              const ifm = it.match(/^(`{3,}|~{3,})(.*)/);
+              const ifm = it.match(/^(?:>[ \t]*)*(`{3,}|~{3,})(.*)/);
               if (ifm) {
                 const ifs = ifm[1], ifc = ifs[0], ifl = ifs.length, ifi = ifm[2].trim();
                 const cur = innerStack[innerStack.length - 1];

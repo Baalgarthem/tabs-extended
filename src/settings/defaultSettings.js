@@ -52,5 +52,6 @@ export const DEFAULT_SETTINGS = {
   verticalTitleBehavior: "hover-scroll",
   verticalTitleAlignment: "left",
   tabContentAlignment: "left",
-  tabContentHyphenation: "none"
+  tabContentHyphenation: "none",
+  renderCodeBlocksInModal: true
 };

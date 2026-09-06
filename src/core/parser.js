@@ -24,8 +24,7 @@ function tabsExtendedSourceLines(text) {
 
 function tabsExtendedFenceInfo(lineText) {
   const match = String(lineText == null ? "" : lineText)
-    .trim()
-    .match(/^(`{3,}|~{3,})(.*)$/);
+    .match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
   if (!match) return null;
   const fence = match[1];
   return {
@@ -62,15 +61,16 @@ function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
   }
   const closingIndex = tabsExtendedClosingFenceIndex(stack, fence);
   if (closingIndex >= 0) {
-    // A fence that exactly matches an ancestor is an explicit boundary for
-    // that ancestor. Recover malformed descendants by closing them together.
+    // When closing, close up to and including the matched block
     stack.splice(closingIndex);
     return;
   }
   const current = stack[stack.length - 1];
-  if (fence.info !== "" && current.isTabs) {
-    // Any fenced block with an info string starts a protected descendant scope.
-    // Its contents cannot expose separators belonging to the current tab level.
+  // While inside an opaque code block, inner lines cannot open new blocks
+  if (!current.isTabs) return;
+
+  // Inside a tabs container block, any fenced block with an info string starts a descendant scope
+  if (fence.info !== "") {
     const keyword = fence.info.split(/\s+/)[0].toLowerCase();
     stack.push({
       char: fence.char,
@@ -82,19 +82,30 @@ function tabsExtendedUpdateFenceStack(stack, fence, keywords) {
 
 function tabsExtendedClosingFenceIndex(stack, fence) {
   if (!fence || fence.info !== "" || stack.length === 0) return -1;
-  for (let index = stack.length - 1; index >= 0; index--) {
+  const current = stack[stack.length - 1];
+  // If the innermost block is an opaque code block, ONLY its exact closing fence can close it.
+  // It NEVER allows an inner line to close an outer ancestor.
+  if (!current.isTabs) {
+    return (current.char === fence.char && fence.length >= current.length)
+      ? stack.length - 1
+      : -1;
+  }
+  // If current is a tabs container block, check if this line closes current first
+  if (current.char === fence.char && fence.length >= current.length) {
+    return stack.length - 1;
+  }
+  // Check ancestor tabs container blocks (allows closing nested tabs)
+  for (let index = stack.length - 2; index >= 0; index--) {
     const candidate = stack[index];
     if (
+      candidate.isTabs &&
       candidate.char === fence.char &&
-      candidate.length === fence.length
+      fence.length >= candidate.length
     ) {
       return index;
     }
   }
-  const current = stack[stack.length - 1];
-  return current.char === fence.char && fence.length >= current.length
-    ? stack.length - 1
-    : -1;
+  return -1;
 }
 
 function tabsExtendedAnalyzeTabSections(rawText, split, settings = null) {

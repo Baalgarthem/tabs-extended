@@ -1,4 +1,5 @@
 export default {
+  "editBlockButton": "Edit this block",
   "settings.separator.name": "Separator",
   "settings.separator.desc": "The symbols used to split each tab.",
   "settings.defaultTabTitle.name": "Default tab title",
@@ -285,8 +286,12 @@ export default {
     "content_padding_name": "Espaciado Interno (Padding)",
     "content_padding_desc": "Relleno interior del contenido de las pestañas (ej. `1em 2em` o `10px 20px`).",
     "max_height_name": "Altura Máxima del Contenedor",
-    "max_height_desc": "Límite de altura vertical del contenedor (ej. `300px` o `50vh`). Agrega barra de desplazamiento si se supera."
+    "max_height_desc": "Límite de altura vertical del contenedor (ej. `300px` o `50vh`). Agrega barra de desplazamiento si se supera.",
+    "render_code_blocks_in_modal_name": "Render code blocks inside modal editor",
+    "render_code_blocks_in_modal_desc": "Renders an interactive live preview of code blocks (including tree blocks) inside the modal editor. If disabled, they will appear as static editable text."
   },
+  "render_code_blocks_in_modal_name": "Render code blocks inside modal editor",
+  "render_code_blocks_in_modal_desc": "Renders an interactive live preview of code blocks (including tree blocks) inside the modal editor. If disabled, they will appear as static editable text.",
   "modal.renameTab.submit": "Rename",
   "modal.renameTab.emptyError": "The tab name cannot be empty."
 };

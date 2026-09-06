@@ -1,4 +1,5 @@
 export default {
+  "editBlockButton": "Editar este bloque",
   "menu.addNewTab": "Añadir nueva pestaña",
   "menu.renameTab": "Renombrar pestaña",
   "menu.deleteTab": "Eliminar pestaña",
@@ -258,8 +259,12 @@ export default {
     "delete_icon_desc": "Icono visual para el botón de borrado: Papelera (🗑️), Equis (✕) o Texto.",
     "delete_icon_opt_trash": "Bote de Basura (🗑️)",
     "delete_icon_opt_x": "Una Equis (✕)",
-    "delete_icon_opt_text": "Texto en Negritas (Delete)"
+    "delete_icon_opt_text": "Texto en Negritas (Delete)",
+    "render_code_blocks_in_modal_name": "Renderizar bloques de código dentro del editor modal",
+    "render_code_blocks_in_modal_desc": "Muestra una vista previa interactiva de los bloques de código (incluyendo diagramas tree) dentro del editor modal. Si se desactiva, se mostrarán como texto estático editable."
   },
+  "render_code_blocks_in_modal_name": "Renderizar bloques de código dentro del editor modal",
+  "render_code_blocks_in_modal_desc": "Muestra una vista previa interactiva de los bloques de código (incluyendo diagramas tree) dentro del editor modal. Si se desactiva, se mostrarán como texto estático editable.",
   "modal.renameTab.submit": "Renombrar",
   "modal.renameTab.emptyError": "El nombre de la pestaña no puede estar vacío."
 };

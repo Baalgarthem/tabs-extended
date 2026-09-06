@@ -1,12 +1,13 @@
 import {
   B, to, no, be, I, Re, at, it, An, re, tr, kw, z, In, ra, x, If, hr, en, ut, on, wr, At, ev, cd, fd, TO, is, fs, un, El,
   pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS,
-  Zt, Rt, Kn, Wd, dd, Na
+  Zt, Rt, Kn, Wd, dd, Na, Wt
 } from '../vendor/codemirror-bundle.js';
+import { MarkdownRenderer, setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
 
 export class TabsModalEditorEngine {
-  constructor(t, e, i = "") {
+  constructor(t, e, i = "", targetBlockInfo = null) {
     this.historyTools = [];
     this.formatTools = [];
     this.paragraphTools = [];
@@ -29,6 +30,291 @@ export class TabsModalEditorEngine {
       "i",
     );
     this.modalTabsInfoRegex = modalTabsInfoRegex;
+
+    class CodeBlockLivePreviewWidget extends Re {
+      constructor(plugin, rawText, language, from, to) {
+        super();
+        this.plugin = plugin;
+        this.rawText = rawText;
+        this.language = language;
+        this.from = from;
+        this.to = to;
+      }
+      eq(other) {
+        return other.rawText === this.rawText && other.from === this.from && other.to === this.to;
+      }
+      ignoreEvent(event) {
+        return true;
+      }
+      toDOM(view) {
+        const container = document.createElement("div");
+        container.className = "cm-embed-block markdown-rendered tabs-codeblock-wrapper tabs-modal-codeblock-preview";
+
+        const editBtn = document.createElement("div");
+        editBtn.className = "edit-block-button";
+        const label = $("editBlockButton") || "Edit this block";
+        editBtn.setAttribute("aria-label", label);
+        editBtn.setAttribute("title", label);
+        try {
+          (0, setIcon)(editBtn, "code");
+        } catch (e) {
+          editBtn.textContent = "</>";
+        }
+
+        const triggerEdit = (evt) => {
+          if (evt) {
+            if (typeof evt.preventDefault === "function") evt.preventDefault();
+            if (typeof evt.stopPropagation === "function") evt.stopPropagation();
+          }
+          let targetPos = null;
+          if (evt && typeof evt.clientX === "number") {
+            try {
+              let range = null;
+              if (typeof document.caretRangeFromPoint === "function") {
+                range = document.caretRangeFromPoint(evt.clientX, evt.clientY);
+              } else if (typeof document.caretPositionFromPoint === "function") {
+                const pos = document.caretPositionFromPoint(evt.clientX, evt.clientY);
+                if (pos && pos.offsetNode) {
+                  range = document.createRange();
+                  range.setStart(pos.offsetNode, pos.offset);
+                }
+              }
+              if (range && range.startContainer) {
+                const pre = container.querySelector("pre, code, .block-language-tree, .ascii-tree-wrapper");
+                if (pre && pre.contains(range.startContainer)) {
+                  const r = document.createRange();
+                  r.setStart(pre, 0);
+                  r.setEnd(range.startContainer, range.startOffset);
+                  const textBefore = r.toString();
+                  const lineCount = (textBefore.match(/\n/g) || []).length;
+                  const lines = this.rawText.split("\n");
+                  const targetLineIdx = Math.max(1, Math.min(lineCount + 1, lines.length - 2));
+                  let offset = 0;
+                  for (let i = 0; i < targetLineIdx; i++) {
+                    offset += lines[i].length + 1;
+                  }
+                  targetPos = this.from + offset;
+                }
+              }
+            } catch (e) {}
+          }
+          if (targetPos === null || targetPos < this.from || targetPos > this.to) {
+            const firstLineBreak = this.rawText.indexOf("\n");
+            targetPos = firstLineBreak !== -1 ? this.from + firstLineBreak + 1 : this.from;
+          }
+          view.dispatch({
+            selection: { anchor: targetPos },
+            scrollIntoView: true
+          });
+          view.focus();
+        };
+
+        editBtn.addEventListener("click", triggerEdit);
+        container.appendChild(editBtn);
+
+        const contentEl = document.createElement("div");
+        contentEl.className = "tabs-modal-codeblock-content";
+        container.appendChild(contentEl);
+
+        const handleInteraction = (evt) => {
+          // 1. If clicking ANY edit-block-button (Obsidian native button or fallback)
+          const clickedEditBtn = evt.target && evt.target.closest ? evt.target.closest(".edit-block-button") : null;
+          if (clickedEditBtn) {
+            triggerEdit(evt);
+            return;
+          }
+          // 2. If clicking on links or action buttons (e.g. sort, next layout, fullscreen), allow them to work
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+            return;
+          }
+          // 3. Otherwise, clicking anywhere on the code block with the cursor opens it to modify it
+          triggerEdit(evt);
+        };
+
+        container.addEventListener("click", handleInteraction, true);
+        container.addEventListener("mousedown", (evt) => {
+          if (evt.button !== 0) return; // left click only
+          const clickedEditBtn = evt.target && evt.target.closest ? evt.target.closest(".edit-block-button") : null;
+          if (clickedEditBtn) {
+            triggerEdit(evt);
+            return;
+          }
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+            return;
+          }
+          triggerEdit(evt);
+        }, true);
+
+        try {
+          const activeFile = this.plugin && this.plugin.app && this.plugin.app.workspace ? this.plugin.app.workspace.getActiveFile() : null;
+          const contextSourcePath = this.plugin && this.plugin.tabsEditorModal && this.plugin.tabsEditorModal.tabs && this.plugin.tabsEditorModal.tabs.context ? this.plugin.tabsEditorModal.tabs.context.sourcePath : "";
+          const sourcePath = contextSourcePath || (activeFile ? activeFile.path : "");
+          const renderPromise = MarkdownRenderer.render(
+            this.plugin.app,
+            this.rawText,
+            contentEl,
+            sourcePath,
+            this.plugin
+          );
+          Promise.resolve(renderPromise).then(() => {
+            const innerBtn = contentEl.querySelector(".edit-block-button");
+            if (innerBtn && editBtn.parentElement === container) {
+              editBtn.remove();
+            }
+            if (view && typeof view.requestMeasure === "function") {
+              view.requestMeasure();
+            }
+          }).catch(() => {});
+        } catch (err) {
+          console.error("Tabs Extended: error rendering code block preview in modal:", err);
+          contentEl.textContent = this.rawText;
+        }
+
+        return container;
+      }
+    }
+
+    const docCodeBlocksCache = new WeakMap();
+    const getDocumentCodeBlocks = (doc) => {
+      let cached = docCodeBlocksCache.get(doc);
+      if (cached) return cached;
+
+      let blocks = [];
+      let fenceStack = [];
+      let modalTabsRegex = modalTabsInfoRegex;
+
+      for (let p = 1; p <= doc.lines; p++) {
+        let line = doc.line(p);
+        let match = line.text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+        if (!match) continue;
+
+        let fenceStr = match[1];
+        let fenceChar = fenceStr[0];
+        let fenceLen = fenceStr.length;
+        let info = match[2].trim();
+
+        if (fenceStack.length > 0) {
+          let current = fenceStack[fenceStack.length - 1];
+
+          // If current is an opaque code block, only its matching closing fence can close it
+          if (current.type === "code") {
+            if (fenceChar === current.char && fenceLen >= current.length && info === "") {
+              let popped = fenceStack.pop();
+              blocks.push({
+                type: "code",
+                info: popped.info,
+                fence: popped.fence,
+                startLine: popped.lineNo,
+                endLine: p,
+                from: doc.line(popped.lineNo).from,
+                to: line.to
+              });
+            }
+            // Code content inside code block is opaque: ignore any inner fences
+            continue;
+          }
+
+          // If current is a tabs block (container):
+          // Check if this line closes the tabs block
+          if (current.type === "tabs" && fenceChar === current.char && fenceLen >= current.length && info === "") {
+            let popped = fenceStack.pop();
+            blocks.push({
+              type: "tabs",
+              info: popped.info,
+              fence: popped.fence,
+              startLine: popped.lineNo,
+              endLine: p,
+              from: doc.line(popped.lineNo).from,
+              to: line.to
+            });
+            continue;
+          }
+        }
+
+        // We are at top-level OR directly inside a tabs container block that didn't close
+        let isTabs = modalTabsRegex.test(info);
+        if (isTabs) {
+          fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "tabs", lineNo: p, info });
+        } else if (info !== "" || fenceStack.length > 0) {
+          fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "code", lineNo: p, info });
+        } else {
+          // Top-level fence with info === "" and empty stack:
+          // Check if there is a matching closing fence later in the doc
+          let hasClosing = false;
+          for (let q = p + 1; q <= doc.lines; q++) {
+            let m2 = doc.line(q).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+            if (m2 && m2[1][0] === fenceChar && m2[1].length >= fenceLen && m2[2].trim() === "") {
+              hasClosing = true;
+              break;
+            }
+          }
+          if (hasClosing) {
+            fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "code", lineNo: p, info });
+          }
+        }
+      }
+
+      // Close unclosed blocks at EOF
+      while (fenceStack.length > 0) {
+        let popped = fenceStack.pop();
+        blocks.push({
+          type: popped.type,
+          info: popped.info,
+          fence: popped.fence,
+          startLine: popped.lineNo,
+          endLine: doc.lines,
+          from: doc.line(popped.lineNo).from,
+          to: doc.line(doc.lines).to
+        });
+      }
+
+      blocks.sort((a, b) => a.startLine - b.startLine);
+      docCodeBlocksCache.set(doc, blocks);
+      return blocks;
+    };
+    this.getDocumentCodeBlocks = getDocumentCodeBlocks;
+
+    const buildCodeBlockPreviewDeco = (state) => {
+      if (this.plugin.settings && this.plugin.settings.renderCodeBlocksInModal === false) {
+        return q.none;
+      }
+      let deco = [];
+      let doc = state.doc;
+      let selection = state.selection;
+      let blocks = getDocumentCodeBlocks(doc);
+
+      for (let block of blocks) {
+        if (block.type === "code") {
+          let isCursorInside = selection.ranges.some(
+            (r) => Math.max(r.from, block.from) <= Math.min(r.to, block.to)
+          );
+
+          if (!isCursorInside) {
+            let rawText = doc.sliceString(block.from, block.to);
+            deco.push(
+              q.replace({
+                widget: new CodeBlockLivePreviewWidget(t, rawText, block.info, block.from, block.to),
+                block: true
+              }).range(block.from, block.to)
+            );
+          }
+        }
+      }
+
+      return q.set(deco, true);
+    };
+
+    this.codeBlockLivePreviewField = Wt.define({
+      create: (state) => buildCodeBlockPreviewDeco(state),
+      update: (deco, tr) => {
+        if (tr.docChanged || tr.selection) {
+          return buildCodeBlockPreviewDeco(tr.state);
+        }
+        return deco.map(tr.changes);
+      },
+      provide: (f) => A.decorations.from(f)
+    });
+
     this.activeLineHighlighter = Zt.fromClass(
       class {
         constructor(t) {
@@ -211,7 +497,6 @@ export class TabsModalEditorEngine {
                   }
               };
           }
-          
           let i = [];
           let fenceStack = [];
           let tabDepth = 0;
@@ -222,9 +507,7 @@ export class TabsModalEditorEngine {
 
           for (let p = 1; p <= doc.lines; p++) {
              let line = doc.line(p);
-             let text = line.text.trim();
-             
-             let match = text.match(/^(`{3,}|~{3,})(.*)/);
+             let match = line.text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
              let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
 
              if (match) {
@@ -345,7 +628,7 @@ export class TabsModalEditorEngine {
           let tabDepth = 0;
 
           for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
-            let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)/);
+            let match = doc.line(lineNo).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
             if (!match) continue;
 
             let fence = match[1];
@@ -711,7 +994,7 @@ export class TabsModalEditorEngine {
     if (t.settings.showToolbar) this.initToolbar(e);
     // Toolbar callbacks operate on this.view. Bind them only after CodeMirror
     // has been constructed so no handler depends on partially initialized state.
-    this.initEditor(e, i);
+    this.initEditor(e, i, targetBlockInfo);
     if (t.settings.showToolbar) this.registerToolbarEvents();
   }
   addButton(t, e, i) {
@@ -735,7 +1018,7 @@ export class TabsModalEditorEngine {
       this.addSplitLine(),
       this.initInsertTool());
   }
-  initEditor(t, e = "") {
+  initEditor(t, e = "", targetBlockInfo = null) {
     ((this.tabseditorEl = t.createDiv()),
       this.tabseditorEl.addClass("tabs-editor"));
     let i = A.updateListener.of((n) => {
@@ -757,6 +1040,7 @@ export class TabsModalEditorEngine {
       this.nestedTabsHighlighter,
       this.activeNestedTabsHighlighter,
       this.activeNestedTabsInvariantTheme,
+      this.codeBlockLivePreviewField,
       ud,
       i,
     ];
@@ -780,7 +1064,7 @@ export class TabsModalEditorEngine {
             let tabsInfo = this.modalTabsInfoRegex;
 
             for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
-                let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)$/);
+                let match = doc.line(lineNo).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
                 if (!match) continue;
 
                 let fence = match[1];
@@ -1117,7 +1401,7 @@ export class TabsModalEditorEngine {
 
                     if (targetSplitOffset >= 0) {
                         targetPos = targetLine.from + targetSplitOffset + splitStr.length;
-                    } else if (/^\s*(`{3,}|~{3,})/.test(targetLine.text)) {
+                    } else if (getProtectedFenceLines(doc).has(targetLineNo)) {
                         targetPos = targetLine.to;
                         targetAssoc = -1;
                     } else {
@@ -1131,6 +1415,8 @@ export class TabsModalEditorEngine {
                 return false;
             }
         };
+
+        const getDocumentCodeBlocks = this.getDocumentCodeBlocks;
 
         exts.push(safeHighest(Be.of([
             {
@@ -1152,6 +1438,18 @@ export class TabsModalEditorEngine {
                                 } else if (sel.head > protectStart && sel.head < protectEnd) {
                                     view.dispatch({ selection: cursorSelectionAt(protectEnd, 1) });
                                     return true;
+                                }
+                            }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                if (sel.head === line.from && line.number > 1) {
+                                    let codeBlocks = getDocumentCodeBlocks(view.state.doc);
+                                    let prevBlock = codeBlocks.find(b => b.type === "code" && b.endLine === line.number - 1);
+                                    if (prevBlock) {
+                                        let targetLine = view.state.doc.line(prevBlock.endLine);
+                                        view.dispatch({ selection: cursorSelectionAt(targetLine.to, -1), scrollIntoView: true });
+                                        return true;
+                                    }
                                 }
                             }
                         }
@@ -1176,6 +1474,18 @@ export class TabsModalEditorEngine {
                                     return true;
                                 }
                             }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                if (sel.head === line.to && line.number < view.state.doc.lines) {
+                                    let codeBlocks = getDocumentCodeBlocks(view.state.doc);
+                                    let nextBlock = codeBlocks.find(b => b.type === "code" && b.startLine === line.number + 1);
+                                    if (nextBlock) {
+                                        let targetLine = view.state.doc.line(nextBlock.startLine);
+                                        view.dispatch({ selection: cursorSelectionAt(targetLine.from, 1), scrollIntoView: true });
+                                        return true;
+                                    }
+                                }
+                            }
                         }
                     } catch (err) {}
                     return false;
@@ -1187,19 +1497,53 @@ export class TabsModalEditorEngine {
                     try {
                         if (moveFromSeparatorStart(view, -1)) return true;
                         let sel = view.state.selection.main;
-                        let line = view.state.doc.lineAt(sel.head);
+                        if (!sel.empty) return false;
+
+                        let doc = view.state.doc;
+                        let line = doc.lineAt(sel.head);
+                        let col = sel.head - line.from;
+                        let splitStr = this.plugin.settings.split;
+
                         if (line.number > 1) {
-                            let prevLine = view.state.doc.line(line.number - 1);
-                            let splitStr = this.plugin.settings.split;
+                            let prevLineNo = line.number - 1;
+                            let prevLine = doc.line(prevLineNo);
                             let splitOffset = getSeparatorOffset(prevLine.text);
                             if (splitOffset >= 0) {
                                 let protectEnd = prevLine.from + splitOffset + splitStr.length;
-                                let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, prevLine.from + col);
                                 targetPos = Math.min(prevLine.to, targetPos);
                                 let targetAssoc = targetPos === protectEnd ? 1 : targetPos === prevLine.to ? -1 : 0;
-                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc) });
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc), scrollIntoView: true });
                                 return true;
+                            }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                let codeBlocks = getDocumentCodeBlocks(doc);
+
+                                let openingBlock = codeBlocks.find(b => b.type === "code" && b.startLine === line.number);
+                                if (openingBlock && openingBlock.startLine > 1) {
+                                    let targetLine = doc.line(openingBlock.startLine - 1);
+                                    let targetSplitOffset = getSeparatorOffset(targetLine.text);
+                                    let targetPos;
+                                    let targetAssoc = 1;
+                                    if (targetSplitOffset >= 0) {
+                                        let protectEnd = targetLine.from + targetSplitOffset + splitStr.length;
+                                        targetPos = Math.max(protectEnd, Math.min(targetLine.to, targetLine.from + col));
+                                        targetAssoc = targetPos === protectEnd ? 1 : targetPos === targetLine.to ? -1 : 0;
+                                    } else {
+                                        targetPos = Math.min(targetLine.to, targetLine.from + col);
+                                    }
+                                    view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc), scrollIntoView: true });
+                                    return true;
+                                }
+
+                                let blockAbove = codeBlocks.find(b => b.type === "code" && b.endLine === prevLineNo);
+                                if (blockAbove) {
+                                    let targetLine = doc.line(blockAbove.endLine);
+                                    let targetPos = Math.min(targetLine.to, targetLine.from + col);
+                                    view.dispatch({ selection: cursorSelectionAt(targetPos, 1), scrollIntoView: true });
+                                    return true;
+                                }
                             }
                         }
                     } catch (err) {}
@@ -1212,19 +1556,53 @@ export class TabsModalEditorEngine {
                     try {
                         if (moveFromSeparatorStart(view, 1)) return true;
                         let sel = view.state.selection.main;
-                        let line = view.state.doc.lineAt(sel.head);
-                        if (line.number < view.state.doc.lines) {
-                            let nextLine = view.state.doc.line(line.number + 1);
-                            let splitStr = this.plugin.settings.split;
+                        if (!sel.empty) return false;
+
+                        let doc = view.state.doc;
+                        let line = doc.lineAt(sel.head);
+                        let col = sel.head - line.from;
+                        let splitStr = this.plugin.settings.split;
+
+                        if (line.number < doc.lines) {
+                            let nextLineNo = line.number + 1;
+                            let nextLine = doc.line(nextLineNo);
                             let splitOffset = getSeparatorOffset(nextLine.text);
                             if (splitOffset >= 0) {
                                 let protectEnd = nextLine.from + splitOffset + splitStr.length;
-                                let col = sel.head - line.from;
                                 let targetPos = Math.max(protectEnd, nextLine.from + col);
                                 targetPos = Math.min(nextLine.to, targetPos);
                                 let targetAssoc = targetPos === protectEnd ? 1 : targetPos === nextLine.to ? -1 : 0;
-                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc) });
+                                view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc), scrollIntoView: true });
                                 return true;
+                            }
+
+                            if (this.plugin.settings.renderCodeBlocksInModal !== false && typeof getDocumentCodeBlocks === "function") {
+                                let codeBlocks = getDocumentCodeBlocks(doc);
+
+                                let closingBlock = codeBlocks.find(b => b.type === "code" && b.endLine === line.number);
+                                if (closingBlock && closingBlock.endLine < doc.lines) {
+                                    let targetLine = doc.line(closingBlock.endLine + 1);
+                                    let targetSplitOffset = getSeparatorOffset(targetLine.text);
+                                    let targetPos;
+                                    let targetAssoc = 1;
+                                    if (targetSplitOffset >= 0) {
+                                        let protectEnd = targetLine.from + targetSplitOffset + splitStr.length;
+                                        targetPos = Math.max(protectEnd, Math.min(targetLine.to, targetLine.from + col));
+                                        targetAssoc = targetPos === protectEnd ? 1 : targetPos === targetLine.to ? -1 : 0;
+                                    } else {
+                                        targetPos = Math.min(targetLine.to, targetLine.from + col);
+                                    }
+                                    view.dispatch({ selection: cursorSelectionAt(targetPos, targetAssoc), scrollIntoView: true });
+                                    return true;
+                                }
+
+                                let blockBelow = codeBlocks.find(b => b.type === "code" && b.startLine === nextLineNo);
+                                if (blockBelow) {
+                                    let targetLine = doc.line(blockBelow.startLine);
+                                    let targetPos = Math.min(targetLine.to, targetLine.from + col);
+                                    view.dispatch({ selection: cursorSelectionAt(targetPos, 1), scrollIntoView: true });
+                                    return true;
+                                }
                             }
                         }
                     } catch (err) {}
@@ -1281,6 +1659,78 @@ export class TabsModalEditorEngine {
       
     if (!window.tabsExtActiveViews) window.tabsExtActiveViews = [];
     if (!window.tabsExtActiveViews.includes(this.view)) window.tabsExtActiveViews.push(this.view);
+    if (targetBlockInfo) {
+      this.focusTargetBlock(targetBlockInfo);
+    }
+  }
+  focusTargetBlock(targetBlockInfo) {
+    if (!this.view || !targetBlockInfo) return;
+    try {
+      const doc = this.view.state.doc;
+      const docText = doc.toString();
+      const { snippet, language, blockIndex } = targetBlockInfo;
+      let targetPos = -1;
+
+      if (language) {
+        const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*" + language.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\b", "gi");
+        let match;
+        let count = 0;
+        const targetIndex = typeof blockIndex === "number" ? blockIndex : 0;
+        let firstMatchPos = -1;
+        while ((match = fenceRegex.exec(docText)) !== null) {
+          const pos = match[0].startsWith("\n") ? match.index + 1 : match.index;
+          if (firstMatchPos === -1) firstMatchPos = pos;
+          if (count === targetIndex) {
+            targetPos = pos;
+            break;
+          }
+          count++;
+        }
+        if (targetPos === -1 && firstMatchPos !== -1) {
+          targetPos = firstMatchPos;
+        }
+      }
+
+      if (snippet && targetPos === -1) {
+        const cleanSnippet = snippet.trim().split("\n")[0].trim();
+        if (cleanSnippet.length > 2) {
+          const idx = docText.indexOf(cleanSnippet);
+          if (idx !== -1) {
+            targetPos = idx;
+          }
+        }
+      }
+
+      if (targetPos === -1 && (language || snippet)) {
+        const generalFence = docText.search(/(?:^|\\n)[ \t]*(`{3,}|~{3,})/);
+        if (generalFence !== -1) {
+          targetPos = docText[generalFence] === "\n" ? generalFence + 1 : generalFence;
+        }
+      }
+
+      if (targetPos >= 0 && targetPos <= doc.length) {
+        const line = doc.lineAt(targetPos);
+        const nextLineNo = Math.min(doc.lines, line.number + 1);
+        const contentLine = doc.line(nextLineNo);
+
+        this.view.dispatch({
+          selection: this.ModalSelection.cursor(contentLine.from),
+          scrollIntoView: true
+        });
+
+        setTimeout(() => {
+          if (this.view && !this.view.destroyed) {
+            this.view.focus();
+            this.view.dispatch({
+              selection: this.ModalSelection.cursor(contentLine.from),
+              scrollIntoView: true
+            });
+          }
+        }, 60);
+      }
+    } catch (err) {
+      console.warn("Tabs Extended: could not focus target block in modal editor:", err);
+    }
   }
   initHistoryTool() {
     this.historyTools.push(

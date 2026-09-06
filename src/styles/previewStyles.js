@@ -134,4 +134,51 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-container.tabs-innertabs {
   margin: 10px 0;
 }
+.tabs-codeblock-wrapper {
+  position: relative !important;
+}
+.tabs-codeblock-wrapper .edit-block-button {
+  position: absolute !important;
+  top: var(--size-2-2, 6px) !important;
+  inset-inline-end: var(--size-2-2, 6px) !important;
+  padding: var(--size-2-2, 4px) var(--size-2-3, 6px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 0 !important;
+  color: var(--text-muted) !important;
+  border-radius: var(--radius-s, 4px) !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  background-color: var(--background-primary, rgba(30, 30, 30, 0.6)) !important;
+  border: 1px solid var(--background-modifier-border, transparent) !important;
+  transition: opacity 0.15s ease-in-out, color 0.15s ease-in-out, background-color 0.15s ease-in-out !important;
+}
+.tabs-codeblock-wrapper:hover .edit-block-button {
+  opacity: 1 !important;
+}
+.tabs-codeblock-wrapper .edit-block-button:hover {
+  color: var(--text-normal) !important;
+  background-color: var(--background-modifier-hover, rgba(128, 128, 128, 0.3)) !important;
+}
+.tabs-codeblock-wrapper:has(.copy-code-button) .edit-block-button {
+  inset-inline-end: 36px !important;
+}
+.tabs-codeblock-wrapper:has([class*="block-language-tree"]) > .edit-block-button,
+.tabs-codeblock-wrapper:has(.ascii-tree-wrapper) > .edit-block-button,
+.tabs-codeblock-wrapper:has(.tree-container) > .edit-block-button,
+.tabs-codeblock-wrapper:has(pre.ascii-tree-block) > .edit-block-button,
+.tabs-codeblock-wrapper:has(* .edit-block-button) > .edit-block-button {
+  display: none !important;
+}
+.tabs-editor-modal .tabs-modal-codeblock-preview {
+  margin: 0.75em 0 !important;
+  position: relative !important;
+  cursor: default !important;
+  user-select: text !important;
+  clear: both !important;
+}
+.tabs-editor-modal .tabs-modal-codeblock-content {
+  overflow: auto !important;
+}
 `;
