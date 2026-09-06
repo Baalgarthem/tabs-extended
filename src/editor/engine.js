@@ -147,7 +147,8 @@ export class TabsModalEditorEngine {
 
         try {
           const activeFile = this.plugin && this.plugin.app && this.plugin.app.workspace ? this.plugin.app.workspace.getActiveFile() : null;
-          const sourcePath = activeFile ? activeFile.path : "";
+          const contextSourcePath = this.plugin && this.plugin.tabsEditorModal && this.plugin.tabsEditorModal.tabs && this.plugin.tabsEditorModal.tabs.context ? this.plugin.tabsEditorModal.tabs.context.sourcePath : "";
+          const sourcePath = contextSourcePath || (activeFile ? activeFile.path : "");
           const renderPromise = MarkdownRenderer.render(
             this.plugin.app,
             this.rawText,
@@ -159,6 +160,9 @@ export class TabsModalEditorEngine {
             const innerBtn = contentEl.querySelector(".edit-block-button");
             if (innerBtn && editBtn.parentElement === container) {
               editBtn.remove();
+            }
+            if (view && typeof view.requestMeasure === "function") {
+              view.requestMeasure();
             }
           }).catch(() => {});
         } catch (err) {
@@ -181,16 +185,20 @@ export class TabsModalEditorEngine {
 
       for (let p = 1; p <= doc.lines; p++) {
         let line = doc.line(p);
-        let text = line.text.trim();
-        let match = text.match(/^(`{3,}|~{3,})(.*)/);
+        let match = line.text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+        if (!match) continue;
 
-        if (match) {
-          let fenceStr = match[1];
-          let info = match[2].trim();
-          let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
+        let fenceStr = match[1];
+        let fenceChar = fenceStr[0];
+        let fenceLen = fenceStr.length;
+        let info = match[2].trim();
 
-          if (current && current.type === "code") {
-            if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") {
+        if (fenceStack.length > 0) {
+          let current = fenceStack[fenceStack.length - 1];
+
+          // If current is an opaque code block, only its matching closing fence can close it
+          if (current.type === "code") {
+            if (fenceChar === current.char && fenceLen >= current.length && info === "") {
               let popped = fenceStack.pop();
               blocks.push({
                 type: "code",
@@ -202,33 +210,65 @@ export class TabsModalEditorEngine {
                 to: line.to
               });
             }
+            // Code content inside code block is opaque: ignore any inner fences
             continue;
           }
 
-          if (current && current.type === "tabs") {
-            if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && info === "") {
-              let popped = fenceStack.pop();
-              blocks.push({
-                type: "tabs",
-                info: popped.info,
-                fence: popped.fence,
-                startLine: popped.lineNo,
-                endLine: p,
-                from: doc.line(popped.lineNo).from,
-                to: line.to
-              });
+          // If current is a tabs block (container):
+          // Check if this line closes the tabs block
+          if (current.type === "tabs" && fenceChar === current.char && fenceLen >= current.length && info === "") {
+            let popped = fenceStack.pop();
+            blocks.push({
+              type: "tabs",
+              info: popped.info,
+              fence: popped.fence,
+              startLine: popped.lineNo,
+              endLine: p,
+              from: doc.line(popped.lineNo).from,
+              to: line.to
+            });
+            continue;
+          }
+        }
+
+        // We are at top-level OR directly inside a tabs container block that didn't close
+        let isTabs = modalTabsRegex.test(info);
+        if (isTabs) {
+          fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "tabs", lineNo: p, info });
+        } else if (info !== "" || fenceStack.length > 0) {
+          fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "code", lineNo: p, info });
+        } else {
+          // Top-level fence with info === "" and empty stack:
+          // Check if there is a matching closing fence later in the doc
+          let hasClosing = false;
+          for (let q = p + 1; q <= doc.lines; q++) {
+            let m2 = doc.line(q).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+            if (m2 && m2[1][0] === fenceChar && m2[1].length >= fenceLen && m2[2].trim() === "") {
+              hasClosing = true;
+              break;
             }
-            continue;
           }
-
-          if (modalTabsRegex.test(info)) {
-            fenceStack.push({ fence: fenceStr, type: "tabs", lineNo: p, info });
-          } else {
-            fenceStack.push({ fence: fenceStr, type: "code", lineNo: p, info });
+          if (hasClosing) {
+            fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: "code", lineNo: p, info });
           }
         }
       }
 
+      // Close unclosed blocks at EOF
+      while (fenceStack.length > 0) {
+        let popped = fenceStack.pop();
+        blocks.push({
+          type: popped.type,
+          info: popped.info,
+          fence: popped.fence,
+          startLine: popped.lineNo,
+          endLine: doc.lines,
+          from: doc.line(popped.lineNo).from,
+          to: doc.line(doc.lines).to
+        });
+      }
+
+      blocks.sort((a, b) => a.startLine - b.startLine);
       docCodeBlocksCache.set(doc, blocks);
       return blocks;
     };
@@ -467,9 +507,7 @@ export class TabsModalEditorEngine {
 
           for (let p = 1; p <= doc.lines; p++) {
              let line = doc.line(p);
-             let text = line.text.trim();
-             
-             let match = text.match(/^(`{3,}|~{3,})(.*)/);
+             let match = line.text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
              let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
 
              if (match) {
@@ -590,7 +628,7 @@ export class TabsModalEditorEngine {
           let tabDepth = 0;
 
           for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
-            let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)/);
+            let match = doc.line(lineNo).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
             if (!match) continue;
 
             let fence = match[1];
@@ -1026,7 +1064,7 @@ export class TabsModalEditorEngine {
             let tabsInfo = this.modalTabsInfoRegex;
 
             for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
-                let match = doc.line(lineNo).text.trim().match(/^(`{3,}|~{3,})(.*)$/);
+                let match = doc.line(lineNo).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
                 if (!match) continue;
 
                 let fence = match[1];

@@ -259,7 +259,8 @@ export class TabContentItem {
     // increases its fence length (and its matching close) to be strictly greater
     // than the longest intermediate same-character no-info fence inside the block.
     fixNestedFences(text) {
-      if (!text || !text.includes('tabs')) return text;
+      const mainKw = (this.ownerTabs?.plugin?.settings?.tabsKeyword || "tabs").trim();
+      if (!text || (!text.includes('tabs') && (!mainKw || !text.includes(mainKw)))) return text;
       const lines = text.split('\n');
       const out = [...lines];
       // Stack for fences at the content's top level (to skip non-tabs blocks)
@@ -268,12 +269,13 @@ export class TabContentItem {
       while (i < lines.length) {
         const trimmed = lines[i].trim();
         if (trimmed.startsWith('|')) { i++; continue; }
-        const fm = trimmed.match(/^(`{3,}|~{3,})(.*)/);
+        const fm = trimmed.match(/^(?:>[ \t]*)*(`{3,}|~{3,})(.*)/);
         if (!fm) { i++; continue; }
         const fenceStr = fm[1], fenceChar = fenceStr[0];
         const fenceLen = fenceStr.length, info = fm[2].trim();
         if (outerStack.length === 0) {
-          if (info.startsWith('tabs')) {
+          const isTabsBlock = info.startsWith('tabs') || (mainKw && info.startsWith(mainKw));
+          if (isTabsBlock) {
             // Top-level tabs block — scan forward for matching close
             const leadIdx = lines[i].indexOf(fenceChar);
             const indent = leadIdx >= 0 ? lines[i].substring(0, leadIdx) : '';
@@ -286,7 +288,7 @@ export class TabContentItem {
             while (j < lines.length && innerStack.length > 0) {
               const it = lines[j].trim();
               if (it.startsWith('|')) { j++; continue; }
-              const ifm = it.match(/^(`{3,}|~{3,})(.*)/);
+              const ifm = it.match(/^(?:>[ \t]*)*(`{3,}|~{3,})(.*)/);
               if (ifm) {
                 const ifs = ifm[1], ifc = ifs[0], ifl = ifs.length, ifi = ifm[2].trim();
                 const cur = innerStack[innerStack.length - 1];

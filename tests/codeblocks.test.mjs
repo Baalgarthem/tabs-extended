@@ -670,5 +670,173 @@ export async function runCodeblocksTests() {
     console.log('✓ Horizontal Arrow navigation (ArrowRight/ArrowLeft) code block boundary entry verified');
   }
 
+  // Test 14: Code blocks inside top-level and nested tabs blocks are discovered
+  {
+    const lines = [
+      'tema: Tab 1',
+      '~~~tabs-v',
+      'tema: Subtopic',
+      '```tree',
+      'Recursos principales',
+      '- Revision',
+      '- Queja',
+      '```',
+      '~~~'
+    ];
+    const doc = {
+      lines: lines.length,
+      line: (p) => ({
+        text: lines[p - 1],
+        from: lines.slice(0, p - 1).join('\n').length + (p > 1 ? 1 : 0),
+        to: lines.slice(0, p).join('\n').length
+      })
+    };
+
+    // Simulate getDocumentCodeBlocks logic with robust fences
+    const modalTabsRegex = /^(?:tabs(?:-v)?)$/i;
+    const blocks = [];
+    const fenceStack = [];
+
+    for (let p = 1; p <= doc.lines; p++) {
+      let line = doc.line(p);
+      let match = line.text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+      if (!match) continue;
+      let fenceStr = match[1];
+      let fenceChar = fenceStr[0];
+      let fenceLen = fenceStr.length;
+      let info = match[2].trim();
+
+      if (fenceStack.length > 0) {
+        let current = fenceStack[fenceStack.length - 1];
+        if (current.type === 'code') {
+          if (fenceChar === current.char && fenceLen >= current.length && info === '') {
+            let popped = fenceStack.pop();
+            blocks.push({
+              type: 'code',
+              info: popped.info,
+              startLine: popped.lineNo,
+              endLine: p
+            });
+          }
+          continue;
+        }
+        if (current.type === 'tabs' && fenceChar === current.char && fenceLen >= current.length && info === '') {
+          let popped = fenceStack.pop();
+          blocks.push({
+            type: 'tabs',
+            info: popped.info,
+            startLine: popped.lineNo,
+            endLine: p
+          });
+          continue;
+        }
+      }
+
+      let isTabs = modalTabsRegex.test(info);
+      if (isTabs) {
+        fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: 'tabs', lineNo: p, info });
+      } else {
+        fenceStack.push({ fence: fenceStr, char: fenceChar, length: fenceLen, type: 'code', lineNo: p, info });
+      }
+    }
+
+    const treeBlock = blocks.find(b => b.type === 'code' && b.info === 'tree');
+    assert.ok(treeBlock, 'Tree block must be found inside nested tabs container');
+    assert.equal(treeBlock.startLine, 4, 'Tree block starts at line 4');
+    assert.equal(treeBlock.endLine, 8, 'Tree block ends at line 8');
+
+    const tabsVBlock = blocks.find(b => b.type === 'tabs' && b.info === 'tabs-v');
+    assert.ok(tabsVBlock, 'Nested tabs-v block must be found');
+    assert.equal(tabsVBlock.startLine, 2, 'tabs-v starts at line 2');
+    assert.equal(tabsVBlock.endLine, 9, 'tabs-v ends at line 9');
+
+    console.log('✓ Code blocks inside nested tabs containers correctly identified and preserved');
+  }
+
+  // Test 15: Code blocks with blockquote markers (> ```tree)
+  {
+    const lines = [
+      '> tema: Tab 1',
+      '> ```tree',
+      '> Root',
+      '>   - Item',
+      '> ```'
+    ];
+    const doc = {
+      lines: lines.length,
+      line: (p) => ({
+        text: lines[p - 1],
+        from: lines.slice(0, p - 1).join('\n').length + (p > 1 ? 1 : 0),
+        to: lines.slice(0, p).join('\n').length
+      })
+    };
+
+    const match1 = doc.line(2).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+    assert.ok(match1, 'Line 2 fence with blockquote > must match');
+    assert.equal(match1[1], '```', 'Fence is ```');
+    assert.equal(match1[2].trim(), 'tree', 'Info is tree');
+
+    const match2 = doc.line(5).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+    assert.ok(match2, 'Line 5 closing fence with blockquote > must match');
+    assert.equal(match2[1], '```', 'Fence is ```');
+    assert.equal(match2[2].trim(), '', 'Info is empty');
+
+    console.log('✓ Code blocks and closing fences with blockquote markers correctly parsed');
+  }
+
+  // Test 16: Code block opacity (fences inside code blocks cannot close outer blocks)
+  {
+    const parser = await import('../src/core/parser.js');
+    const source = [
+      'tema: Tab 1',
+      '~~~tabs-v',
+      'tema: Sub 1',
+      '````tree',
+      'Root',
+      '  - Leaf',
+      '```', // 3 backticks inside 4-backtick tree - must NOT close the 4-backtick tree block!
+      '````', // closes 4-backtick tree
+      '~~~', // closes ~~~tabs-v
+      'tema: Tab 2',
+      'Content Tab 2'
+    ].join('\n');
+
+    const analysis = parser.tabsExtendedAnalyzeTabSections(source, 'tema:', { tabsKeyword: 'tabs' });
+    assert.ok(analysis, 'Must successfully analyze tab sections');
+    assert.equal(analysis.sections.length, 2, 'Must have exactly 2 tabs (Tab 1 and Tab 2)');
+
+    console.log('✓ Code block opacity prevents premature ancestor fence closure');
+  }
+
+  // Test 17: 4-backtick tree block defined with 4 backticks
+  {
+    const lines = [
+      'tema: Treemap Tab',
+      '````tree',
+      'Nivel superior primero',
+      '	- subnivel 1',
+      '	- subnivel 2',
+      '````'
+    ];
+    const doc = {
+      lines: lines.length,
+      line: (p) => ({
+        text: lines[p - 1],
+        from: lines.slice(0, p - 1).join('\n').length + (p > 1 ? 1 : 0),
+        to: lines.slice(0, p).join('\n').length
+      })
+    };
+
+    const matchOpen = doc.line(2).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+    assert.equal(matchOpen[1], '````', 'Opening fence has 4 backticks');
+    assert.equal(matchOpen[2].trim(), 'tree', 'Info is tree');
+
+    const matchClose = doc.line(6).text.match(/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})(.*)$/);
+    assert.equal(matchClose[1], '````', 'Closing fence has 4 backticks');
+    assert.equal(matchClose[2].trim(), '', 'Info is empty');
+
+    console.log('✓ 4-backtick tree block successfully identified and closed');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }
