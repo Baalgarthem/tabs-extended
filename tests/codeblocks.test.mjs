@@ -61,6 +61,17 @@ class MockElement {
     return newChild;
   }
 
+  remove() {
+    if (this.parentNode && Array.isArray(this.parentNode.children)) {
+      const idx = this.parentNode.children.indexOf(this);
+      if (idx !== -1) {
+        this.parentNode.children.splice(idx, 1);
+      }
+    }
+    this.parentNode = null;
+    this.parentElement = null;
+  }
+
   closest(selector) {
     let curr = this;
     while (curr) {
@@ -80,14 +91,30 @@ class MockElement {
       return this.className.split(/\s+/).includes(cls) || this.classList.contains(cls);
     }
     if (selector.includes('[')) {
+      const attrMatch = selector.match(/\[([a-zA-Z0-9_-]+)\*="([^"]+)"\]/);
+      if (attrMatch) {
+        const [, attr, val] = attrMatch;
+        const attrVal = attr === 'class' ? this.className : this.getAttribute(attr);
+        return (attrVal || '').includes(val);
+      }
       if (selector.includes('class*="block-language-"')) {
         return this.className.includes('block-language-');
       }
+    }
+    if (selector.includes('.')) {
+      const [tag, cls] = selector.split('.');
+      const tagMatch = !tag || this.tagName.toLowerCase() === tag.toLowerCase();
+      const clsMatch = this.className.split(/\s+/).includes(cls) || this.classList.contains(cls);
+      return tagMatch && clsMatch;
     }
     return this.tagName.toLowerCase() === selector.toLowerCase();
   }
 
   querySelectorAll(selector) {
+    if (selector.startsWith(':scope > ')) {
+      const subSel = selector.replace(':scope > ', '').trim();
+      return this.children.filter(child => child.matches(subSel));
+    }
     const results = [];
     const walk = (node) => {
       for (const child of node.children) {
@@ -120,15 +147,15 @@ if (typeof globalThis.document === 'undefined') {
 export async function runCodeblocksTests() {
   console.log('--- Running Interactive Code Blocks & Tree Tests ---');
 
-  // Test 1: ensureCodeBlockWrappers wraps pre and injects edit-block-button
+  // Test 1: ensureCodeBlockWrappers wraps pre and injects edit-block-button for standard codeblock
   {
     const container = new MockElement('div');
     container.className = 'tabs-content';
 
     const pre = new MockElement('pre');
-    pre.className = 'language-tree';
+    pre.className = 'language-js';
     const code = new MockElement('code');
-    code.textContent = 'root/\n  file1.txt';
+    code.textContent = 'console.log("hello");';
     pre.appendChild(code);
     container.appendChild(pre);
 
@@ -150,7 +177,7 @@ export async function runCodeblocksTests() {
     const item = Object.create(TabContentItem.prototype);
     item.ownerTabs = mockOwnerTabs;
     item.index = 1;
-    item.content = '```tree\nroot/\n  file1.txt\n```';
+    item.content = '```js\nconsole.log("hello");\n```';
 
     item.ensureCodeBlockWrappers(container);
 
@@ -171,14 +198,14 @@ export async function runCodeblocksTests() {
 
     assert.ok(startedEditingWith, 'startEditing should have been called');
     assert.equal(startedEditingWith.tabs, mockOwnerTabs);
-    assert.equal(startedEditingWith.targetInfo.language, 'tree');
+    assert.equal(startedEditingWith.targetInfo.language, 'js');
     assert.equal(startedEditingWith.targetInfo.tabIndex, 0, 'tabIndex must be 0-based for ownerTabs');
     assert.equal(startedEditingWith.targetInfo.blockIndex, 0, 'blockIndex should be 0 for the first code block');
-    assert.ok(startedEditingWith.targetInfo.snippet.includes('root/'));
+    assert.ok(startedEditingWith.targetInfo.snippet.includes('console.log'));
     console.log('✓ ensureCodeBlockWrappers wraps pre and edit button triggers startEditing with language and snippet (0-based)');
   }
 
-  // Test 2: Custom codeblock containers like div.block-language-tree are also wrapped
+  // Test 2: Tree block deduplication - inner edit button prevails, duplicate outer button removed
   {
     const container = new MockElement('div');
     container.className = 'tabs-content';
@@ -186,6 +213,13 @@ export async function runCodeblocksTests() {
     const treeBlock = new MockElement('div');
     treeBlock.className = 'block-language-tree';
     treeBlock.textContent = 'Folder 1\n  Subfolder A';
+
+    // Native/inner edit-block-button located inside the tree block
+    const innerBtn = new MockElement('div');
+    innerBtn.className = 'edit-block-button';
+    innerBtn.setAttribute('aria-label', 'Edit this block');
+    treeBlock.appendChild(innerBtn);
+
     container.appendChild(treeBlock);
 
     let startedEditingWith = null;
@@ -210,18 +244,30 @@ export async function runCodeblocksTests() {
 
     const wrappers = container.querySelectorAll('.tabs-codeblock-wrapper');
     assert.equal(wrappers.length, 1, 'Should wrap block-language-tree container');
-    const editBtn = wrappers[0].querySelector('.edit-block-button');
-    assert.ok(editBtn, 'Should contain edit-block-button');
 
-    editBtn.dispatchEvent({
+    // Simulate an outer duplicate button existed or was added
+    const outerBtn = new MockElement('div');
+    outerBtn.className = 'edit-block-button';
+    wrappers[0].appendChild(outerBtn);
+
+    // Call ensureCodeBlockWrappers again (simulating re-render/idempotent check)
+    item.ensureCodeBlockWrappers(container);
+
+    // The duplicate outer button must be removed, leaving only the inner button
+    const allButtons = wrappers[0].querySelectorAll('.edit-block-button');
+    assert.equal(allButtons.length, 1, 'Duplicate outer button must be removed, leaving exactly 1 button');
+    assert.equal(allButtons[0], innerBtn, 'The button inside the tree block must prevail');
+
+    // Clicking the inner button dispatches edit
+    innerBtn.dispatchEvent({
       type: 'click',
       preventDefault: () => {},
       stopPropagation: () => {}
     });
 
-    assert.ok(startedEditingWith);
+    assert.ok(startedEditingWith, 'Clicking inner button must trigger startEditing');
     assert.equal(startedEditingWith.targetInfo.language, 'tree');
-    console.log('✓ block-language-tree container wrapped and button triggers edit targeting tree');
+    console.log('✓ block-language-tree deduplication: inner button prevails, duplicate outer button removed');
   }
 
   // Test 3: Idempotence - calling ensureCodeBlockWrappers multiple times does not duplicate wrappers or buttons

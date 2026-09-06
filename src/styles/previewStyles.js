@@ -164,6 +164,13 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-codeblock-wrapper:has(.copy-code-button) .edit-block-button {
   inset-inline-end: 36px !important;
 }
+.tabs-codeblock-wrapper:has([class*="block-language-tree"]) > .edit-block-button,
+.tabs-codeblock-wrapper:has(.ascii-tree-wrapper) > .edit-block-button,
+.tabs-codeblock-wrapper:has(.tree-container) > .edit-block-button,
+.tabs-codeblock-wrapper:has(pre.ascii-tree-block) > .edit-block-button,
+.tabs-codeblock-wrapper:has(* .edit-block-button) > .edit-block-button {
+  display: none !important;
+}
 .tabs-editor-modal .tabs-modal-codeblock-preview {
   margin: 0.75em 0 !important;
   position: relative !important;

@@ -17,7 +17,7 @@ export class TabContentItem {
     }
     ensureCodeBlockWrappers(container) {
       if (!container) return;
-      const targets = container.querySelectorAll('pre, [class*="block-language-"], .tree-container');
+      const targets = container.querySelectorAll('pre, [class*="block-language-"], .tree-container, .ascii-tree-wrapper');
       targets.forEach(el => {
         if (el.closest('.tabs-codeblock-wrapper')) {
           return;
@@ -30,9 +30,38 @@ export class TabContentItem {
 
       const wrappers = container.querySelectorAll('.tabs-codeblock-wrapper');
       wrappers.forEach(wrapper => {
+        const isTree = !!(
+          wrapper.querySelector('[class*="block-language-tree"], .ascii-tree-wrapper, .tree-container, pre.ascii-tree-block') ||
+          (wrapper.className && wrapper.className.includes('tree'))
+        );
+
+        // Find any edit-block-button located inside the code block itself
+        const allEditBtns = Array.from(wrapper.querySelectorAll('.edit-block-button'));
+        const innerEditBtns = allEditBtns.filter(btn => btn.parentElement !== wrapper);
+
+        if (isTree || innerEditBtns.length > 0) {
+          // The button inside the tree block must prevail: remove any duplicate outer button
+          const outerBtns = Array.from(wrapper.querySelectorAll(':scope > .edit-block-button'));
+          outerBtns.forEach(btn => btn.remove());
+
+          // Attach handler to the button inside the tree block
+          innerEditBtns.forEach(btn => {
+            if (!btn.__tabsEditBound) {
+              btn.__tabsEditBound = true;
+              btn.addEventListener('click', (evt) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                this.handleCodeBlockEdit(wrapper);
+              }, true);
+            }
+          });
+          return;
+        }
+
         if (wrapper.querySelector('.edit-block-button')) {
           return;
         }
+
         const editBtn = document.createElement('div');
         editBtn.className = 'edit-block-button';
         const label = $("editBlockButton") || "Edit this block";
@@ -70,7 +99,7 @@ export class TabContentItem {
       const langMatch = allClassNames.match(/(?:language|block-language)-([a-zA-Z0-9_-]+)/);
       if (langMatch) {
         lang = langMatch[1];
-      } else if (allClassNames.includes("tree-container")) {
+      } else if (allClassNames.includes("tree-container") || allClassNames.includes("ascii-tree-wrapper") || allClassNames.includes("ascii-tree-block")) {
         lang = "tree";
       }
 
@@ -99,7 +128,7 @@ export class TabContentItem {
       for (let i = 0; i < allWrappers.length; i++) {
         if (allWrappers[i] === wrapper) break;
         const wClasses = [allWrappers[i].className, ...(Array.from(allWrappers[i].querySelectorAll('*')).map(e => e.className || ""))].join(" ");
-        if (lang && (wClasses.includes("block-language-" + lang) || wClasses.includes("language-" + lang) || (lang === "tree" && wClasses.includes("tree-container")))) {
+        if (lang && (wClasses.includes("block-language-" + lang) || wClasses.includes("language-" + lang) || (lang === "tree" && (wClasses.includes("tree-container") || wClasses.includes("ascii-tree-wrapper") || wClasses.includes("ascii-tree-block"))))) {
           langBlockIndex++;
         }
       }
@@ -117,6 +146,18 @@ export class TabContentItem {
       ((this.contentEl = createDiv()),
         (this.contentEl.className = "tabs-content markdown-rendered"));
       this.contentEl.tabsExtendedContentModel = this;
+
+      this.contentEl.addEventListener('click', (evt) => {
+        const editBtn = evt.target && evt.target.closest ? evt.target.closest('.edit-block-button') : null;
+        if (!editBtn) return;
+        const wrapper = editBtn.closest('.tabs-codeblock-wrapper') || editBtn.closest('[class*="block-language-"], .tree-container, .ascii-tree-wrapper, pre');
+        if (wrapper) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.handleCodeBlockEdit(wrapper);
+        }
+      }, true);
+
       let n = new MarkdownRenderChild(this.contentEl);
 
       const safeContent = this.fixNestedFences(t);
