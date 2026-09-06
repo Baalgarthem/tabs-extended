@@ -6,7 +6,7 @@ import {
 import { $ } from '../i18n/index.js';
 
 export class TabsModalEditorEngine {
-  constructor(t, e, i = "") {
+  constructor(t, e, i = "", targetBlockInfo = null) {
     this.historyTools = [];
     this.formatTools = [];
     this.paragraphTools = [];
@@ -211,6 +211,60 @@ export class TabsModalEditorEngine {
                   }
               };
           }
+          if (!this.CodeBlockActionWidget) {
+              this.CodeBlockActionWidget = class extends Re {
+                  constructor(info, startLine, view = null) {
+                      super();
+                      this.info = info || "";
+                      this.startLine = startLine;
+                      this.view = view;
+                  }
+                  eq(other) {
+                      return other.info === this.info && other.startLine === this.startLine;
+                  }
+                  ignoreEvent(event) {
+                      let target = event && event.target;
+                      return !!(target && target.closest && target.closest(".edit-block-button"));
+                  }
+                  toDOM() {
+                      let span = document.createElement("span");
+                      span.className = "edit-block-button cm-codeblock-edit-button";
+                      const label = ($("editBlockButton") || "Edit this block") + (this.info ? ` (${this.info})` : "");
+                      span.setAttribute("aria-label", label);
+                      span.setAttribute("title", label);
+                      span.style.cursor = "pointer";
+                      span.style.pointerEvents = "auto";
+
+                      let iconSpan = document.createElement("span");
+                      iconSpan.className = "cm-codeblock-edit-icon";
+                      iconSpan.textContent = "✏️ ";
+                      span.appendChild(iconSpan);
+
+                      let labelSpan = document.createElement("span");
+                      labelSpan.className = "cm-codeblock-edit-label";
+                      labelSpan.textContent = this.info || "code";
+                      span.appendChild(labelSpan);
+
+                      span.addEventListener("click", (evt) => {
+                          evt.preventDefault();
+                          evt.stopPropagation();
+                          if (!this.view || this.view.destroyed) return;
+                          const doc = this.view.state.doc;
+                          if (this.startLine >= 1 && this.startLine <= doc.lines) {
+                              const targetLineNo = Math.min(doc.lines, this.startLine + 1);
+                              const targetLine = doc.line(targetLineNo);
+                              this.view.focus();
+                              this.view.dispatch({
+                                  selection: { anchor: targetLine.from, head: targetLine.to },
+                                  scrollIntoView: true
+                              });
+                          }
+                      });
+
+                      return span;
+                  }
+              };
+          }
           
           let i = [];
           let fenceStack = [];
@@ -234,6 +288,9 @@ export class TabsModalEditorEngine {
                  if (current && current.type === "code") {
                      if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
                          fenceStack.pop();
+                         i.push(q.line({ class: "cm-codeblock-end cm-codeblock-line" }).range(line.from));
+                     } else {
+                         i.push(q.line({ class: "cm-codeblock-line" }).range(line.from));
                      }
                      continue;
                  }
@@ -263,10 +320,16 @@ export class TabsModalEditorEngine {
                             i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
                       } else {
                          if (current || baseDepth === 1) {
-                             fenceStack.push({ fence: fenceStr, type: "code" });
+                             fenceStack.push({ fence: fenceStr, type: "code", startLine: p, info });
+                             i.push(q.line({ class: "cm-codeblock-start cm-codeblock-line" }).range(line.from));
+                             i.push(q.widget({ widget: new this.CodeBlockActionWidget(info, p, view), side: 1 }).range(line.to));
                          }
                      }
                  }
+                 continue;
+             }
+             if (current && current.type === "code") {
+                 i.push(q.line({ class: "cm-codeblock-line" }).range(line.from));
                  continue;
              }
              let inTabs = (current && current.type === "tabs") || (baseDepth === 1 && fenceStack.length === 0);
@@ -711,7 +774,7 @@ export class TabsModalEditorEngine {
     if (t.settings.showToolbar) this.initToolbar(e);
     // Toolbar callbacks operate on this.view. Bind them only after CodeMirror
     // has been constructed so no handler depends on partially initialized state.
-    this.initEditor(e, i);
+    this.initEditor(e, i, targetBlockInfo);
     if (t.settings.showToolbar) this.registerToolbarEvents();
   }
   addButton(t, e, i) {
@@ -735,7 +798,7 @@ export class TabsModalEditorEngine {
       this.addSplitLine(),
       this.initInsertTool());
   }
-  initEditor(t, e = "") {
+  initEditor(t, e = "", targetBlockInfo = null) {
     ((this.tabseditorEl = t.createDiv()),
       this.tabseditorEl.addClass("tabs-editor"));
     let i = A.updateListener.of((n) => {
@@ -1281,6 +1344,66 @@ export class TabsModalEditorEngine {
       
     if (!window.tabsExtActiveViews) window.tabsExtActiveViews = [];
     if (!window.tabsExtActiveViews.includes(this.view)) window.tabsExtActiveViews.push(this.view);
+    if (targetBlockInfo) {
+      this.focusTargetBlock(targetBlockInfo);
+    }
+  }
+  focusTargetBlock(targetBlockInfo) {
+    if (!this.view || !targetBlockInfo) return;
+    try {
+      const doc = this.view.state.doc;
+      const docText = doc.toString();
+      const { snippet, language } = targetBlockInfo;
+      let targetPos = -1;
+
+      if (language) {
+        const fenceRegex = new RegExp("(?:^|\\n)[ \t]*(`{3,}|~{3,})\\s*" + language.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&") + "\\b", "i");
+        const match = docText.match(fenceRegex);
+        if (match && match.index !== undefined) {
+          targetPos = match[0].startsWith("\n") ? match.index + 1 : match.index;
+        }
+      }
+
+      if (snippet && targetPos === -1) {
+        const cleanSnippet = snippet.trim().split("\n")[0].trim();
+        if (cleanSnippet.length > 2) {
+          const idx = docText.indexOf(cleanSnippet);
+          if (idx !== -1) {
+            targetPos = idx;
+          }
+        }
+      }
+
+      if (targetPos === -1 && (language || snippet)) {
+        const generalFence = docText.search(/(?:^|\\n)[ \t]*(`{3,}|~{3,})/);
+        if (generalFence !== -1) {
+          targetPos = docText[generalFence] === "\n" ? generalFence + 1 : generalFence;
+        }
+      }
+
+      if (targetPos >= 0 && targetPos <= doc.length) {
+        const line = doc.lineAt(targetPos);
+        const nextLineNo = Math.min(doc.lines, line.number + 1);
+        const contentLine = doc.line(nextLineNo);
+
+        this.view.dispatch({
+          selection: this.ModalSelection.cursor(contentLine.from),
+          scrollIntoView: true
+        });
+
+        setTimeout(() => {
+          if (this.view && !this.view.destroyed) {
+            this.view.focus();
+            this.view.dispatch({
+              selection: this.ModalSelection.cursor(contentLine.from),
+              scrollIntoView: true
+            });
+          }
+        }, 60);
+      }
+    } catch (err) {
+      console.warn("Tabs Extended: could not focus target block in modal editor:", err);
+    }
   }
   initHistoryTool() {
     this.historyTools.push(

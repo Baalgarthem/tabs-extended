@@ -1,4 +1,5 @@
 export default {
+  "editBlockButton": "Editar este bloque",
   "menu.addNewTab": "Añadir nueva pestaña",
   "menu.renameTab": "Renombrar pestaña",
   "menu.deleteTab": "Eliminar pestaña",

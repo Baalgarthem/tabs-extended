@@ -9,7 +9,7 @@ export class TabsEditorModal extends Modal {
       (this.plugin = t),
       this.modalEl.addClass("tabs-editor-modal"));
   }
-  startEditing(t) {
+  startEditing(t, targetBlockInfo = null) {
     try {
       this.contentEl.empty();
       this.tabs = t;
@@ -65,7 +65,7 @@ export class TabsEditorModal extends Modal {
           }
       }
       
-      this.editor = new TabsModalEditorEngine(this.plugin, this.contentEl, e);
+      this.editor = new TabsModalEditorEngine(this.plugin, this.contentEl, e, targetBlockInfo);
       this.open();
     } catch (err) {
       console.error("Error in startEditing:", err);

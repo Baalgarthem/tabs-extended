@@ -170,6 +170,84 @@ body.theme-dark .tabs-editor-modal {
 .tabs-editor-modal :is(.callout, pre, .tabs-codeblock-wrapper) { margin-top: 1rem !important; margin-bottom: 1rem !important; }
 .tabs-codeblock-wrapper > pre { margin-top: 0 !important; margin-bottom: 0 !important; }
 
+.tabs-codeblock-wrapper {
+    position: relative !important;
+}
+
+.tabs-codeblock-wrapper .edit-block-button {
+    position: absolute !important;
+    top: var(--size-2-2, 6px) !important;
+    inset-inline-end: var(--size-2-2, 6px) !important;
+    padding: var(--size-2-2, 4px) var(--size-2-3, 6px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0 !important;
+    color: var(--text-muted) !important;
+    border-radius: var(--radius-s, 4px) !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+    background-color: var(--background-primary, rgba(30, 30, 30, 0.6)) !important;
+    border: 1px solid var(--background-modifier-border, transparent) !important;
+    transition: opacity 0.15s ease-in-out, color 0.15s ease-in-out, background-color 0.15s ease-in-out !important;
+}
+
+.tabs-codeblock-wrapper:hover .edit-block-button {
+    opacity: 1 !important;
+}
+
+.tabs-codeblock-wrapper .edit-block-button:hover {
+    color: var(--text-normal) !important;
+    background-color: var(--background-modifier-hover, rgba(128, 128, 128, 0.3)) !important;
+}
+
+.tabs-codeblock-wrapper:has(.copy-code-button) .edit-block-button {
+    inset-inline-end: 36px !important;
+}
+
+/* Modal editor codeblock line styling and action button */
+.tabs-editor-modal .cm-codeblock-line {
+    background-color: color-mix(in srgb, var(--code-background, var(--background-secondary)) 50%, transparent) !important;
+}
+.tabs-editor-modal .cm-codeblock-start {
+    border-top-left-radius: var(--radius-s, 4px) !important;
+    border-top-right-radius: var(--radius-s, 4px) !important;
+}
+.tabs-editor-modal .cm-codeblock-end {
+    border-bottom-left-radius: var(--radius-s, 4px) !important;
+    border-bottom-right-radius: var(--radius-s, 4px) !important;
+}
+.tabs-editor-modal .cm-codeblock-edit-button {
+    padding: 2px 6px !important;
+    margin-left: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    opacity: 0.75 !important;
+    color: var(--text-muted) !important;
+    border-radius: var(--radius-s, 4px) !important;
+    cursor: pointer !important;
+    font-size: 0.75em !important;
+    user-select: none !important;
+    vertical-align: middle !important;
+    background-color: var(--background-secondary, rgba(128, 128, 128, 0.15)) !important;
+    border: 1px solid var(--background-modifier-border, transparent) !important;
+    transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease !important;
+}
+.tabs-editor-modal .cm-codeblock-edit-button:hover {
+    opacity: 1 !important;
+    color: var(--text-normal) !important;
+    background-color: var(--background-modifier-hover) !important;
+}
+.tabs-editor-modal .cm-codeblock-edit-icon {
+    font-size: 1.1em !important;
+    line-height: 1 !important;
+}
+.tabs-editor-modal .cm-codeblock-edit-label {
+    font-weight: 600 !important;
+    text-transform: lowercase !important;
+}
+
 .tabs-delete-button {
     opacity: 0.6 !important;
     transition: opacity 0.2s ease, transform 0.2s ease;

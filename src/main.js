@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, Notice } from 'obsidian';
+import { Plugin, MarkdownView, Notice, setIcon } from 'obsidian';
 import { Tabs } from './core/model.js';
 import { TabsExtendedSettingTab } from './settings/SettingTab.js';
 import { DEFAULT_SETTINGS } from './settings/defaultSettings.js';
@@ -17,14 +17,49 @@ export default class TabsExtendedPlugin extends Plugin {
     this.lastTabsCache.set("/", 0);
 
     this.registerMarkdownPostProcessor((el, ctx) => {
-      const pres = el.querySelectorAll('.tabs-container pre, .tabs-content pre');
-      pres.forEach(pre => {
-        if (pre.parentElement && !pre.parentElement.classList.contains('tabs-codeblock-wrapper')) {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'tabs-codeblock-wrapper';
-          pre.parentNode.insertBefore(wrapper, pre);
-          wrapper.appendChild(pre);
+      const targets = el.querySelectorAll('.tabs-container pre, .tabs-content pre, .tabs-container [class*="block-language-"], .tabs-content [class*="block-language-"], .tabs-container .tree-container, .tabs-content .tree-container');
+      targets.forEach(target => {
+        if (target.closest('.tabs-codeblock-wrapper')) {
+          return;
         }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tabs-codeblock-wrapper';
+        target.parentNode.insertBefore(wrapper, target);
+        wrapper.appendChild(target);
+      });
+
+      const wrappers = el.querySelectorAll('.tabs-container .tabs-codeblock-wrapper, .tabs-content .tabs-codeblock-wrapper');
+      wrappers.forEach(wrapper => {
+        if (wrapper.querySelector('.edit-block-button')) {
+          return;
+        }
+        const editBtn = document.createElement('div');
+        editBtn.className = 'edit-block-button';
+        const label = $("editBlockButton") || "Edit this block";
+        editBtn.setAttribute('aria-label', label);
+        editBtn.setAttribute('title', label);
+        try {
+          (0, setIcon)(editBtn, "code");
+        } catch (err) {
+          editBtn.textContent = "</>";
+        }
+
+        editBtn.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          const contentEl = wrapper.closest('.tabs-content');
+          if (contentEl && contentEl.tabsExtendedContentModel && typeof contentEl.tabsExtendedContentModel.handleCodeBlockEdit === "function") {
+            contentEl.tabsExtendedContentModel.handleCodeBlockEdit(wrapper);
+          } else {
+            const tabsContainer = wrapper.closest('.tabs-container');
+            const ownerTabs = tabsContainer ? (tabsContainer.tabsExtendedModel || tabsContainer._tabsInstance) : null;
+            if (ownerTabs && ownerTabs.plugin && ownerTabs.plugin.tabsEditorModal) {
+              ownerTabs.plugin.tabsEditorModal.startEditing(ownerTabs);
+            }
+          }
+        });
+
+        wrapper.appendChild(editBtn);
       });
     });
 

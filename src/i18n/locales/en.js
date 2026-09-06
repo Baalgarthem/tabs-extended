@@ -1,4 +1,5 @@
 export default {
+  "editBlockButton": "Edit this block",
   "settings.separator.name": "Separator",
   "settings.separator.desc": "The symbols used to split each tab.",
   "settings.defaultTabTitle.name": "Default tab title",

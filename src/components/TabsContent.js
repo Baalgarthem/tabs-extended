@@ -1,4 +1,4 @@
-import { MarkdownRenderer, MarkdownRenderChild } from 'obsidian';
+import { MarkdownRenderer, MarkdownRenderChild, setIcon } from 'obsidian';
 import { tabsExtendedFindDirectNestedBlocks, tabsExtendedConfiguredKeyword, tabsExtendedNormalizeSource } from '../core/parser.js';
 import { augmentContentWithDocumentDefinitions, extractReferenceDefinitions, setupLinkInteractions } from '../links/index.js';
 import { $ } from '../i18n/index.js';
@@ -17,15 +17,71 @@ export class TabContentItem {
     }
     ensureCodeBlockWrappers(container) {
       if (!container) return;
-      const pres = container.querySelectorAll('pre');
-      pres.forEach(pre => {
-        if (pre.parentElement && !pre.parentElement.classList.contains('tabs-codeblock-wrapper')) {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'tabs-codeblock-wrapper';
-          pre.parentNode.insertBefore(wrapper, pre);
-          wrapper.appendChild(pre);
+      const targets = container.querySelectorAll('pre, [class*="block-language-"], .tree-container');
+      targets.forEach(el => {
+        if (el.closest('.tabs-codeblock-wrapper')) {
+          return;
         }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tabs-codeblock-wrapper';
+        el.parentNode.insertBefore(wrapper, el);
+        wrapper.appendChild(el);
       });
+
+      const wrappers = container.querySelectorAll('.tabs-codeblock-wrapper');
+      wrappers.forEach(wrapper => {
+        if (wrapper.querySelector('.edit-block-button')) {
+          return;
+        }
+        const editBtn = document.createElement('div');
+        editBtn.className = 'edit-block-button';
+        const label = $("editBlockButton") || "Edit this block";
+        editBtn.setAttribute('aria-label', label);
+        editBtn.setAttribute('title', label);
+        try {
+          (0, setIcon)(editBtn, "code");
+        } catch (err) {
+          editBtn.textContent = "</>";
+        }
+
+        editBtn.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.handleCodeBlockEdit(wrapper);
+        });
+
+        wrapper.appendChild(editBtn);
+      });
+    }
+    handleCodeBlockEdit(wrapper) {
+      if (!this.ownerTabs || !this.ownerTabs.plugin) return;
+      let codeSnippet = "";
+      let lang = "";
+
+      const codeEl = wrapper.querySelector('code') || wrapper.querySelector('pre') || wrapper;
+      if (codeEl) {
+        codeSnippet = codeEl.textContent || "";
+      }
+
+      const allClassNames = [wrapper.className, ...(Array.from(wrapper.querySelectorAll('*')).map(e => e.className || ""))].join(" ");
+      const langMatch = allClassNames.match(/(?:language|block-language)-([a-zA-Z0-9_-]+)/);
+      if (langMatch) {
+        lang = langMatch[1];
+      }
+
+      if (typeof this.ownerTabs.setCurrentIndex === "function") {
+        this.ownerTabs.setCurrentIndex(this.index);
+      } else {
+        this.ownerTabs.currentIndex = this.index;
+      }
+
+      if (this.ownerTabs.plugin.tabsEditorModal) {
+        this.ownerTabs.plugin.tabsEditorModal.startEditing(this.ownerTabs, {
+          snippet: codeSnippet,
+          language: lang,
+          tabIndex: this.index
+        });
+      }
     }
     createTabContentEl(t, e, i) {
       ((this.contentEl = createDiv()),
