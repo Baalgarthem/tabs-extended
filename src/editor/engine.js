@@ -3,6 +3,7 @@ import {
   pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS,
   Zt, Rt, Kn, Wd, dd, Na
 } from '../vendor/codemirror-bundle.js';
+import { MarkdownRenderer, setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
 
 export class TabsModalEditorEngine {
@@ -29,6 +30,153 @@ export class TabsModalEditorEngine {
       "i",
     );
     this.modalTabsInfoRegex = modalTabsInfoRegex;
+
+    class CodeBlockLivePreviewWidget extends Re {
+      constructor(plugin, rawText, language, from, to) {
+        super();
+        this.plugin = plugin;
+        this.rawText = rawText;
+        this.language = language;
+        this.from = from;
+        this.to = to;
+      }
+      eq(other) {
+        return other.rawText === this.rawText && other.from === this.from && other.to === this.to;
+      }
+      ignoreEvent(event) {
+        return true;
+      }
+      toDOM(view) {
+        const container = document.createElement("div");
+        container.className = "cm-embed-block markdown-rendered tabs-codeblock-wrapper tabs-modal-codeblock-preview";
+
+        const editBtn = document.createElement("div");
+        editBtn.className = "edit-block-button";
+        const label = $("editBlockButton") || "Edit this block";
+        editBtn.setAttribute("aria-label", label);
+        editBtn.setAttribute("title", label);
+        try {
+          (0, setIcon)(editBtn, "code");
+        } catch (e) {
+          editBtn.textContent = "</>";
+        }
+
+        const triggerEdit = (evt) => {
+          if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+          }
+          const firstLineBreak = this.rawText.indexOf("\n");
+          const targetPos = firstLineBreak !== -1 ? this.from + firstLineBreak + 1 : this.from;
+          view.dispatch({
+            selection: { anchor: targetPos },
+            scrollIntoView: true
+          });
+          view.focus();
+        };
+
+        editBtn.addEventListener("click", triggerEdit);
+        container.appendChild(editBtn);
+
+        const contentEl = document.createElement("div");
+        contentEl.className = "tabs-modal-codeblock-content";
+        container.appendChild(contentEl);
+
+        container.addEventListener("click", (evt) => {
+          if (evt.target.closest("a, .internal-link, .edit-block-button")) return;
+          triggerEdit(evt);
+        });
+
+        try {
+          const activeFile = this.plugin && this.plugin.app && this.plugin.app.workspace ? this.plugin.app.workspace.getActiveFile() : null;
+          const sourcePath = activeFile ? activeFile.path : "";
+          MarkdownRenderer.render(
+            this.plugin.app,
+            this.rawText,
+            contentEl,
+            sourcePath,
+            this.plugin
+          );
+        } catch (err) {
+          console.error("Tabs Extended: error rendering code block preview in modal:", err);
+          contentEl.textContent = this.rawText;
+        }
+
+        return container;
+      }
+    }
+
+    this.codeBlockLivePreviewPlugin = Zt.fromClass(
+      class {
+        constructor(view) {
+          this.decorations = this.getDeco(view);
+        }
+        update(update) {
+          if (update.docChanged || update.selectionSet) {
+            this.decorations = this.getDeco(update.view);
+          }
+        }
+        getDeco(view) {
+          let deco = [];
+          let doc = view.state.doc;
+          let selection = view.state.selection;
+          let fenceStack = [];
+          let modalTabsRegex = modalTabsInfoRegex;
+
+          for (let p = 1; p <= doc.lines; p++) {
+            let line = doc.line(p);
+            let text = line.text.trim();
+            let match = text.match(/^(`{3,}|~{3,})(.*)/);
+
+            if (match) {
+              let fenceStr = match[1];
+              let info = match[2].trim();
+              let current = fenceStack.length > 0 ? fenceStack[fenceStack.length - 1] : null;
+
+              if (current && current.type === "code") {
+                if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0]) {
+                  let popped = fenceStack.pop();
+                  let startLine = doc.line(popped.lineNo);
+                  let endLine = line;
+
+                  let isCursorInside = selection.ranges.some(
+                    (r) => Math.max(r.from, startLine.from) <= Math.min(r.to, endLine.to)
+                  );
+
+                  if (!isCursorInside) {
+                    let rawText = doc.sliceString(startLine.from, endLine.to);
+                    deco.push(
+                      q.replace({
+                        widget: new CodeBlockLivePreviewWidget(t, rawText, popped.info, startLine.from, endLine.to),
+                        block: true
+                      }).range(startLine.from, endLine.to)
+                    );
+                  }
+                }
+                continue;
+              }
+
+              if (current && current.type === "tabs") {
+                if (fenceStr.length >= current.fence.length && fenceStr[0] === current.fence[0] && !modalTabsRegex.test(info)) {
+                  fenceStack.pop();
+                }
+                continue;
+              }
+
+              if (modalTabsRegex.test(info)) {
+                fenceStack.push({ fence: fenceStr, type: "tabs", lineNo: p, info });
+              } else {
+                fenceStack.push({ fence: fenceStr, type: "code", lineNo: p, info });
+              }
+            }
+          }
+
+          return q.set(deco, true);
+        }
+      },
+      { decorations: (v) => v.decorations }
+    );
+
     this.activeLineHighlighter = Zt.fromClass(
       class {
         constructor(t) {
@@ -211,61 +359,6 @@ export class TabsModalEditorEngine {
                   }
               };
           }
-          if (!this.CodeBlockActionWidget) {
-              this.CodeBlockActionWidget = class extends Re {
-                  constructor(info, startLine, view = null) {
-                      super();
-                      this.info = info || "";
-                      this.startLine = startLine;
-                      this.view = view;
-                  }
-                  eq(other) {
-                      return other.info === this.info && other.startLine === this.startLine;
-                  }
-                  ignoreEvent(event) {
-                      let target = event && event.target;
-                      return !!(target && target.closest && target.closest(".edit-block-button"));
-                  }
-                  toDOM() {
-                      let span = document.createElement("span");
-                      span.className = "edit-block-button cm-codeblock-edit-button";
-                      const label = ($("editBlockButton") || "Edit this block") + (this.info ? ` (${this.info})` : "");
-                      span.setAttribute("aria-label", label);
-                      span.setAttribute("title", label);
-                      span.style.cursor = "pointer";
-                      span.style.pointerEvents = "auto";
-
-                      let iconSpan = document.createElement("span");
-                      iconSpan.className = "cm-codeblock-edit-icon";
-                      iconSpan.textContent = "✏️ ";
-                      span.appendChild(iconSpan);
-
-                      let labelSpan = document.createElement("span");
-                      labelSpan.className = "cm-codeblock-edit-label";
-                      labelSpan.textContent = this.info || "code";
-                      span.appendChild(labelSpan);
-
-                      span.addEventListener("click", (evt) => {
-                          evt.preventDefault();
-                          evt.stopPropagation();
-                          if (!this.view || this.view.destroyed) return;
-                          const doc = this.view.state.doc;
-                          if (this.startLine >= 1 && this.startLine <= doc.lines) {
-                              const targetLineNo = Math.min(doc.lines, this.startLine + 1);
-                              const targetLine = doc.line(targetLineNo);
-                              this.view.focus();
-                              this.view.dispatch({
-                                  selection: { anchor: targetLine.from, head: targetLine.to },
-                                  scrollIntoView: true
-                              });
-                          }
-                      });
-
-                      return span;
-                  }
-              };
-          }
-          
           let i = [];
           let fenceStack = [];
           let tabDepth = 0;
@@ -288,9 +381,6 @@ export class TabsModalEditorEngine {
                  if (current && current.type === "code") {
                      if (fenceStr.length >= current.fence.length && fenceStr.startsWith(current.fence[0])) {
                          fenceStack.pop();
-                         i.push(q.line({ class: "cm-codeblock-end cm-codeblock-line" }).range(line.from));
-                     } else {
-                         i.push(q.line({ class: "cm-codeblock-line" }).range(line.from));
                      }
                      continue;
                  }
@@ -320,16 +410,10 @@ export class TabsModalEditorEngine {
                             i.push(q.widget({ widget: new this.DepthWidget(startText, depth, view, p, "block", t.settings.split, baseDepth), side: 1 }).range(line.to));
                       } else {
                          if (current || baseDepth === 1) {
-                             fenceStack.push({ fence: fenceStr, type: "code", startLine: p, info });
-                             i.push(q.line({ class: "cm-codeblock-start cm-codeblock-line" }).range(line.from));
-                             i.push(q.widget({ widget: new this.CodeBlockActionWidget(info, p, view), side: 1 }).range(line.to));
+                             fenceStack.push({ fence: fenceStr, type: "code" });
                          }
                      }
                  }
-                 continue;
-             }
-             if (current && current.type === "code") {
-                 i.push(q.line({ class: "cm-codeblock-line" }).range(line.from));
                  continue;
              }
              let inTabs = (current && current.type === "tabs") || (baseDepth === 1 && fenceStack.length === 0);
@@ -820,6 +904,7 @@ export class TabsModalEditorEngine {
       this.nestedTabsHighlighter,
       this.activeNestedTabsHighlighter,
       this.activeNestedTabsInvariantTheme,
+      this.codeBlockLivePreviewPlugin,
       ud,
       i,
     ];

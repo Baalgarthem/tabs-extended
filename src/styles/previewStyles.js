@@ -164,4 +164,14 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-codeblock-wrapper:has(.copy-code-button) .edit-block-button {
   inset-inline-end: 36px !important;
 }
+.tabs-editor-modal .tabs-modal-codeblock-preview {
+  margin: 0.75em 0 !important;
+  position: relative !important;
+  cursor: default !important;
+  user-select: text !important;
+  clear: both !important;
+}
+.tabs-editor-modal .tabs-modal-codeblock-content {
+  overflow: auto !important;
+}
 `;

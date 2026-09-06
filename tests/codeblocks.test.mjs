@@ -268,5 +268,34 @@ export function runCodeblocksTests() {
     console.log('✓ Target code block location resolution verified');
   }
 
+  // Test 5: Modal editor codeblock live preview detection and cursor intersection logic
+  {
+    const lines = [
+      '# Main Tab',
+      '',
+      '```tree',
+      'root',
+      '  child',
+      '```',
+      '',
+      'End of tab'
+    ];
+
+    const docText = lines.join('\n');
+    const startLineFrom = docText.indexOf('```tree');
+    const endLineTo = docText.indexOf('```', startLineFrom + 7) + 3;
+
+    // Cursor at line 1 (outside block)
+    const cursorOutside = 5;
+    const isInsideOutside = cursorOutside >= startLineFrom && cursorOutside <= endLineTo;
+    assert.equal(isInsideOutside, false, 'Cursor outside code block should allow live preview widget replacement');
+
+    // Cursor inside block
+    const cursorInside = docText.indexOf('root');
+    const isInsideInside = cursorInside >= startLineFrom && cursorInside <= endLineTo;
+    assert.equal(isInsideInside, true, 'Cursor inside code block must reveal raw code for editing');
+    console.log('✓ Modal editor codeblock live preview cursor intersection logic verified');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }
