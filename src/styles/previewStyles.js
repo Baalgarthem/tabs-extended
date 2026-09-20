@@ -181,4 +181,17 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-editor-modal .tabs-modal-codeblock-content {
   overflow: auto !important;
 }
+/* Suppress edit and copy buttons inside diagram popups */
+.popup-overlay .edit-block-button,
+.popup-content .edit-block-button,
+.popup-overlay .copy-code-button,
+.popup-content .copy-code-button,
+.popup-overlay .tabs-codeblock-wrapper .edit-block-button,
+.popup-content .tabs-codeblock-wrapper .edit-block-button,
+:is(.popup-overlay, .popup-content) :is(.edit-block-button, .copy-code-button, [class*="edit-block-button"]) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 `;

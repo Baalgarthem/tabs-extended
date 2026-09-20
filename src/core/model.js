@@ -783,7 +783,19 @@ export class Tabs extends MarkdownRenderChild {
     );
     if (completedLastSection == null) return false;
     currentSections[lastSectionIndex] = completedLastSection;
-    const firstInsertedIndex = currentSections.length;
+
+    // Handle case where the tabs block ends with an empty separator (dangling split line)
+    const splitLine = this.split.trim();
+    const lastSection = currentSections[lastSectionIndex];
+    const isEmptySeparator = lastSection.trimEnd().endsWith(splitLine) &&
+      lastSection.replace(/\r?\n/g, "").trim() === splitLine;
+    let firstInsertedIndex = currentSections.length;
+    if (isEmptySeparator && safeSections.length > 0) {
+      // Replace the empty separator with the first new tab source
+      currentSections[lastSectionIndex] = safeSections.shift();
+      firstInsertedIndex = currentSections.length; // after replacement
+    }
+
     const nextRawText = tabsExtendedJoinTabSections(
       analyzed.prefix,
       currentSections.concat(safeSections),

@@ -1,6 +1,6 @@
 {
   "name": "obsidian-tabs-extended",
-  "version": "1.12.0",
+  "version": "1.12.2",
   "description": "Tabs Extended plugin for Obsidian",
   "main": "main.js",
   "scripts": {
@@ -20,7 +20,8 @@
   "devDependencies": {
     "acorn": "^8.12.1",
     "acorn-walk": "^8.3.3",
-    "esbuild": "^0.25.12"
+    "esbuild": "^0.25.12",
+    "inquirer": "^14.2.2"
   },
   "dependencies": {
     "obsidian": "latest"

@@ -149,11 +149,15 @@ class MockElement {
 // Global document mock for Node
 if (typeof globalThis.document === 'undefined') {
   globalThis.document = {
+    documentElement: { style: {} },
     createElement: (tag) => {
       const el = new MockElement(tag);
       return el;
     }
   };
+} else {
+  if (!globalThis.document.documentElement) globalThis.document.documentElement = { style: {} };
+  if (!globalThis.document.documentElement.style) globalThis.document.documentElement.style = {};
 }
 
 export async function runCodeblocksTests() {

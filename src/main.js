@@ -17,8 +17,10 @@ export default class TabsExtendedPlugin extends Plugin {
     this.lastTabsCache.set("/", 0);
 
     this.registerMarkdownPostProcessor((el, ctx) => {
+      if (el.closest && el.closest('.popup-content, .popup-overlay')) return;
       const targets = el.querySelectorAll('.tabs-container pre, .tabs-content pre, .tabs-container [class*="block-language-"], .tabs-content [class*="block-language-"], .tabs-container .tree-container, .tabs-content .tree-container, .tabs-container .ascii-tree-wrapper, .tabs-content .ascii-tree-wrapper');
       targets.forEach(target => {
+        if (target.closest && target.closest('.popup-content, .popup-overlay')) return;
         if (target.closest('.tabs-codeblock-wrapper')) {
           return;
         }
@@ -30,6 +32,7 @@ export default class TabsExtendedPlugin extends Plugin {
 
       const wrappers = el.querySelectorAll('.tabs-container .tabs-codeblock-wrapper, .tabs-content .tabs-codeblock-wrapper');
       wrappers.forEach(wrapper => {
+        if (wrapper.closest && wrapper.closest('.popup-content, .popup-overlay')) return;
         const isTree = !!(
           wrapper.querySelector('[class*="block-language-tree"], .ascii-tree-wrapper, .tree-container, pre.ascii-tree-block') ||
           (wrapper.className && wrapper.className.includes('tree'))

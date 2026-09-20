@@ -1,10 +1,124 @@
 import {
-  B, to, no, be, I, Re, at, it, An, re, tr, kw, z, In, ra, x, If, hr, en, ut, on, wr, At, ev, cd, fd, TO, is, fs, un, El,
+  B, to, no, be, I, Re, at, it, An, re, tr, kw, z, In, ra, x, If, hr, en, ut, on, At, ev, cd, fd, TO, is, fs, un, El,
   pt, k, q, Z, A, Zr, Be, ud, $O, PO, Qy, ky, wy, yy, xO, vO, Dr, fO, cO, fy, hO, lO, cy, aO, hy, Pl, oO, eO, sy, Lr, kl, Lt, xl, dn, vl, fn, Wp, iy, ey, qp, Np, Yp, Mr, Ap, Cp, Er, $p, Pp, Qp, JS, ln, bp, gp, GS, E, Yt, dl, ul, fl, cs, rp, BS, DS, IS, LS, RS, sS, Fe, nS,
-  Zt, Rt, Kn, Wd, dd, Na, Wt
+  Zt, Rt, Wd, dd, Na, Wt
 } from '../vendor/codemirror-bundle.js';
 import { MarkdownRenderer, setIcon } from 'obsidian';
 import { $ } from '../i18n/index.js';
+
+const modalHistoryEffect = pt.define();
+
+const modalHistoryField = Wt.define({
+  create() {
+    return {
+      done: [],
+      undone: [],
+      lastTime: 0
+    };
+  },
+  update(hist, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(modalHistoryEffect)) {
+        const { type, item } = effect.value;
+        if (type === 'undo') {
+          return {
+            done: hist.done.slice(0, -1),
+            undone: [...hist.undone, item],
+            lastTime: 0
+          };
+        } else if (type === 'redo') {
+          return {
+            done: [...hist.done, item],
+            undone: hist.undone.slice(0, -1),
+            lastTime: 0
+          };
+        }
+      }
+    }
+
+    if (!tr.docChanged) return hist;
+
+    const now = Date.now();
+    const inverted = tr.changes.invert(tr.startState.doc);
+    const lastItem = hist.done[hist.done.length - 1];
+
+    // Detect if this is single-character typing/deletion for coalescing
+    const isTyping = tr.changes.inserted.length > 0 &&
+      tr.changes.inserted.every(ins => ins.length <= 1 && !ins.text.some(t => t.includes('\n')));
+    const isSmallDeletion = tr.changes.inserted.length === 0 &&
+      (tr.changes.length - tr.changes.newLength === 1);
+
+    const canCoalesce = lastItem &&
+      (now - hist.lastTime < 500) &&
+      ((lastItem.isTyping && isTyping) || (lastItem.isSmallDeletion && isSmallDeletion));
+
+    let newDone;
+    if (canCoalesce) {
+      const mergedItem = {
+        changes: lastItem.changes.compose(tr.changes),
+        inverted: inverted.compose(lastItem.inverted),
+        startSelection: lastItem.startSelection,
+        newSelection: tr.selection,
+        time: now,
+        isTyping: lastItem.isTyping && isTyping,
+        isSmallDeletion: lastItem.isSmallDeletion && isSmallDeletion
+      };
+      newDone = hist.done.slice(0, -1).concat(mergedItem);
+    } else {
+      const newItem = {
+        changes: tr.changes,
+        inverted: inverted,
+        startSelection: tr.startState.selection,
+        newSelection: tr.selection,
+        time: now,
+        isTyping,
+        isSmallDeletion
+      };
+      newDone = hist.done.concat(newItem);
+      if (newDone.length > 300) {
+        newDone = newDone.slice(newDone.length - 300);
+      }
+    }
+
+    return {
+      done: newDone,
+      undone: [],
+      lastTime: now
+    };
+  }
+});
+
+export function modalUndo(view) {
+  if (!view || !view.state) return false;
+  const hist = view.state.field(modalHistoryField, false);
+  if (!hist || hist.done.length === 0) return false;
+  const item = hist.done[hist.done.length - 1];
+  view.dispatch({
+    changes: item.inverted,
+    selection: item.startSelection,
+    effects: modalHistoryEffect.of({ type: 'undo', item }),
+    scrollIntoView: true,
+    userEvent: 'undo'
+  });
+  return true;
+}
+
+export function modalRedo(view) {
+  if (!view || !view.state) return false;
+  const hist = view.state.field(modalHistoryField, false);
+  if (!hist || hist.undone.length === 0) return false;
+  const item = hist.undone[hist.undone.length - 1];
+  view.dispatch({
+    changes: item.changes,
+    selection: item.newSelection,
+    effects: modalHistoryEffect.of({ type: 'redo', item }),
+    scrollIntoView: true,
+    userEvent: 'redo'
+  });
+  return true;
+}
+
+export { modalHistoryField };
 
 export class TabsModalEditorEngine {
   constructor(t, e, i = "", targetBlockInfo = null) {
@@ -123,8 +237,8 @@ export class TabsModalEditorEngine {
             triggerEdit(evt);
             return;
           }
-          // 2. If clicking on links or action buttons (e.g. sort, next layout, fullscreen), allow them to work
-          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+          // 2. If clicking on links or action buttons (e.g. sort, next layout, fullscreen, mermaid-popup), allow them to work
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn, .mermaid-popup-button, .mermaid-popup-button-reading, [class*='popup-button']")) {
             return;
           }
           // 3. Otherwise, clicking anywhere on the code block with the cursor opens it to modify it
@@ -139,7 +253,7 @@ export class TabsModalEditorEngine {
             triggerEdit(evt);
             return;
           }
-          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn")) {
+          if (evt.target && evt.target.closest && evt.target.closest("a, .internal-link, button, .ascii-tree-action-btn, .mermaid-popup-button, .mermaid-popup-button-reading, [class*='popup-button']")) {
             return;
           }
           triggerEdit(evt);
@@ -979,15 +1093,15 @@ export class TabsModalEditorEngine {
       },
       {
         key: "Mod-z",
-        run: (t) => (wr({ state: t.state, dispatch: (e) => t.dispatch(e) }), !0),
+        run: () => (this.undo(), !0),
       },
       {
         key: "Mod-y",
-        run: (t) => (Kn({ state: t.state, dispatch: (e) => t.dispatch(e) }), !0),
+        run: () => (this.redo(), !0),
       },
       {
         key: "Mod-Shift-z",
-        run: (t) => (Kn({ state: t.state, dispatch: (e) => t.dispatch(e) }), !0),
+        run: () => (this.redo(), !0),
       },
     ];
     this.plugin = t;
@@ -1031,11 +1145,25 @@ export class TabsModalEditorEngine {
       }
     });
     let exts = [
+      modalHistoryField,
       cd,
       fd,
       $O(),
       Zr(),
       Be.of(this.basicMDKeymap),
+      A.domEventHandlers({
+        beforeinput: (event, view) => {
+          if (event.inputType === "historyUndo") {
+            event.preventDefault();
+            return modalUndo(view);
+          }
+          if (event.inputType === "historyRedo") {
+            event.preventDefault();
+            return modalRedo(view);
+          }
+          return false;
+        }
+      }),
       this.activeLineHighlighter,
       this.nestedTabsHighlighter,
       this.activeNestedTabsHighlighter,
@@ -1640,6 +1768,30 @@ export class TabsModalEditorEngine {
                 key: "Mod-Backspace",
                 mac: "Alt-Backspace",
                 run: protectStructuralBackspace
+            },
+            {
+                key: "Mod-z",
+                run: (view) => {
+                    modalUndo(view);
+                    return true;
+                },
+                preventDefault: true
+            },
+            {
+                key: "Mod-y",
+                run: (view) => {
+                    modalRedo(view);
+                    return true;
+                },
+                preventDefault: true
+            },
+            {
+                key: "Mod-Shift-z",
+                run: (view) => {
+                    modalRedo(view);
+                    return true;
+                },
+                preventDefault: true
             }
         ])));
     }
@@ -1662,6 +1814,12 @@ export class TabsModalEditorEngine {
     if (targetBlockInfo) {
       this.focusTargetBlock(targetBlockInfo);
     }
+  }
+  undo() {
+    return modalUndo(this.view);
+  }
+  redo() {
+    return modalRedo(this.view);
   }
   focusTargetBlock(targetBlockInfo) {
     if (!this.view || !targetBlockInfo) return;
@@ -1943,12 +2101,14 @@ export class TabsModalEditorEngine {
     }
   }
   registerHistoryToolEvents() {
-    (this.historyTools[0].onClick(() => {
-      wr({ state: this.view.state, dispatch: (t) => this.view.dispatch(t) });
-    }),
-      this.historyTools[1].onClick(() => {
-        Kn({ state: this.view.state, dispatch: (t) => this.view.dispatch(t) });
-      }));
+    this.historyTools[0].onClick(() => {
+      this.undo();
+      if (this.view) this.view.focus();
+    });
+    this.historyTools[1].onClick(() => {
+      this.redo();
+      if (this.view) this.view.focus();
+    });
   }
   registerFormatToolEvents() {
     (this.formatTools[0].onClick(() => {
