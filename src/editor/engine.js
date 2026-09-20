@@ -120,6 +120,16 @@ export function modalRedo(view) {
 
 export { modalHistoryField };
 
+export const modalCodeBlockRenderCache = new Map();
+export const setModalCodeBlockRenderCache = (key, val) => {
+  if (modalCodeBlockRenderCache.size > 100) {
+    const firstKey = modalCodeBlockRenderCache.keys().next().value;
+    modalCodeBlockRenderCache.delete(firstKey);
+  }
+  modalCodeBlockRenderCache.set(key, val);
+};
+export const clearModalCodeBlockRenderCache = () => modalCodeBlockRenderCache.clear();
+
 export class TabsModalEditorEngine {
   constructor(t, e, i = "", targetBlockInfo = null) {
     this.historyTools = [];
@@ -144,15 +154,6 @@ export class TabsModalEditorEngine {
       "i",
     );
     this.modalTabsInfoRegex = modalTabsInfoRegex;
-
-    const modalCodeBlockRenderCache = new Map();
-    const setModalCodeBlockRenderCache = (key, val) => {
-      if (modalCodeBlockRenderCache.size > 50) {
-        const firstKey = modalCodeBlockRenderCache.keys().next().value;
-        modalCodeBlockRenderCache.delete(firstKey);
-      }
-      modalCodeBlockRenderCache.set(key, val);
-    };
 
     class CodeBlockLivePreviewWidget extends Re {
       constructor(plugin, rawText, language, from, to) {
@@ -299,25 +300,29 @@ export class TabsModalEditorEngine {
 
           if (modalCodeBlockRenderCache.has(this.rawText)) {
             contentEl.innerHTML = modalCodeBlockRenderCache.get(this.rawText);
-          }
-
-          const renderPromise = MarkdownRenderer.render(
-            this.plugin.app,
-            this.rawText,
-            contentEl,
-            sourcePath,
-            this.plugin
-          );
-          Promise.resolve(renderPromise).then(() => {
-            setModalCodeBlockRenderCache(this.rawText, contentEl.innerHTML);
             const innerBtn = contentEl.querySelector(".edit-block-button");
             if (innerBtn && editBtn.parentElement === container) {
               editBtn.remove();
             }
-            if (view && typeof view.requestMeasure === "function") {
-              view.requestMeasure();
-            }
-          }).catch(() => {});
+          } else {
+            const renderPromise = MarkdownRenderer.render(
+              this.plugin.app,
+              this.rawText,
+              contentEl,
+              sourcePath,
+              this.plugin
+            );
+            Promise.resolve(renderPromise).then(() => {
+              setModalCodeBlockRenderCache(this.rawText, contentEl.innerHTML);
+              const innerBtn = contentEl.querySelector(".edit-block-button");
+              if (innerBtn && editBtn.parentElement === container) {
+                editBtn.remove();
+              }
+              if (view && typeof view.requestMeasure === "function") {
+                view.requestMeasure();
+              }
+            }).catch(() => {});
+          }
         } catch (err) {
           console.error("Tabs Extended: error rendering code block preview in modal:", err);
           contentEl.textContent = this.rawText;
@@ -427,7 +432,7 @@ export class TabsModalEditorEngine {
     };
     this.getDocumentCodeBlocks = getDocumentCodeBlocks;
 
-    const buildCodeBlockPreviewDeco = (state) => {
+    const buildCodeBlockPreviewDeco = (state, prevDeco) => {
       if (this.plugin.settings && this.plugin.settings.renderCodeBlocksInModal === false) {
         return q.none;
       }
@@ -438,9 +443,35 @@ export class TabsModalEditorEngine {
 
       for (let block of blocks) {
         if (block.type === "code") {
-          let isCursorInside = selection.ranges.some(
-            (r) => Math.max(r.from, block.from) <= Math.min(r.to, block.to)
-          );
+          let wasWidget = false;
+          if (prevDeco && typeof prevDeco.between === "function") {
+            try {
+              prevDeco.between(block.from, block.to, (f, t, v) => {
+                if (v && v.spec && v.spec.widget) {
+                  wasWidget = true;
+                  return false;
+                }
+              });
+            } catch (e) {}
+          }
+
+          let isCursorInside = selection.ranges.some((r) => {
+            if (r.empty) {
+              if (wasWidget) {
+                // If it was already rendered as a widget, entering requires cursor strictly inside.
+                // Positions at block.from or block.to are outer boundaries (e.g. arrow keys from adjacent lines)
+                // and must NOT trigger unfolding to raw code.
+                return r.from > block.from && r.to < block.to;
+              } else {
+                // If it was already unfolded in raw editing mode, keep it open while cursor is within the block boundaries.
+                return r.from >= block.from && r.to <= block.to;
+              }
+            } else {
+              // Active range selection: must strictly overlap characters inside the code block.
+              // Adjacent selections ending at block.from or starting at block.to do not unfold it.
+              return Math.max(r.from, block.from) < Math.min(r.to, block.to);
+            }
+          });
 
           if (!isCursorInside) {
             let rawText = doc.sliceString(block.from, block.to);
@@ -458,10 +489,10 @@ export class TabsModalEditorEngine {
     };
 
     this.codeBlockLivePreviewField = Wt.define({
-      create: (state) => buildCodeBlockPreviewDeco(state),
+      create: (state) => buildCodeBlockPreviewDeco(state, null),
       update: (deco, tr) => {
         if (tr.docChanged || tr.selection) {
-          return buildCodeBlockPreviewDeco(tr.state);
+          return buildCodeBlockPreviewDeco(tr.state, deco);
         }
         return deco.map(tr.changes);
       },

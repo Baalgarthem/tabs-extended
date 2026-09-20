@@ -73,7 +73,7 @@ export class TabItem {
     let isHoverScroll = container.classList.contains("tabs-nav-v-behavior-hover-scroll") || container.classList.contains("tabs-nav-v-hover-scroll");
     let isAutoScroll = container.classList.contains("tabs-nav-v-behavior-auto-scroll");
     let isShrink = container.classList.contains("tabs-nav-v-behavior-shrink");
-    let isMultiLine = container.classList.contains("tabs-nav-v-behavior-multi-line");
+    let isMultiLine = container.classList.contains("tabs-nav-v-behavior-multi-line") || container.classList.contains("tabs-nav-v-behavior-double-line");
 
     if (isShrink) {
       mdEl.classList.remove("is-scrolling-title");
@@ -140,24 +140,31 @@ export class TabItem {
 
       const maxAllowedWidth = Math.max(30, availWidth - 8);
 
-
       if (singleLineWidth > maxAllowedWidth) {
         mdEl.style.whiteSpace = "normal";
-        mdEl.style.wordBreak = "break-word";
-        mdEl.style.overflowWrap = "anywhere";
+        mdEl.style.wordBreak = "normal";
+        mdEl.style.overflowWrap = "normal";
+        mdEl.style.hyphens = "none";
+        mdEl.style.webkitHyphens = "none";
         childNodes.forEach((el) => {
           el.style.whiteSpace = "normal";
-          el.style.wordBreak = "break-word";
-          el.style.overflowWrap = "anywhere";
+          el.style.wordBreak = "normal";
+          el.style.overflowWrap = "normal";
+          el.style.hyphens = "none";
+          el.style.webkitHyphens = "none";
         });
       } else {
         mdEl.style.whiteSpace = "nowrap";
         mdEl.style.wordBreak = "normal";
         mdEl.style.overflowWrap = "normal";
+        mdEl.style.hyphens = "none";
+        mdEl.style.webkitHyphens = "none";
         childNodes.forEach((el) => {
           el.style.whiteSpace = "nowrap";
           el.style.wordBreak = "normal";
           el.style.overflowWrap = "normal";
+          el.style.hyphens = "none";
+          el.style.webkitHyphens = "none";
         });
       }
     } else {

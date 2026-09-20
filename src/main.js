@@ -448,9 +448,9 @@ export default class TabsExtendedPlugin extends Plugin {
 
   updateGlobalCssVariables() {
     let s = this.settings || {};
-    let rawLeftSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 4;
+    let rawLeftSpacing = (s.verticalTabsLeftSpacing !== undefined && s.verticalTabsLeftSpacing !== null) ? s.verticalTabsLeftSpacing : 2;
     let leftSpacing = Math.max(0, rawLeftSpacing);
-    let rawRightSpacing = (s.verticalTabsRightSpacing !== undefined && s.verticalTabsRightSpacing !== null) ? s.verticalTabsRightSpacing : 8;
+    let rawRightSpacing = (s.verticalTabsRightSpacing !== undefined && s.verticalTabsRightSpacing !== null) ? s.verticalTabsRightSpacing : 2;
     let rightSpacing = Math.max(0, rawRightSpacing);
     let horizontalFontSize = (s.horizontalTabTitleFontSize !== undefined && s.horizontalTabTitleFontSize !== null) ? s.horizontalTabTitleFontSize : 13;
     let verticalFontSize = (s.verticalTabTitleFontSize !== undefined && s.verticalTabTitleFontSize !== null) ? s.verticalTabTitleFontSize : 13;

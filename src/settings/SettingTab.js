@@ -209,7 +209,7 @@ export class TabsExtendedSettingTab extends PluginSettingTab {
           .addSlider((e) =>
             e
               .setLimits(0, 50, 1)
-              .setValue(this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 4)
+              .setValue(this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 2)
               .setDynamicTooltip()
               .onChange((i) => {
                 this.plugin.settings.verticalTabsLeftSpacing = Math.max(0, i);
@@ -227,7 +227,7 @@ export class TabsExtendedSettingTab extends PluginSettingTab {
           .addSlider((e) =>
             e
               .setLimits(0, 50, 1)
-              .setValue(this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 8)
+              .setValue(this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 2)
               .setDynamicTooltip()
               .onChange((i) => {
                 this.plugin.settings.verticalTabsRightSpacing = Math.max(0, i);

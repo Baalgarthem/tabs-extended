@@ -43,11 +43,11 @@ export class SettingsSampleTabs {
         ),
         this.tabscontainerEl.style.setProperty(
           "--vertical-tabs-left-spacing",
-          (this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 4) + "px"
+          (this.plugin.settings.verticalTabsLeftSpacing !== undefined ? this.plugin.settings.verticalTabsLeftSpacing : 2) + "px"
         ),
         this.tabscontainerEl.style.setProperty(
           "--vertical-tabs-right-spacing",
-          (this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 8) + "px"
+          (this.plugin.settings.verticalTabsRightSpacing !== undefined ? this.plugin.settings.verticalTabsRightSpacing : 2) + "px"
         ),
         this.tabscontainerEl.style.setProperty(
           "--horizontal-tab-font-size",

@@ -17,8 +17,8 @@ export class TabsConfig {
       (this.tabsContentsPadding = (i && i.defaultTabsContentsPadding) || "1em 2em"),
       (this.verticalTabsColumns = (i && i.verticalTabsColumns) || "1"),
       (this.verticalTitleBehavior = (i && i.verticalTitleBehavior) || "hover-scroll"),
-      (this.verticalTabsLeftSpacing = (i && i.verticalTabsLeftSpacing !== undefined) ? i.verticalTabsLeftSpacing : 4),
-      (this.verticalTabsRightSpacing = (i && i.verticalTabsRightSpacing !== undefined) ? i.verticalTabsRightSpacing : 8),
+      (this.verticalTabsLeftSpacing = (i && i.verticalTabsLeftSpacing !== undefined) ? i.verticalTabsLeftSpacing : 2),
+      (this.verticalTabsRightSpacing = (i && i.verticalTabsRightSpacing !== undefined) ? i.verticalTabsRightSpacing : 2),
       this.parseConfig(configStr));
   }
   parseConfig(t) {
@@ -113,11 +113,11 @@ export class TabsConfig {
       }
       let currentLeftSpacing = (this.pluginSettings && this.pluginSettings.verticalTabsLeftSpacing !== undefined && this.pluginSettings.verticalTabsLeftSpacing !== null) 
         ? this.pluginSettings.verticalTabsLeftSpacing 
-        : (this.verticalTabsLeftSpacing !== undefined ? this.verticalTabsLeftSpacing : 4);
+        : (this.verticalTabsLeftSpacing !== undefined ? this.verticalTabsLeftSpacing : 2);
       t.style.setProperty("--vertical-tabs-left-spacing", Math.max(0, currentLeftSpacing) + "px");
       let currentRightSpacing = (this.pluginSettings && this.pluginSettings.verticalTabsRightSpacing !== undefined && this.pluginSettings.verticalTabsRightSpacing !== null) 
         ? this.pluginSettings.verticalTabsRightSpacing 
-        : (this.verticalTabsRightSpacing !== undefined ? this.verticalTabsRightSpacing : 8);
+        : (this.verticalTabsRightSpacing !== undefined ? this.verticalTabsRightSpacing : 2);
       t.style.setProperty("--vertical-tabs-right-spacing", Math.max(0, currentRightSpacing) + "px");
     }
   }

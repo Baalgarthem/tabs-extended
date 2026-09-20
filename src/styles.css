@@ -306,13 +306,13 @@ body.theme-dark .tabs-editor-modal {
 
 /* Compact vertical tab titles padding & left/right margin (configurable via sliders) */
 .tabs-container.tabs-nav-left > .tabs-nav {
-    margin-left: var(--vertical-tabs-left-spacing, 4px) !important;
+    margin-left: var(--vertical-tabs-left-spacing, 2px) !important;
     margin-right: 0 !important;
     padding-left: 0 !important;
 }
 
 .tabs-container.tabs-nav-right > .tabs-nav {
-    margin-right: var(--vertical-tabs-left-spacing, 4px) !important;
+    margin-right: var(--vertical-tabs-left-spacing, 2px) !important;
     margin-left: 0 !important;
     padding-right: 0 !important;
 }
@@ -335,12 +335,12 @@ body.theme-dark .tabs-editor-modal {
 /* Vertical tab content top alignment & exact right spacing towards content */
 .tabs-container.tabs-nav-left > .tabs-contents {
     padding-top: 0 !important;
-    padding-left: var(--vertical-tabs-right-spacing, 8px) !important;
+    padding-left: var(--vertical-tabs-right-spacing, 2px) !important;
 }
 
 .tabs-container.tabs-nav-right > .tabs-contents {
     padding-top: 0 !important;
-    padding-right: var(--vertical-tabs-right-spacing, 8px) !important;
+    padding-right: var(--vertical-tabs-right-spacing, 2px) !important;
 }
 
 
@@ -352,9 +352,11 @@ body.theme-dark .tabs-editor-modal {
     box-sizing: border-box !important;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: manual !important;
-    -webkit-hyphens: manual !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
     overflow: visible !important;
     text-overflow: clip !important;
 }
@@ -367,9 +369,11 @@ body.theme-dark .tabs-editor-modal {
     padding: 0 !important;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: manual !important;
-    -webkit-hyphens: manual !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
     overflow: visible !important;
     text-overflow: clip !important;
     line-height: 1.35 !important;
@@ -381,9 +385,11 @@ body.theme-dark .tabs-editor-modal {
     padding: 0 !important;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: manual !important;
-    -webkit-hyphens: manual !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
     line-height: 1.35 !important;
 }
 
@@ -401,8 +407,10 @@ body.theme-dark .tabs-editor-modal {
     white-space: normal !important;
     word-break: normal !important;
     overflow-wrap: normal !important;
-    hyphens: manual !important;
-    -webkit-hyphens: manual !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
     display: -webkit-box !important;
     -webkit-line-clamp: 2 !important;
     -webkit-box-orient: vertical !important;
@@ -499,8 +507,9 @@ hr.tabs-settings-divider {
 .tabs-container .tabs-nav-item,
 .tabs-container .tabs-nav-item .tabs-nav-item-md,
 .tabs-container .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
-    hyphens: manual !important;
-    -webkit-hyphens: manual !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
 }
 
 /* Base resets for clean rendering across themes */
@@ -519,6 +528,12 @@ hr.tabs-settings-divider {
     text-align-last: left !important;
     align-items: flex-start !important;
     justify-content: flex-start !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
 }
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-left .tabs-nav-item,
@@ -528,6 +543,12 @@ hr.tabs-settings-divider {
     text-align-last: left !important;
     align-items: flex-start !important;
     justify-content: flex-start !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
 }
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-center .tabs-nav-item,
@@ -537,6 +558,12 @@ hr.tabs-settings-divider {
     text-align-last: center !important;
     align-items: center !important;
     justify-content: center !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
 }
 
 .tabs-container:is(.tabs-nav-left, .tabs-nav-right).tabs-nav-v-align-right .tabs-nav-item,
@@ -546,6 +573,12 @@ hr.tabs-settings-divider {
     text-align-last: right !important;
     align-items: flex-end !important;
     justify-content: flex-end !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+    -ms-hyphens: none !important;
 }
 
 /* ==========================================================================

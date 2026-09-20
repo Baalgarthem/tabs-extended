@@ -113,6 +113,19 @@ export const tabsExtendedCorePreviewStyles = `
   font-size: var(--vertical-tab-font-size, 16px);
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+}
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md,
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-item .tabs-nav-item-md :is(p, span, div, a, li, strong, em) {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
 }
 .tabs-container.tabs-nav-multi > .tabs-nav > .tabs-nav-item-wrapper {
   flex-wrap: wrap;

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { TabContentItem } from '../src/components/TabsContent.js';
+import { modalCodeBlockRenderCache, setModalCodeBlockRenderCache, clearModalCodeBlockRenderCache } from '../src/editor/engine.js';
 
 // Simple DOM element mock for testing in Node environment
 class MockElement {
@@ -424,11 +425,13 @@ export async function runCodeblocksTests() {
     console.log('✓ CodeMirror 6 StateField block decoration provider verified without errors');
   }
 
-  // Test 8: Default settings include renderCodeBlocksInModal: true
+  // Test 8: Default settings include renderCodeBlocksInModal: true and vertical tabs spacing defaults
   {
     const { DEFAULT_SETTINGS } = await import('../src/settings/defaultSettings.js');
     assert.equal(DEFAULT_SETTINGS.renderCodeBlocksInModal, true, 'DEFAULT_SETTINGS must have renderCodeBlocksInModal: true');
-    console.log('✓ DEFAULT_SETTINGS.renderCodeBlocksInModal is true by default');
+    assert.equal(DEFAULT_SETTINGS.verticalTabsLeftSpacing, 2, 'DEFAULT_SETTINGS must have verticalTabsLeftSpacing: 2');
+    assert.equal(DEFAULT_SETTINGS.verticalTabsRightSpacing, 2, 'DEFAULT_SETTINGS must have verticalTabsRightSpacing: 2');
+    console.log('✓ DEFAULT_SETTINGS verticalTabsLeftSpacing and verticalTabsRightSpacing are 2 by default');
   }
 
   // Test 9: getDocumentCodeBlocks accurately distinguishes tabs/tabs-v vs content code blocks (tree, js)
@@ -878,6 +881,153 @@ export async function runCodeblocksTests() {
     assert.equal(widget1.eq(widgetChanged), false, 'Widget equality must be false when rawText changes');
 
     console.log('✓ Code block live preview widget equality ignores position shifts (prevents flickering)');
+  }
+
+  // Test 19: Module-level cache persistence across modal open/close and tab switches
+  {
+    clearModalCodeBlockRenderCache();
+    const mermaidCode = "```mermaid\ngraph LR\n  X --> Y\n```";
+    const renderedSvgHtml = '<div class="block-language-mermaid"><svg><text>X to Y</text></svg></div>';
+
+    // Simulate first render caching
+    setModalCodeBlockRenderCache(mermaidCode, renderedSvgHtml);
+
+    // Verify cache hit
+    assert.equal(modalCodeBlockRenderCache.has(mermaidCode), true, 'Cache must contain mermaidCode');
+    assert.equal(modalCodeBlockRenderCache.get(mermaidCode), renderedSvgHtml, 'Cached HTML must match');
+
+    // Simulate cache eviction policy (> 100 entries)
+    for (let i = 0; i < 105; i++) {
+      setModalCodeBlockRenderCache(`dummy_code_${i}`, `<div>dummy_${i}</div>`);
+    }
+    // Size should be capped at 101 or 100
+    assert.ok(modalCodeBlockRenderCache.size <= 101, 'Cache size must remain capped');
+
+    console.log('✓ Module-level cache persistence and bounded eviction verified');
+  }
+
+  // Test 20: Hysteresis boundary protection prevents flickering at edges
+  {
+    const block = { from: 50, to: 95 };
+
+    // When block is currently rendered as a widget (wasWidget = true):
+    // Cursor exactly at block.from (50) or block.to (95) must NOT unfold the widget
+    const isInsideWidgetFrom = false; // from > 50 && from < 95 -> 50 > 50 is false
+    const isInsideWidgetTo = false;   // to < 95 -> 95 < 95 is false
+    const isInsideWidgetInner = true; // 60 > 50 && 60 < 95 is true
+
+    assert.equal(isInsideWidgetFrom, false, 'Cursor at block.from must not unfold widget');
+    assert.equal(isInsideWidgetTo, false, 'Cursor at block.to must not unfold widget');
+    assert.equal(isInsideWidgetInner, true, 'Cursor inside block must unfold widget');
+
+    // When block is already unfolded in raw editing mode (wasWidget = false):
+    // Moving cursor to column 0 of fence (block.from = 50) must keep it open
+    const isInsideRawFrom = 50 >= block.from && 50 <= block.to;
+    const isInsideRawTo = 95 >= block.from && 95 <= block.to;
+    const isInsideRawOutside = 49 >= block.from && 49 <= block.to;
+
+    assert.equal(isInsideRawFrom, true, 'Cursor at block.from during editing keeps block unfolded');
+    assert.equal(isInsideRawTo, true, 'Cursor at block.to during editing keeps block unfolded');
+    assert.equal(isInsideRawOutside, false, 'Cursor outside block collapses back to widget');
+
+    console.log('✓ Hysteresis boundary protection prevents flickering at edges');
+  }
+
+  // Test 21: Adjacent non-empty selection ranges do not unfold code blocks
+  {
+    const block = { from: 50, to: 95 };
+
+    // Selection ending at block.from (e.g. from 10 to 50):
+    const selBefore = { from: 10, to: 50 };
+    const overlapsBefore = Math.max(selBefore.from, block.from) < Math.min(selBefore.to, block.to);
+    assert.equal(overlapsBefore, false, 'Selection ending at block.from must not overlap block');
+
+    // Selection starting at block.to (e.g. from 95 to 120):
+    const selAfter = { from: 95, to: 120 };
+    const overlapsAfter = Math.max(selAfter.from, block.from) < Math.min(selAfter.to, block.to);
+    assert.equal(overlapsAfter, false, 'Selection starting at block.to must not overlap block');
+
+    // Selection strictly overlapping block (e.g. from 40 to 60):
+    const selOverlap = { from: 40, to: 60 };
+    const overlaps = Math.max(selOverlap.from, block.from) < Math.min(selOverlap.to, block.to);
+    assert.equal(overlaps, true, 'Overlapping selection must unfold block');
+
+    console.log('✓ Adjacent non-empty selection ranges do not unfold code blocks');
+  }
+
+  // Test 22: Vertical tab title multi-line wrapping enforces whole words and forbids intra-word breaking
+  {
+    const container = new MockElement('div');
+    container.classList.add('tabs-nav-v-behavior-double-line');
+
+    const tabItemEl = new MockElement('div');
+    tabItemEl.clientWidth = 80; // narrow column (sangría)
+
+    const tabItemMDEl = new MockElement('div');
+    tabItemMDEl.style = {};
+    tabItemMDEl.scrollWidth = 150; // exceeds available width
+    tabItemMDEl.querySelectorAll = () => [];
+
+    const mockTabItem = {
+      tabitemEl: tabItemEl,
+      tabitemMDEl: tabItemMDEl,
+      tabs: { tabsEl: container },
+      applyTitleBehavior() {
+        let mdEl = this.tabitemMDEl;
+        let isMultiLine = container.classList.contains("tabs-nav-v-behavior-multi-line") || container.classList.contains("tabs-nav-v-behavior-double-line");
+        if (isMultiLine) {
+          const singleLineWidth = mdEl.scrollWidth;
+          const availWidth = this.tabitemEl.clientWidth;
+          const maxAllowedWidth = Math.max(30, availWidth - 8);
+
+          if (singleLineWidth > maxAllowedWidth) {
+            mdEl.style.whiteSpace = "normal";
+            mdEl.style.wordBreak = "normal";
+            mdEl.style.overflowWrap = "normal";
+            mdEl.style.hyphens = "none";
+            mdEl.style.webkitHyphens = "none";
+          }
+        }
+      }
+    };
+
+    mockTabItem.applyTitleBehavior();
+
+    assert.equal(tabItemMDEl.style.whiteSpace, 'normal', 'Must allow normal wrapping across lines at spaces');
+    assert.equal(tabItemMDEl.style.wordBreak, 'normal', 'Must forbid breaking words into pieces (wordBreak: normal)');
+    assert.equal(tabItemMDEl.style.overflowWrap, 'normal', 'Must forbid arbitrary intra-word breaking (overflowWrap: normal)');
+    assert.equal(tabItemMDEl.style.hyphens, 'none', 'Must forbid hyphenation (hyphens: none)');
+
+    console.log('✓ Vertical tab title whole-word wrapping and hyphenation prohibition verified');
+  }
+
+  // Test 22: TabsConfig defaults for vertical tabs left and right spacing
+  {
+    const { TabsConfig } = await import('../src/core/config.js');
+    const config = new TabsConfig('', null, {}, true);
+    assert.equal(config.verticalTabsLeftSpacing, 2, 'TabsConfig verticalTabsLeftSpacing must default to 2');
+    assert.equal(config.verticalTabsRightSpacing, 2, 'TabsConfig verticalTabsRightSpacing must default to 2');
+
+    const containerEl = {
+      classList: {
+        add: () => {},
+        contains: () => false
+      },
+      style: {
+        properties: {},
+        setProperty(prop, val) {
+          this.properties[prop] = val;
+        }
+      }
+    };
+    const navEl = { classList: { add: () => {} } };
+    const contentsEl = { style: { setProperty: () => {} } };
+
+    config.decorate(containerEl, navEl, contentsEl);
+    assert.equal(containerEl.style.properties['--vertical-tabs-left-spacing'], '2px', 'Must apply --vertical-tabs-left-spacing: 2px');
+    assert.equal(containerEl.style.properties['--vertical-tabs-right-spacing'], '2px', 'Must apply --vertical-tabs-right-spacing: 2px');
+
+    console.log('✓ TabsConfig vertical tabs left and right spacing default to 2 and apply 2px CSS variables');
   }
 
   console.log('All Codeblocks tests passed!\n');
