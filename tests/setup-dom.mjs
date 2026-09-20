@@ -16,6 +16,11 @@ export class MockElement {
     this.eventListeners = {};
     this.textContent = '';
     this.style = {};
+    this.ownerDocument = globalThis.document;
+  }
+
+  getBoundingClientRect() {
+    return { top: 0, left: 0, right: 100, bottom: 100, width: 100, height: 100 };
   }
 
   get classListProxy() {
@@ -144,19 +149,67 @@ export class MockElement {
   }
 }
 
+if (typeof globalThis.MutationObserver === 'undefined') {
+  globalThis.MutationObserver = class {
+    observe() {}
+    disconnect() {}
+    takeRecords() { return []; }
+  };
+}
+
 if (typeof globalThis.document === 'undefined') {
+  const docEl = new MockElement('html');
+  const headEl = new MockElement('head');
+  const bodyEl = new MockElement('body');
+  docEl.appendChild(headEl);
+  docEl.appendChild(bodyEl);
   globalThis.document = {
-    documentElement: { style: {} },
-    createElement: (tag) => new MockElement(tag)
+    documentElement: docEl,
+    head: headEl,
+    body: bodyEl,
+    createElement: (tag) => new MockElement(tag),
+    createTextNode: (text) => { const el = new MockElement('#text'); el.nodeValue = text; el.textContent = text; return el; },
+    addEventListener() {},
+    removeEventListener() {},
+    getSelection() { return { rangeCount: 0, addRange(){}, removeAllRanges(){}, getRangeAt(){ return null; } }; },
+    hasFocus() { return true; }
   };
 } else {
-  if (!globalThis.document.documentElement) globalThis.document.documentElement = { style: {} };
-  if (!globalThis.document.documentElement.style) globalThis.document.documentElement.style = {};
+  if (!globalThis.document.documentElement || typeof globalThis.document.documentElement.insertBefore !== 'function') {
+    const docEl = new MockElement('html');
+    if (globalThis.document.documentElement && globalThis.document.documentElement.style) {
+      docEl.style = globalThis.document.documentElement.style;
+    }
+    globalThis.document.documentElement = docEl;
+  }
+  if (!globalThis.document.head) globalThis.document.head = new MockElement('head');
+  if (!globalThis.document.body) globalThis.document.body = new MockElement('body');
+  if (!globalThis.document.addEventListener) globalThis.document.addEventListener = () => {};
+  if (!globalThis.document.removeEventListener) globalThis.document.removeEventListener = () => {};
+  if (!globalThis.document.getSelection) globalThis.document.getSelection = () => ({ rangeCount: 0, addRange(){}, removeAllRanges(){}, getRangeAt(){ return null; } });
+  if (!globalThis.document.hasFocus) globalThis.document.hasFocus = () => true;
+  if (!globalThis.document.createTextNode) globalThis.document.createTextNode = (text) => { const el = new MockElement('#text'); el.nodeValue = text; el.textContent = text; return el; };
   globalThis.document.createElement = (tag) => new MockElement(tag);
 }
 
 if (typeof globalThis.window === 'undefined') {
   globalThis.window = {
-    document: globalThis.document
+    document: globalThis.document,
+    addEventListener() {},
+    removeEventListener() {},
+    getComputedStyle() { return { getPropertyValue() { return ''; } }; },
+    getSelection() { return globalThis.document.getSelection(); },
+    requestAnimationFrame(cb) { return setTimeout(cb, 0); },
+    cancelAnimationFrame(id) { clearTimeout(id); }
   };
+} else {
+  if (!globalThis.window.addEventListener) globalThis.window.addEventListener = () => {};
+  if (!globalThis.window.removeEventListener) globalThis.window.removeEventListener = () => {};
+  if (!globalThis.window.getComputedStyle) globalThis.window.getComputedStyle = () => ({ getPropertyValue() { return ''; } });
+  if (!globalThis.window.getSelection) globalThis.window.getSelection = () => globalThis.document.getSelection();
+  if (!globalThis.window.requestAnimationFrame) globalThis.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+  if (!globalThis.window.cancelAnimationFrame) globalThis.window.cancelAnimationFrame = (id) => clearTimeout(id);
 }
+globalThis.requestAnimationFrame = globalThis.window.requestAnimationFrame;
+globalThis.cancelAnimationFrame = globalThis.window.cancelAnimationFrame;
+globalThis.document.defaultView = globalThis.window;

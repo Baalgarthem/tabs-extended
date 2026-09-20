@@ -842,5 +842,43 @@ export async function runCodeblocksTests() {
     console.log('✓ 4-backtick tree block successfully identified and closed');
   }
 
+  // Test 18: Code block live preview widget equality ignores position shifts (prevents flickering)
+  {
+    const rawText = "```mermaid\ngraph TD\n  A --> B\n```";
+    const widget1 = {
+      rawText,
+      language: "mermaid",
+      from: 50,
+      to: 95,
+      eq(other) {
+        return other.rawText === this.rawText && other.language === this.language;
+      }
+    };
+
+    // User types 10 characters before the code block: from shifts from 50 to 60, to shifts to 105
+    const widget2 = {
+      rawText,
+      language: "mermaid",
+      from: 60,
+      to: 105,
+      eq(other) {
+        return other.rawText === this.rawText && other.language === this.language;
+      }
+    };
+
+    assert.equal(widget1.eq(widget2), true, 'Widget equality must be true when rawText matches despite position shift');
+
+    // If rawText changes, equality must be false so the block re-renders
+    const widgetChanged = {
+      rawText: "```mermaid\ngraph TD\n  A --> C\n```",
+      language: "mermaid",
+      from: 60,
+      to: 105
+    };
+    assert.equal(widget1.eq(widgetChanged), false, 'Widget equality must be false when rawText changes');
+
+    console.log('✓ Code block live preview widget equality ignores position shifts (prevents flickering)');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }

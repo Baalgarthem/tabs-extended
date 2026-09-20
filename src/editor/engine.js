@@ -145,6 +145,15 @@ export class TabsModalEditorEngine {
     );
     this.modalTabsInfoRegex = modalTabsInfoRegex;
 
+    const modalCodeBlockRenderCache = new Map();
+    const setModalCodeBlockRenderCache = (key, val) => {
+      if (modalCodeBlockRenderCache.size > 50) {
+        const firstKey = modalCodeBlockRenderCache.keys().next().value;
+        modalCodeBlockRenderCache.delete(firstKey);
+      }
+      modalCodeBlockRenderCache.set(key, val);
+    };
+
     class CodeBlockLivePreviewWidget extends Re {
       constructor(plugin, rawText, language, from, to) {
         super();
@@ -155,7 +164,13 @@ export class TabsModalEditorEngine {
         this.to = to;
       }
       eq(other) {
-        return other.rawText === this.rawText && other.from === this.from && other.to === this.to;
+        // Compare rawText and language only: positions shift on every typing keystroke
+        // elsewhere in the document. Keeping the existing DOM prevents flickering/re-rendering.
+        return other.rawText === this.rawText && other.language === this.language;
+      }
+      updateDOM(dom, view) {
+        dom.__cmLiveWidget = this;
+        return true;
       }
       ignoreEvent(event) {
         return true;
@@ -163,6 +178,7 @@ export class TabsModalEditorEngine {
       toDOM(view) {
         const container = document.createElement("div");
         container.className = "cm-embed-block markdown-rendered tabs-codeblock-wrapper tabs-modal-codeblock-preview";
+        container.__cmLiveWidget = this;
 
         const editBtn = document.createElement("div");
         editBtn.className = "edit-block-button";
@@ -180,6 +196,23 @@ export class TabsModalEditorEngine {
             if (typeof evt.preventDefault === "function") evt.preventDefault();
             if (typeof evt.stopPropagation === "function") evt.stopPropagation();
           }
+
+          let currentFrom = this.from;
+          let currentTo = this.to;
+          if (container.__cmLiveWidget) {
+            currentFrom = container.__cmLiveWidget.from;
+            currentTo = container.__cmLiveWidget.to;
+          }
+          try {
+            if (view && typeof view.posAtDOM === "function") {
+              const livePos = view.posAtDOM(container);
+              if (typeof livePos === "number" && livePos >= 0 && livePos <= view.state.doc.length) {
+                currentFrom = livePos;
+                currentTo = Math.min(view.state.doc.length, livePos + this.rawText.length);
+              }
+            }
+          } catch (e) {}
+
           let targetPos = null;
           if (evt && typeof evt.clientX === "number") {
             try {
@@ -207,14 +240,14 @@ export class TabsModalEditorEngine {
                   for (let i = 0; i < targetLineIdx; i++) {
                     offset += lines[i].length + 1;
                   }
-                  targetPos = this.from + offset;
+                  targetPos = currentFrom + offset;
                 }
               }
             } catch (e) {}
           }
-          if (targetPos === null || targetPos < this.from || targetPos > this.to) {
+          if (targetPos === null || targetPos < currentFrom || targetPos > currentTo) {
             const firstLineBreak = this.rawText.indexOf("\n");
-            targetPos = firstLineBreak !== -1 ? this.from + firstLineBreak + 1 : this.from;
+            targetPos = firstLineBreak !== -1 ? currentFrom + firstLineBreak + 1 : currentFrom;
           }
           view.dispatch({
             selection: { anchor: targetPos },
@@ -263,6 +296,11 @@ export class TabsModalEditorEngine {
           const activeFile = this.plugin && this.plugin.app && this.plugin.app.workspace ? this.plugin.app.workspace.getActiveFile() : null;
           const contextSourcePath = this.plugin && this.plugin.tabsEditorModal && this.plugin.tabsEditorModal.tabs && this.plugin.tabsEditorModal.tabs.context ? this.plugin.tabsEditorModal.tabs.context.sourcePath : "";
           const sourcePath = contextSourcePath || (activeFile ? activeFile.path : "");
+
+          if (modalCodeBlockRenderCache.has(this.rawText)) {
+            contentEl.innerHTML = modalCodeBlockRenderCache.get(this.rawText);
+          }
+
           const renderPromise = MarkdownRenderer.render(
             this.plugin.app,
             this.rawText,
@@ -271,6 +309,7 @@ export class TabsModalEditorEngine {
             this.plugin
           );
           Promise.resolve(renderPromise).then(() => {
+            setModalCodeBlockRenderCache(this.rawText, contentEl.innerHTML);
             const innerBtn = contentEl.querySelector(".edit-block-button");
             if (innerBtn && editBtn.parentElement === container) {
               editBtn.remove();
