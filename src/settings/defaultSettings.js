@@ -53,5 +53,6 @@ export const DEFAULT_SETTINGS = {
   verticalTitleAlignment: "left",
   tabContentAlignment: "left",
   tabContentHyphenation: "none",
-  renderCodeBlocksInModal: true
+  renderCodeBlocksInModal: true,
+  horizontalTabsOverflowIndicator: true
 };

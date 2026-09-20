@@ -68,24 +68,26 @@ export class Tabs extends MarkdownRenderChild {
       (this.activeView = n.workspace.getActiveViewOfType(MarkdownView)),
       (this.sectionInfo = i == null ? void 0 : i.getSectionInfo(e)),
       (this.context = i),
-      this.updateBackquote(t),
-      this.sectionInfo ||
-        ((this.tabsType = "innertabs"),
-        this.tabsEl.classList.add("tabs-innertabs"),
-        this.plugin.settings.nestedTabsNoBorders && this.tabsEl.classList.add("tabs-innertabs-no-borders")));
+      this.updateBackquote(t));
+
     const parentContentEl = this.tabsEl.closest
       ? this.tabsEl.closest(".tabs-content")
       : null;
     const parentContentModel = parentContentEl
       ? parentContentEl.tabsExtendedContentModel
       : null;
-    if (
-      this.tabsType === "innertabs" &&
-      parentContentModel &&
-      parentContentModel.ownerTabs
-    ) {
-      this.parentTabContent = parentContentModel;
-      this.sourceOrdinal = parentContentModel.claimNestedBlock(t, isVertical);
+    const isNestedTab = !!(parentContentEl && parentContentModel && parentContentModel.ownerTabs);
+
+    if (isNestedTab || (!this.sectionInfo && parentContentEl)) {
+      this.tabsType = "innertabs";
+      this.tabsEl.classList.add("tabs-innertabs");
+      this.plugin.settings.nestedTabsNoBorders && this.tabsEl.classList.add("tabs-innertabs-no-borders");
+      if (parentContentModel && parentContentModel.ownerTabs) {
+        this.parentTabContent = parentContentModel;
+        this.sourceOrdinal = parentContentModel.claimNestedBlock(t, isVertical);
+      }
+    } else {
+      this.tabsType = "outertabs";
     }
     if (this.tabsType === "outertabs") {
       const sourceBody = this.readOuterSourceBody();
@@ -1274,7 +1276,9 @@ export class Tabs extends MarkdownRenderChild {
         "dblclick",
         (t) => {
           t.preventDefault();
-          if (this.activeView && !this.isPreviewMode()) {
+          t.stopPropagation();
+          this.activeView = (this.app && this.app.workspace && this.app.workspace.getActiveViewOfType(MarkdownView)) || (typeof this.getWritableView === "function" ? this.getWritableView() : null) || this.activeView;
+          if (this.plugin && this.plugin.tabsEditorModal) {
             this.plugin.tabsEditorModal.startEditing(this);
           }
         },
@@ -1284,29 +1288,39 @@ export class Tabs extends MarkdownRenderChild {
       case "action-none":
         break;
       case "action-edit":
-        if (this.activeView && !this.isPreviewMode() && this.tabsType !== "innertabs" && this.tabsNav.tabsButton && this.tabsNav.tabsButton.buttonEl) {
-          this.registerDomEvent(
-            this.tabsNav.tabsButton.buttonEl,
-            "click",
-            () => {
+        if (this.tabsNav && this.tabsNav.tabsButton && this.tabsNav.tabsButton.buttonEl) {
+          const btn = this.tabsNav.tabsButton.buttonEl;
+          this.registerDomEvent(btn, "mousedown", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+          });
+          this.registerDomEvent(btn, "click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this.activeView = (this.app && this.app.workspace && this.app.workspace.getActiveViewOfType(MarkdownView)) || (typeof this.getWritableView === "function" ? this.getWritableView() : null) || this.activeView;
+            if (this.plugin && this.plugin.tabsEditorModal) {
               this.plugin.tabsEditorModal.startEditing(this);
-            },
-          );
+            }
+          });
         }
         break;
       case "action-add":
-        if (this.activeView && !this.isPreviewMode() && this.tabsType !== "innertabs" && this.tabsNav.tabsButton && this.tabsNav.tabsButton.buttonEl) {
-          this.registerDomEvent(
-            this.tabsNav.tabsButton.buttonEl,
-            "click",
-            () => {
-              let title = this.isVertical
-                ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
-                : (this.plugin.settings.defaultTabNavItem || "New tab");
-              let content = this.plugin.settings.defaultTabContent || "New tab content";
-              TabContextMenu.updateBlockWithNewTab(this, title, content);
-            },
-          );
+        if (this.tabsNav && this.tabsNav.tabsButton && this.tabsNav.tabsButton.buttonEl) {
+          const btn = this.tabsNav.tabsButton.buttonEl;
+          this.registerDomEvent(btn, "mousedown", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+          });
+          this.registerDomEvent(btn, "click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this.activeView = (this.app && this.app.workspace && this.app.workspace.getActiveViewOfType(MarkdownView)) || (typeof this.getWritableView === "function" ? this.getWritableView() : null) || this.activeView;
+            let title = this.isVertical
+              ? (this.plugin.settings.defaultTabNavItemVertical || "New vertical tab")
+              : (this.plugin.settings.defaultTabNavItem || "New tab");
+            let content = this.plugin.settings.defaultTabContent || "New tab content";
+            TabContextMenu.updateBlockWithNewTab(this, title, content);
+          });
         }
         break;
       default:
@@ -1314,10 +1328,11 @@ export class Tabs extends MarkdownRenderChild {
         this.plugin.saveSettings();
         new Notice($("notice.invalidActionButtonType"));
     }
-    if (this.activeView && !this.isPreviewMode()) {
+    if (this.tabsNav && this.tabsNav.navEl) {
       this.registerDomEvent(this.tabsNav.navEl, "contextmenu", (t) => {
         t.preventDefault();
         t.stopPropagation();
+        this.activeView = (this.app && this.app.workspace && this.app.workspace.getActiveViewOfType(MarkdownView)) || (typeof this.getWritableView === "function" ? this.getWritableView() : null) || this.activeView;
         new TabContextMenu(this, t).showAtMouseEvent(t);
       });
     }

@@ -288,7 +288,9 @@ export default {
     "max_height_name": "Altura Máxima del Contenedor",
     "max_height_desc": "Límite de altura vertical del contenedor (ej. `300px` o `50vh`). Agrega barra de desplazamiento si se supera.",
     "render_code_blocks_in_modal_name": "Render code blocks inside modal editor",
-    "render_code_blocks_in_modal_desc": "Renders an interactive live preview of code blocks (including tree blocks) inside the modal editor. If disabled, they will appear as static editable text."
+    "render_code_blocks_in_modal_desc": "Renders an interactive live preview of code blocks (including tree blocks) inside the modal editor. If disabled, they will appear as static editable text.",
+    "horizontal_overflow_indicator_name": "Horizontal Overflow Indicator (Ghost Arrow)",
+    "horizontal_overflow_indicator_desc": "Shows a discreet blinking ghost arrow and blinks the last visible tab separator when more tabs are hidden to the right. Disappears upon scrolling."
   },
   "render_code_blocks_in_modal_name": "Render code blocks inside modal editor",
   "render_code_blocks_in_modal_desc": "Renders an interactive live preview of code blocks (including tree blocks) inside the modal editor. If disabled, they will appear as static editable text.",

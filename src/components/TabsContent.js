@@ -18,10 +18,29 @@ export class TabContentItem {
     ensureCodeBlockWrappers(container) {
       if (!container) return;
       if (container.closest && container.closest('.popup-content, .popup-overlay')) return;
+
+      const isTabsElement = (el) => {
+        if (!el) return false;
+        if (el.classList && (el.classList.contains('tabs-container') || el.classList.contains('tabs-innertabs'))) return true;
+        if (el.querySelector && el.querySelector('.tabs-container, .tabs-innertabs')) return true;
+        const cls = typeof el.className === 'string' ? el.className : '';
+        if (/tabs-(?:container|innertabs)/.test(cls)) return true;
+        if (/block-language-(?:tabs|tabs-v)/i.test(cls)) return true;
+        const mainKw = (this.ownerTabs && this.ownerTabs.plugin && this.ownerTabs.plugin.settings && this.ownerTabs.plugin.settings.tabsKeyword);
+        if (mainKw && mainKw.trim() && mainKw !== 'tabs') {
+          const safeKw = mainKw.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+          if (new RegExp(`block-language-${safeKw}(?:-v)?`, 'i').test(cls)) return true;
+        }
+        return false;
+      };
+
       const targets = container.querySelectorAll('pre, [class*="block-language-"], .tree-container, .ascii-tree-wrapper');
       targets.forEach(el => {
         if (el.closest && el.closest('.popup-content, .popup-overlay')) return;
         if (el.closest('.tabs-codeblock-wrapper')) {
+          return;
+        }
+        if (isTabsElement(el)) {
           return;
         }
         const wrapper = document.createElement('div');
@@ -33,6 +52,11 @@ export class TabContentItem {
       const wrappers = container.querySelectorAll('.tabs-codeblock-wrapper');
       wrappers.forEach(wrapper => {
         if (wrapper.closest && wrapper.closest('.popup-content, .popup-overlay')) return;
+        if (isTabsElement(wrapper) || wrapper.querySelector('.tabs-container, .tabs-innertabs')) {
+          const outerBtns = Array.from(wrapper.querySelectorAll(':scope > .edit-block-button'));
+          outerBtns.forEach(btn => btn.remove());
+          return;
+        }
         const isTree = !!(
           wrapper.querySelector('[class*="block-language-tree"], .ascii-tree-wrapper, .tree-container, pre.ascii-tree-block') ||
           (wrapper.className && wrapper.className.includes('tree'))

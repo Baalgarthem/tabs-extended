@@ -1030,5 +1030,224 @@ export async function runCodeblocksTests() {
     console.log('✓ TabsConfig vertical tabs left and right spacing default to 2 and apply 2px CSS variables');
   }
 
+  // Test 23: TabsButton pencil button triggers startEditing even when activeView was initially null
+  {
+    const { TabsButton } = await import('../src/components/TabsNav.js');
+    let startEditingCalled = false;
+    let editedTabsInstance = null;
+    const mockTabs = {
+      app: {
+        workspace: {
+          getActiveViewOfType: () => ({ editor: {}, file: { path: "test.md" } })
+        }
+      },
+      plugin: {
+        settings: {},
+        tabsEditorModal: {
+          startEditing: (tabs) => {
+            startEditingCalled = true;
+            editedTabsInstance = tabs;
+          }
+        }
+      },
+      activeView: null // initially null at render time!
+    };
+    const mockNav = { tabs: mockTabs };
+    const tabsBtn = new TabsButton(mockNav, "action-edit", null);
+
+    assert.ok(tabsBtn.buttonEl, 'TabsButton element must be created');
+    assert.equal(tabsBtn.buttonEl.className, 'tabs-nav-button');
+
+    const clickEvent = {
+      type: 'click',
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    };
+    tabsBtn.buttonEl.dispatchEvent(clickEvent);
+
+    assert.ok(startEditingCalled, 'Clicking pencil button must invoke startEditing');
+    assert.equal(editedTabsInstance, mockTabs, 'Passed tabs instance must match');
+    assert.ok(mockTabs.activeView, 'activeView must be resolved upon click');
+
+    console.log('✓ TabsButton pencil button triggers startEditing even when activeView was initially null');
+  }
+
+  // Test 24: Tabs.prototype.registerEventHandlers binds action-edit without being blocked by null activeView
+  {
+    const { Tabs } = await import('../src/core/model.js');
+    let startEditingCalled = false;
+    let mousedownPrevented = false;
+    let clickPrevented = false;
+
+    const mockButtonEl = {
+      eventListeners: {},
+      addEventListener(type, fn) {
+        if (!this.eventListeners[type]) this.eventListeners[type] = [];
+        this.eventListeners[type].push(fn);
+      },
+      dispatchEvent(event) {
+        const fns = this.eventListeners[event.type] || [];
+        fns.forEach(fn => fn(event));
+      }
+    };
+
+    const mockTabs = Object.create(Tabs.prototype);
+    mockTabs.plugin = {
+      settings: { dragAndDrop: false },
+      tabsEditorModal: {
+        startEditing: () => { startEditingCalled = true; }
+      }
+    };
+    mockTabs.app = {
+      workspace: {
+        getActiveViewOfType: () => ({ editor: {}, file: { path: "note.md" } })
+      }
+    };
+    mockTabs.activeView = null; // simulate null on initial render
+    mockTabs.tabsType = "outertabs";
+    mockTabs.tabsConfig = { actionButton: "action-edit" };
+    mockTabs.tabsNav = {
+      navItems: [],
+      tabsButton: { buttonEl: mockButtonEl }
+    };
+    mockTabs.registerDomEvent = (el, evt, handler) => {
+      el.addEventListener(evt, handler);
+    };
+    mockTabs.canPersistTabOrder = () => false;
+
+    mockTabs.registerEventHandlers();
+
+    // Trigger mousedown on pencil button
+    mockButtonEl.dispatchEvent({
+      type: 'mousedown',
+      preventDefault: () => { mousedownPrevented = true; },
+      stopPropagation: () => {}
+    });
+    assert.ok(mousedownPrevented, 'mousedown on pencil button must preventDefault');
+
+    // Trigger click on pencil button
+    mockButtonEl.dispatchEvent({
+      type: 'click',
+      preventDefault: () => { clickPrevented = true; },
+      stopPropagation: () => {}
+    });
+    assert.ok(clickPrevented, 'click on pencil button must preventDefault');
+    assert.ok(startEditingCalled, 'click on pencil button must open tabsEditorModal via startEditing');
+    assert.ok(mockTabs.activeView, 'activeView must be dynamically resolved upon click');
+
+    console.log('✓ Tabs.prototype.registerEventHandlers action-edit registration and dispatch verified');
+  }
+
+  // Test 25: ensureCodeBlockWrappers never wraps or adds edit-block-button to nested tabs blocks
+  {
+    const { TabContentItem } = await import('../src/components/TabsContent.js');
+    const container = new MockElement('div');
+    container.className = 'tabs-content';
+
+    // 1. Nested vertical tabs block
+    const nestedTabsContainer = new MockElement('div');
+    nestedTabsContainer.className = 'tabs-container tabs-innertabs block-language-tabs-v';
+    container.appendChild(nestedTabsContainer);
+
+    // 2. Regular code block (js) inside the same container
+    const regularPre = new MockElement('pre');
+    regularPre.className = 'language-js';
+    const regularCode = new MockElement('code');
+    regularCode.textContent = 'const x = 10;';
+    regularPre.appendChild(regularCode);
+    container.appendChild(regularPre);
+
+    const mockItem = Object.create(TabContentItem.prototype);
+    mockItem.ownerTabs = { plugin: { settings: { tabsKeyword: 'tabs' }, tabsEditorModal: { startEditing: () => {} } } };
+    mockItem.index = 0;
+    mockItem.content = '```tabs-v\ntab: Nested\nContent\n```\n```js\nconst x = 10;\n```';
+
+    mockItem.ensureCodeBlockWrappers(container);
+
+    // The nested tabs container should NOT be wrapped in tabs-codeblock-wrapper
+    assert.equal(nestedTabsContainer.parentNode, container, 'nested tabs container must not be wrapped');
+    assert.equal(nestedTabsContainer.querySelector('.edit-block-button'), null, 'nested tabs container must not have edit-block-button');
+
+    // The regular pre SHOULD be wrapped in tabs-codeblock-wrapper and have edit-block-button
+    assert.notEqual(regularPre.parentNode, container, 'regular codeblock must be wrapped in tabs-codeblock-wrapper');
+    assert.ok(regularPre.parentNode.className.includes('tabs-codeblock-wrapper'), 'wrapper has tabs-codeblock-wrapper');
+    assert.ok(regularPre.parentNode.querySelector('.edit-block-button'), 'regular code block has edit-block-button');
+
+    console.log('✓ ensureCodeBlockWrappers never wraps or adds edit-block-button to nested tabs blocks');
+  }
+
+  // Test 26: Horizontal tabs overflow indicator (ghost arrow & blinking last visible separator)
+  {
+    const { DEFAULT_SETTINGS } = await import('../src/settings/defaultSettings.js');
+    assert.strictEqual(DEFAULT_SETTINGS.horizontalTabsOverflowIndicator, true, 'horizontalTabsOverflowIndicator must be true by default');
+
+    const { TabsNav } = await import('../src/components/TabsNav.js');
+
+    const mockTabs = {
+      isVertical: false,
+      tabsConfig: { titlePosition: 'top' },
+      plugin: {
+        settings: { horizontalTabsOverflowIndicator: true }
+      },
+      register: () => {}
+    };
+
+    const nav = Object.create(TabsNav.prototype);
+    nav.tabs = mockTabs;
+    nav.overflowArrowEl = new MockElement('div');
+    nav.overflowArrowEl.className = 'tabs-nav-overflow-arrow-right';
+
+    nav.navWrapperEl = new MockElement('div');
+    nav.navWrapperEl.scrollWidth = 600;
+    nav.navWrapperEl.clientWidth = 250;
+    nav.navWrapperEl.scrollLeft = 0;
+
+    // Create 4 mock tab items
+    nav.navItems = [0, 1, 2, 3].map(idx => {
+      const el = new MockElement('div');
+      el.className = 'tabs-nav-item';
+      el.offsetLeft = idx * 100; // 0, 100, 200, 300
+      el.offsetWidth = 90;
+      return { tabitemEl: el };
+    });
+
+    // Initial state with overflow to the right
+    nav.checkOverflowState();
+
+    assert.ok(nav.overflowArrowEl.classList.contains('is-visible'), 'Ghost arrow must be visible when there is right overflow');
+    // Tab 0 (0), Tab 1 (100), Tab 2 (200) are < visibleRight (250). Tab 2 is the last visible. Tab 3 (300) is hidden.
+    assert.ok(nav.navItems[2].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Last visible tab (Tab 2) must blink');
+    assert.ok(!nav.navItems[0].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Tab 0 must not blink');
+    assert.ok(!nav.navItems[1].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Tab 1 must not blink');
+    assert.ok(!nav.navItems[3].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Hidden Tab 3 must not blink');
+
+    // Simulate user scrolling right so remaining content is visible (overflow = 0)
+    nav.navWrapperEl.scrollLeft = 350; // 350 + 250 = 600 = scrollWidth
+    nav.checkOverflowState();
+
+    assert.ok(!nav.overflowArrowEl.classList.contains('is-visible'), 'Ghost arrow must disappear when scrolled to the end');
+    assert.ok(!nav.navItems[2].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Separator blinking must be cleared at end of scroll');
+
+    // User scrolls back left: overflow indicator reappears
+    nav.navWrapperEl.scrollLeft = 0;
+    nav.checkOverflowState();
+    assert.ok(nav.overflowArrowEl.classList.contains('is-visible'), 'Ghost arrow must reappear when scrolled back');
+    assert.ok(nav.navItems[2].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Separator blinking must re-engage when scrolled back');
+
+    // Setting disabled: overflow indicators suppressed
+    mockTabs.plugin.settings.horizontalTabsOverflowIndicator = false;
+    nav.checkOverflowState();
+    assert.ok(!nav.overflowArrowEl.classList.contains('is-visible'), 'Ghost arrow must be hidden when setting is disabled');
+    assert.ok(!nav.navItems[2].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Separator blinking must be cleared when setting is disabled');
+
+    // Vertical tabs: overflow indicators suppressed
+    mockTabs.plugin.settings.horizontalTabsOverflowIndicator = true;
+    mockTabs.isVertical = true;
+    nav.checkOverflowState();
+    assert.ok(!nav.overflowArrowEl.classList.contains('is-visible'), 'Ghost arrow must never show on vertical tabs');
+
+    console.log('✓ Horizontal tabs overflow indicator (ghost arrow & blinking last visible separator) verified');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }

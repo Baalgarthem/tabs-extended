@@ -261,7 +261,9 @@ export default {
     "delete_icon_opt_x": "Una Equis (✕)",
     "delete_icon_opt_text": "Texto en Negritas (Delete)",
     "render_code_blocks_in_modal_name": "Renderizar bloques de código dentro del editor modal",
-    "render_code_blocks_in_modal_desc": "Muestra una vista previa interactiva de los bloques de código (incluyendo diagramas tree) dentro del editor modal. Si se desactiva, se mostrarán como texto estático editable."
+    "render_code_blocks_in_modal_desc": "Muestra una vista previa interactiva de los bloques de código (incluyendo diagramas tree) dentro del editor modal. Si se desactiva, se mostrarán como texto estático editable.",
+    "horizontal_overflow_indicator_name": "Indicador de desbordamiento horizontal (Flecha fantasma)",
+    "horizontal_overflow_indicator_desc": "Muestra una flecha discreta parpadeante y hace parpadear el último separador visible cuando hay más pestañas ocultas a la derecha. Desaparece al desplazarse."
   },
   "render_code_blocks_in_modal_name": "Renderizar bloques de código dentro del editor modal",
   "render_code_blocks_in_modal_desc": "Muestra una vista previa interactiva de los bloques de código (incluyendo diagramas tree) dentro del editor modal. Si se desactiva, se mostrarán como texto estático editable.",

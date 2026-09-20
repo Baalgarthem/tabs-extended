@@ -290,6 +290,18 @@ export class TabsExtendedSettingTab extends PluginSettingTab {
               })
           ).then((e) => this.addResetButton(e, "defaultTitleLineClamp"));
         new Setting(t)
+          .setName(_("horizontal_overflow_indicator_name"))
+          .setDesc(_("horizontal_overflow_indicator_desc"))
+          .addToggle((e) =>
+            e
+              .setValue(this.plugin.settings.horizontalTabsOverflowIndicator !== false)
+              .onChange((i) => {
+                this.plugin.settings.horizontalTabsOverflowIndicator = i;
+                this.plugin.saveSettings();
+                this.needRefresh = !0;
+              })
+          ).then((e) => this.addResetButton(e, "horizontalTabsOverflowIndicator"));
+        new Setting(t)
           .setName(_("vertical_title_behavior_name"))
           .setDesc(_("vertical_title_behavior_desc"))
           .addDropdown((e) =>

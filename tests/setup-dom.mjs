@@ -13,6 +13,7 @@ export class MockElement {
       contains: (c) => this.classList._classes.has(c),
     };
     this.attributes = new Map();
+    this.dataset = {};
     this.eventListeners = {};
     this.textContent = '';
     this.style = {};

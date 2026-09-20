@@ -18,10 +18,29 @@ export default class TabsExtendedPlugin extends Plugin {
 
     this.registerMarkdownPostProcessor((el, ctx) => {
       if (el.closest && el.closest('.popup-content, .popup-overlay')) return;
+
+      const isTabsElement = (target) => {
+        if (!target) return false;
+        if (target.classList && (target.classList.contains('tabs-container') || target.classList.contains('tabs-innertabs'))) return true;
+        if (target.querySelector && target.querySelector('.tabs-container, .tabs-innertabs')) return true;
+        const cls = typeof target.className === 'string' ? target.className : '';
+        if (/tabs-(?:container|innertabs)/.test(cls)) return true;
+        if (/block-language-(?:tabs|tabs-v)/i.test(cls)) return true;
+        const mainKw = this.settings && this.settings.tabsKeyword;
+        if (mainKw && mainKw.trim() && mainKw !== 'tabs') {
+          const safeKw = mainKw.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+          if (new RegExp(`block-language-${safeKw}(?:-v)?`, 'i').test(cls)) return true;
+        }
+        return false;
+      };
+
       const targets = el.querySelectorAll('.tabs-container pre, .tabs-content pre, .tabs-container [class*="block-language-"], .tabs-content [class*="block-language-"], .tabs-container .tree-container, .tabs-content .tree-container, .tabs-container .ascii-tree-wrapper, .tabs-content .ascii-tree-wrapper');
       targets.forEach(target => {
         if (target.closest && target.closest('.popup-content, .popup-overlay')) return;
         if (target.closest('.tabs-codeblock-wrapper')) {
+          return;
+        }
+        if (isTabsElement(target)) {
           return;
         }
         const wrapper = document.createElement('div');
@@ -33,6 +52,11 @@ export default class TabsExtendedPlugin extends Plugin {
       const wrappers = el.querySelectorAll('.tabs-container .tabs-codeblock-wrapper, .tabs-content .tabs-codeblock-wrapper');
       wrappers.forEach(wrapper => {
         if (wrapper.closest && wrapper.closest('.popup-content, .popup-overlay')) return;
+        if (isTabsElement(wrapper) || wrapper.querySelector('.tabs-container, .tabs-innertabs')) {
+          const outerBtns = Array.from(wrapper.querySelectorAll(':scope > .edit-block-button'));
+          outerBtns.forEach(btn => btn.remove());
+          return;
+        }
         const isTree = !!(
           wrapper.querySelector('[class*="block-language-tree"], .ascii-tree-wrapper, .tree-container, pre.ascii-tree-block') ||
           (wrapper.className && wrapper.className.includes('tree'))
