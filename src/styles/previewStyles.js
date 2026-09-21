@@ -26,11 +26,11 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-container .tabs-nav .tabs-nav-item-wrapper::-webkit-scrollbar {
   display: none;
 }
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav {
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) > .tabs-nav {
   display: flex;
   align-items: center;
 }
-.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) .tabs-nav .tabs-nav-item-wrapper {
+.tabs-container:not(.tabs-nav-left):not(.tabs-nav-right) > .tabs-nav > .tabs-nav-item-wrapper {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -62,7 +62,7 @@ export const tabsExtendedCorePreviewStyles = `
 .tabs-nav-overflow-arrow-right:hover {
   color: var(--text-accent, var(--interactive-accent));
 }
-.tabs-container:is(.tabs-nav-left, .tabs-nav-right) .tabs-nav-overflow-arrow-right {
+.tabs-container:is(.tabs-nav-left, .tabs-nav-right) > .tabs-nav > .tabs-nav-overflow-arrow-right {
   display: none !important;
 }
 

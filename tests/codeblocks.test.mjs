@@ -1249,5 +1249,81 @@ export async function runCodeblocksTests() {
     console.log('✓ Horizontal tabs overflow indicator (ghost arrow & blinking last visible separator) verified');
   }
 
+  // Test 27: Nested horizontal tabs at any level independently support overflow indicator & are notified on parent tab switch
+  {
+    const { TabsNav } = await import('../src/components/TabsNav.js');
+    const { TabsContents } = await import('../src/components/TabsContent.js');
+
+    // Outer tabs (can be vertical or horizontal)
+    const mockOuterTabs = {
+      isVertical: true, // Outer is vertical!
+      tabsConfig: { titlePosition: 'left' },
+      plugin: { settings: { horizontalTabsOverflowIndicator: true } },
+      register: () => {}
+    };
+
+    // Inner tabs (horizontal, inside outer tab 0)
+    const mockInnerTabs = {
+      isVertical: false,
+      tabsType: 'innertabs',
+      tabsConfig: { titlePosition: 'top' },
+      plugin: { settings: { horizontalTabsOverflowIndicator: true } },
+      register: () => {}
+    };
+
+    const innerNav = Object.create(TabsNav.prototype);
+    innerNav.tabs = mockInnerTabs;
+    innerNav.overflowArrowEl = new MockElement('div');
+    innerNav.overflowArrowEl.className = 'tabs-nav-overflow-arrow-right';
+
+    innerNav.navWrapperEl = new MockElement('div');
+    innerNav.navWrapperEl.scrollWidth = 400;
+    innerNav.navWrapperEl.clientWidth = 180;
+    innerNav.navWrapperEl.scrollLeft = 0;
+
+    innerNav.navItems = [0, 1, 2].map(idx => {
+      const el = new MockElement('div');
+      el.className = 'tabs-nav-item';
+      el.offsetLeft = idx * 100;
+      el.offsetWidth = 80;
+      return { tabitemEl: el };
+    });
+
+    const innerNavEl = new MockElement('div');
+    innerNavEl.className = 'tabs-nav';
+    innerNavEl._tabsNav = innerNav;
+    innerNav.navEl = innerNavEl;
+
+    // Check that inner horizontal tabs detect overflow even inside vertical parent tabs
+    innerNav.checkOverflowState();
+    assert.ok(innerNav.overflowArrowEl.classList.contains('is-visible'), 'Inner horizontal tabs must show ghost arrow');
+    assert.ok(innerNav.navItems[1].tabitemEl.classList.contains('tabs-separator-overflow-blink'), 'Last visible item in nested tabs (Tab 1) must blink');
+
+    // Test parent tab activation notifying nested navs
+    let nestedCheckCalled = false;
+    innerNav.scheduleOverflowCheck = () => { nestedCheckCalled = true; };
+
+    const contentItem0 = {
+      contentEl: new MockElement('div')
+    };
+    contentItem0.contentEl.className = 'tabs-content';
+    contentItem0.contentEl.appendChild(innerNavEl);
+
+    const contentItem1 = {
+      contentEl: new MockElement('div')
+    };
+    contentItem1.contentEl.className = 'tabs-content';
+
+    const outerContents = Object.create(TabsContents.prototype);
+    outerContents.tabcontents = [contentItem0, contentItem1];
+
+    // Activating outer tab 0 should notify innerNav
+    outerContents.refreshActiveTabContent(0);
+    assert.ok(contentItem0.contentEl.classList.contains('tabs-content-active'), 'Tab 0 content must be active');
+    assert.ok(nestedCheckCalled, 'refreshActiveTabContent must notify nested tabsNav via scheduleOverflowCheck');
+
+    console.log('✓ Nested horizontal tabs at any level independently support overflow indicator & are notified on parent tab switch');
+  }
+
   console.log('All Codeblocks tests passed!\n');
 }

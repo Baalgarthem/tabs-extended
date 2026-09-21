@@ -398,6 +398,14 @@ export class TabsContents {
       item.isActiveed = isActive;
       if (isActive) {
         item.contentEl.classList.add("tabs-content-active");
+        if (typeof item.contentEl.querySelectorAll === 'function') {
+          const nestedNavs = item.contentEl.querySelectorAll('.tabs-nav');
+          nestedNavs.forEach((navEl) => {
+            if (navEl._tabsNav && typeof navEl._tabsNav.scheduleOverflowCheck === 'function') {
+              navEl._tabsNav.scheduleOverflowCheck();
+            }
+          });
+        }
       } else {
         item.contentEl.classList.remove("tabs-content-active");
       }

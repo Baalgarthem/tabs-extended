@@ -83,6 +83,7 @@ export class TabsNav {
         this.overflowResizeObserver = null;
       }
       this.clearOverflowIndicators();
+      if (this.navEl) this.navEl._tabsNav = null;
     });
   }
   createTabNavEl(t) {
@@ -93,6 +94,7 @@ export class TabsNav {
     }
     this.navEl = document.createElement("div");
     this.navEl.classList.add("tabs-nav");
+    this.navEl._tabsNav = this;
     this.navWrapperEl = this.navEl.createDiv("tabs-nav-item-wrapper");
     if (this.navItems.length > 0) {
       this.navItems.forEach((e) => {
@@ -172,6 +174,12 @@ export class TabsNav {
     const scrollWidth = wrapper.scrollWidth || 0;
     const clientWidth = wrapper.clientWidth || 0;
     const scrollLeft = wrapper.scrollLeft || 0;
+
+    // If container is hidden (e.g. inside an inactive parent tab), clientWidth is 0
+    if (clientWidth === 0) {
+      this.clearOverflowIndicators();
+      return;
+    }
 
     // Overflow exists to the right when scrollWidth > clientWidth + scrollLeft + 2px tolerance
     const hasOverflowRight = (scrollWidth - (scrollLeft + clientWidth)) > 2;

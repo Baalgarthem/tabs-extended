@@ -42,6 +42,9 @@ export class TabItem {
       if (this.isDisposed) return;
       cleanVirtualLinksFromElement(this.tabitemMDEl);
       this.scheduleTitleBehavior();
+      if (this.tabnav && typeof this.tabnav.scheduleOverflowCheck === 'function') {
+        this.tabnav.scheduleOverflowCheck();
+      }
     }).catch((error) => {
       console.error("Tabs Extended could not render a tab title:", error);
     });
