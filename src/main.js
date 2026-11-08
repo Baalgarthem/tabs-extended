@@ -699,57 +699,82 @@ export default class TabsExtendedPlugin extends Plugin {
   convertHeadingTextToTabs(selection, split, kw, minFenceLen = 3) {
     if (!selection || !/^#{1,6}\s+/m.test(selection)) return null;
 
-    let maxRun = 0, run = 0;
-    for (let ch of selection) {
-      if (ch === "`" || ch === "~") { run++; maxRun = Math.max(maxRun, run); } else run = 0;
-    }
+    let configuredKeyword = (kw || "tabs").trim();
+    let safeKeyword = configuredKeyword.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    let tabsInfoRegex = new RegExp(`^(?:${safeKeyword}(?:-v)?|tabs(?:-v)?)$`, "i");
 
     let lines = selection.split(/\r?\n/);
     let root = { level: 0, title: "root", ownContent: [], children: [] };
     let stack = [root];
 
-    let insideCodeBlock = false;
-    let codeBlockFenceChar = null;
-    let codeBlockFenceLen = 0;
+    // Fence stack tracks nested fences (code blocks, existing tabs blocks, etc.)
+    // so that headings inside any fenced block are treated as raw content rather
+    // than splitting the document tree.
+    let fenceStack = [];
 
-    for (let line of lines) {
-      let trimmed = line.trim();
-      let fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
-
-      if (!insideCodeBlock) {
-        if (fenceMatch) {
-          insideCodeBlock = true;
-          codeBlockFenceChar = fenceMatch[1][0];
-          codeBlockFenceLen = fenceMatch[1].length;
-          stack[stack.length - 1].ownContent.push(line);
-          continue;
-        }
-
-        let match = line.match(/^(#{1,6})\s+(.*)$/);
-        if (match) {
-          let level = match[1].length;
-          let title = match[2].trim();
-          let node = { level, title, ownContent: [], children: [] };
-
-          while (stack.length > 1 && stack[stack.length - 1].level >= level) {
-            stack.pop();
-          }
-          stack[stack.length - 1].children.push(node);
-          stack.push(node);
-          continue;
-        }
-
-        stack[stack.length - 1].ownContent.push(line);
-      } else {
-        stack[stack.length - 1].ownContent.push(line);
-        if (fenceMatch) {
-          let fChar = fenceMatch[1][0];
-          let fLen = fenceMatch[1].length;
-          if (fChar === codeBlockFenceChar && fLen >= codeBlockFenceLen) {
-            insideCodeBlock = false;
-          }
+    // Helper: closes a fence by finding an exact length match first, or the innermost valid fence
+    function findClosingIndex(stackArr, fChar, fLen) {
+      if (stackArr.length === 0) return -1;
+      // If there is an exact length match in the stack, that is our intended target
+      for (let i = 0; i < stackArr.length; i++) {
+        if (stackArr[i].char === fChar && stackArr[i].len === fLen) {
+          return i;
         }
       }
+      // Otherwise, the innermost fence whose length is <= the closing fence length
+      let current = stackArr[stackArr.length - 1];
+      if (current.char === fChar && fLen >= current.len) {
+        return stackArr.length - 1;
+      }
+      return -1;
+    }
+
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      let line = lines[lineIdx];
+      let trimmed = line.trim();
+      let fenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)/);
+
+      if (fenceStack.length > 0) {
+        // We are inside a fenced block
+        stack[stack.length - 1].ownContent.push(line);
+        if (fenceMatch) {
+          let fStr = fenceMatch[1];
+          let fInfo = fenceMatch[2].trim();
+          if (fInfo === "") {
+            let closeIdx = findClosingIndex(fenceStack, fStr[0], fStr.length);
+            if (closeIdx >= 0) {
+              fenceStack.splice(closeIdx);
+            }
+          } else {
+            fenceStack.push({ char: fStr[0], len: fStr.length, info: fInfo });
+          }
+        }
+        continue;
+      }
+
+      if (fenceMatch) {
+        let fStr = fenceMatch[1];
+        let fInfo = fenceMatch[2].trim();
+        fenceStack.push({ char: fStr[0], len: fStr.length, info: fInfo });
+        stack[stack.length - 1].ownContent.push(line);
+        continue;
+      }
+
+      let headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        let level = headingMatch[1].length;
+        let title = headingMatch[2].trim();
+        let node = { level, title, ownContent: [], children: [] };
+
+        while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+          stack.pop();
+        }
+        stack[stack.length - 1].children.push(node);
+        stack.push(node);
+        continue;
+      }
+
+      stack[stack.length - 1].ownContent.push(line);
     }
 
     if (root.children.length === 0) return null;
@@ -761,11 +786,132 @@ export default class TabsExtendedPlugin extends Plugin {
       return res;
     }
 
+    /**
+     * Converts all backtick-fenced tabs blocks within a set of content lines
+     * to tilde-fenced blocks, so they don't conflict with outer backtick/tilde
+     * fences. Normal code blocks (non-tabs, e.g. python, js, hblock) remain as backticks.
+     */
+    function convertTabsBlocksToTildes(contentLines, tabsRegex) {
+      let result = [];
+      let fStack = [];
+
+      for (let line of contentLines) {
+        let trimmed = line.trim();
+        let fm = trimmed.match(/^(`{3,}|~{3,})(.*)/);
+        let currentF = fStack.length > 0 ? fStack[fStack.length - 1] : null;
+
+        if (currentF) {
+          if (fm) {
+            let fStr = fm[1];
+            let fInfo = fm[2].trim();
+            if (fInfo === "") {
+              let closeIdx = -1;
+              for (let i = 0; i < fStack.length; i++) {
+                if (fStack[i].char === fStr[0] && fStack[i].len === fStr.length) {
+                  closeIdx = i;
+                  break;
+                }
+              }
+              if (closeIdx === -1 && fStr[0] === currentF.char && fStr.length >= currentF.len) {
+                closeIdx = fStack.length - 1;
+              }
+              if (closeIdx >= 0) {
+                let closed = fStack[closeIdx];
+                let leadingWs = line.match(/^(\s*)/)[1];
+                if (closed.isTabs && closed.char === "`") {
+                  result.push(leadingWs + "~".repeat(fStr.length));
+                } else {
+                  result.push(line);
+                }
+                fStack.splice(closeIdx);
+                continue;
+              }
+            }
+            // Nested opening fence
+            let isTabsNested = tabsRegex.test(fInfo);
+            fStack.push({ char: fStr[0], len: fStr.length, isTabs: isTabsNested });
+            if (isTabsNested && fStr[0] === "`") {
+              let leadingWs = line.match(/^(\s*)/)[1];
+              result.push(leadingWs + "~".repeat(fStr.length) + (fInfo ? fInfo : ""));
+            } else {
+              result.push(line);
+            }
+            continue;
+          }
+          result.push(line);
+          continue;
+        }
+
+        // Not inside any fence
+        if (fm) {
+          let fStr = fm[1];
+          let fInfo = fm[2].trim();
+          let isTabs = tabsRegex.test(fInfo);
+          fStack.push({ char: fStr[0], len: fStr.length, isTabs });
+          if (isTabs && fStr[0] === "`") {
+            let leadingWs = line.match(/^(\s*)/)[1];
+            result.push(leadingWs + "~".repeat(fStr.length) + (fInfo ? fInfo : ""));
+          } else {
+            result.push(line);
+          }
+          continue;
+        }
+
+        result.push(line);
+      }
+
+      return result;
+    }
+
+    /**
+     * Finds the maximum tilde fence run in an array of lines.
+     */
+    function maxTildeRun(contentLines) {
+      let max = 0;
+      for (let line of contentLines) {
+        let m = line.match(/~{3,}/g);
+        if (m) {
+          for (let run of m) {
+            max = Math.max(max, run.length);
+          }
+        }
+      }
+      return max;
+    }
+
     function hasChildWithChildren(nodes) {
       return nodes.some(n => n.children && n.children.length > 0);
     }
 
-    function renderNodes(nodes, depth) {
+    /**
+     * Checks (recursively) whether any node's ownContent contains lines that
+     * look like a tabs-block fence (backtick or tilde).
+     */
+    function treeContainsTabsBlocks(nodes) {
+      for (let node of nodes) {
+        for (let line of node.ownContent) {
+          let m = line.trim().match(/^(`{3,}|~{3,})(.*)/);
+          if (m && tabsInfoRegex.test(m[2].trim())) return true;
+        }
+        if (node.children && node.children.length > 0 && treeContainsTabsBlocks(node.children)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    let containsExistingTabsBlocks = treeContainsTabsBlocks(root.children);
+
+    /**
+     * Renders the heading tree into tabs source text.
+     *
+     * When existing tabs blocks are present in the content:
+     * - Outer wrapper uses tildes (~...~tabs)
+     * - Child heading-generated blocks use tildes (~...~tabs)
+     * - Existing tabs blocks within content are converted to tildes
+     * - Normal code blocks (python, js, hblock, etc.) keep backticks
+     */
+    function renderNodes(nodes, depth, useTildesForTabsFences) {
       let result = [];
       for (let i = 0; i < nodes.length; i++) {
         let node = nodes[i];
@@ -774,14 +920,24 @@ export default class TabsExtendedPlugin extends Plugin {
 
         let own = cleanLines(node.ownContent);
         if (own.length > 0) {
+          if (useTildesForTabsFences) {
+            own = convertTabsBlocksToTildes(own, tabsInfoRegex);
+          }
           result.push(own.join("\n"));
         }
 
         if (node.children && node.children.length > 0) {
-          let childFenceStr = (depth === 0) ? "~~~" : "```";
+          let childFenceStr;
+          if (useTildesForTabsFences) {
+            // For heading-generated sub-blocks when existing tabs blocks are present,
+            // use tildes: 6 for depth 0, 5 for depth 1, etc.
+            childFenceStr = "~".repeat(Math.max(3, 6 - depth));
+          } else {
+            childFenceStr = (depth === 0) ? "~~~" : "```";
+          }
           result.push("");
           result.push(childFenceStr + (kw || "tabs"));
-          let childContent = renderNodes(node.children, depth + 1);
+          let childContent = renderNodes(node.children, depth + 1, useTildesForTabsFences);
           result.push(childContent);
           result.push(childFenceStr);
           result.push("");
@@ -794,15 +950,34 @@ export default class TabsExtendedPlugin extends Plugin {
       return result.join("\n");
     }
 
-    let requiredFenceLen = hasChildWithChildren(root.children) ? 4 : 3;
-    let finalFenceLen = Math.max(minFenceLen || 3, requiredFenceLen, maxRun + 1);
-    let outerFence = "`".repeat(finalFenceLen);
-    let body = renderNodes(root.children, 0);
+    if (containsExistingTabsBlocks) {
+      let body = renderNodes(root.children, 0, true);
+      let bodyLines = body.split(/\r?\n/);
 
-    let preContent = cleanLines(root.ownContent);
-    let preStr = preContent.length > 0 ? preContent.join("\n") + "\n\n" : "";
+      let maxInnerTilde = maxTildeRun(bodyLines);
+      let outerFenceLen = Math.max(minFenceLen || 3, maxInnerTilde + 1, 7);
+      let outerFence = "~".repeat(outerFenceLen);
 
-    return preStr + outerFence + (kw || "tabs") + "\n" + body + "\n" + outerFence;
+      let preContent = cleanLines(root.ownContent);
+      let preStr = preContent.length > 0 ? preContent.join("\n") + "\n\n" : "";
+
+      return preStr + outerFence + (kw || "tabs") + "\n" + body + "\n" + outerFence;
+    } else {
+      let maxRun = 0, run = 0;
+      for (let ch of selection) {
+        if (ch === "`" || ch === "~") { run++; maxRun = Math.max(maxRun, run); } else run = 0;
+      }
+
+      let requiredFenceLen = hasChildWithChildren(root.children) ? 4 : 3;
+      let finalFenceLen = Math.max(minFenceLen || 3, requiredFenceLen, maxRun + 1);
+      let outerFence = "`".repeat(finalFenceLen);
+      let body = renderNodes(root.children, 0, false);
+
+      let preContent = cleanLines(root.ownContent);
+      let preStr = preContent.length > 0 ? preContent.join("\n") + "\n\n" : "";
+
+      return preStr + outerFence + (kw || "tabs") + "\n" + body + "\n" + outerFence;
+    }
   }
 
   refreshOpenViews() {

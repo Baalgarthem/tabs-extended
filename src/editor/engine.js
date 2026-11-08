@@ -2180,302 +2180,240 @@ export class TabsModalEditorEngine {
       if (this.view) this.view.focus();
     });
   }
-  registerFormatToolEvents() {
-    (this.formatTools[0].onClick(() => {
-      let { from: t, to: e } = this.view.state.selection.main,
-        i = this.view.state.doc.lineAt(t),
-        n = this.view.state.doc.lineAt(e);
-      if (i.number === n.number)
-        this.view.dispatch({
-          changes: {
-            from: t,
-            to: e,
-            insert: Rt(
-              this.view.state.doc.sliceString(
-                this.view.state.selection.main.from,
-                this.view.state.selection.main.to,
-              ),
-              "**",
-            ),
-          },
-        });
-      else {
-        let r = Rt(
-          this.view.state.doc.sliceString(
-            this.view.state.selection.main.from,
-            i.to,
-          ),
-          "**",
-        );
-        for (let o = i.number; o < n.number; o++) {
-          let a = this.view.state.doc.line(o);
-          r +=
-            `
-` + Rt(a.text, "**");
-        }
-        ((r +=
-          `
-` +
-          Rt(
-            this.view.state.doc.sliceString(
-              n.from,
-              this.view.state.selection.main.to,
-            ),
-            "**",
-          )),
-          this.view.dispatch({ changes: { from: t, to: e, insert: r } }));
-      }
-    }),
-      this.formatTools[1].onClick(() => {
-        let { from: t, to: e } = this.view.state.selection.main,
-          i = this.view.state.doc.lineAt(t),
-          n = this.view.state.doc.lineAt(e);
-        if (i.number === n.number)
-          this.view.dispatch({
-            changes: {
-              from: t,
-              to: e,
-              insert: Rt(
-                this.view.state.doc.sliceString(
-                  this.view.state.selection.main.from,
-                  this.view.state.selection.main.to,
-                ),
-                "*",
-              ),
-            },
-          });
-        else {
-          let r = Rt(
-            this.view.state.doc.sliceString(
-              this.view.state.selection.main.from,
-              i.to,
-            ),
-            "*",
-          );
-          for (let o = i.number; o < n.number; o++) {
-            let a = this.view.state.doc.line(o);
-            r +=
-              `
-` + Rt(a.text, "*");
-          }
-          ((r +=
-            `
-` +
-            Rt(
-              this.view.state.doc.sliceString(
-                n.from,
-                this.view.state.selection.main.to,
-              ),
-              "*",
-            )),
-            this.view.dispatch({ changes: { from: t, to: e, insert: r } }));
-        }
-      }),
-      this.formatTools[2].onClick(() => {
-        this.view.dispatch({
-          changes: {
-            from: this.view.state.selection.main.from,
-            to: this.view.state.selection.main.to,
-            insert: Rt(
-              this.view.state.doc.sliceString(
-                this.view.state.selection.main.from,
-                this.view.state.selection.main.to,
-              ),
-              "<u>",
-              "</u>",
-            ),
-          },
-        });
-      }),
-      this.formatTools[3].onClick(() => {
-        this.view.dispatch({
-          changes: {
-            from: this.view.state.selection.main.from,
-            to: this.view.state.selection.main.to,
-            insert: Rt(
-              this.view.state.doc.sliceString(
-                this.view.state.selection.main.from,
-                this.view.state.selection.main.to,
-              ),
-              "~~",
-            ),
-          },
-        });
-      }),
-      this.formatTools[4].onClick(() => {
-        this.view.dispatch({
-          changes: {
-            from: this.view.state.selection.main.from,
-            to: this.view.state.selection.main.to,
-            insert: Rt(
-              this.view.state.doc.sliceString(
-                this.view.state.selection.main.from,
-                this.view.state.selection.main.to,
-              ),
-              "==",
-            ),
-          },
-        });
-      }),
-      this.formatTools[5].onClick(() => {
-        this.insertMainTab();
-      }));
+  /**
+   * Adjusts a selection range so that it never starts inside a separator
+   * prefix (`split`).  Returns an object with `from` / `to` guaranteed to
+   * protect the structural prefix while keeping the user's intended content
+   * selection intact.
+   */
+  _protectSelectionFromSeparator(from, to) {
+    let doc = this.view.state.doc;
+    let splitStr = this.plugin.settings.split;
+    let line = doc.lineAt(from);
+    let trimmedStart = line.text.trimStart();
+    let leadingWhitespace = line.text.length - trimmedStart.length;
+    if (trimmedStart.startsWith(splitStr)) {
+      let protectEnd = line.from + leadingWhitespace + splitStr.length;
+      if (from < protectEnd) from = protectEnd;
+    }
+    // Clamp: if adjustment pushed from past to, collapse to a cursor at from
+    if (from > to) to = from;
+    return { from, to };
+  }
+  /**
+   * Applies an inline format marker (bold, italic, etc.) to the current
+   * selection, protecting separator prefixes and correctly handling
+   * multi-line selections.  Re-focuses the editor after dispatch.
+   */
+  _applyInlineFormat(openMarker, closeMarker) {
+    if (!this.view || this.view.destroyed) return;
+    closeMarker = closeMarker || openMarker;
+    let sel = this.view.state.selection.main;
+    let { from, to } = this._protectSelectionFromSeparator(sel.from, sel.to);
+    let doc = this.view.state.doc;
+    let firstLine = doc.lineAt(from);
+    let lastLine = doc.lineAt(to);
 
+    if (firstLine.number === lastLine.number) {
+      // Single-line: simple wrap
+      let text = doc.sliceString(from, to);
+      this.view.dispatch({
+        changes: { from, to, insert: Rt(text, openMarker, closeMarker) },
+        userEvent: "input",
+      });
+    } else {
+      // Multi-line: wrap each line's portion individually
+      let parts = [];
+      // First line: from selection start to end of line
+      parts.push(Rt(doc.sliceString(from, firstLine.to), openMarker, closeMarker));
+      // Middle lines (i+1 through n-1) – fixed: was previously processing
+      // firstLine again due to `o = i.number` instead of `o = i.number + 1`
+      for (let lineNo = firstLine.number + 1; lineNo < lastLine.number; lineNo++) {
+        let line = doc.line(lineNo);
+        parts.push(Rt(line.text, openMarker, closeMarker));
+      }
+      // Last line: from start of line to selection end
+      parts.push(Rt(doc.sliceString(lastLine.from, to), openMarker, closeMarker));
+      this.view.dispatch({
+        changes: { from, to, insert: parts.join("\n") },
+        userEvent: "input",
+      });
+    }
+    this.view.focus();
+  }
+  registerFormatToolEvents() {
+    this.formatTools[0].onClick(() => {
+      this._applyInlineFormat("**");
+    });
+    this.formatTools[1].onClick(() => {
+      this._applyInlineFormat("*");
+    });
+    this.formatTools[2].onClick(() => {
+      this._applyInlineFormat("<u>", "</u>");
+    });
+    this.formatTools[3].onClick(() => {
+      this._applyInlineFormat("~~");
+    });
+    this.formatTools[4].onClick(() => {
+      this._applyInlineFormat("==");
+    });
+    this.formatTools[5].onClick(() => {
+      this.insertMainTab();
+    });
   }
   registerPragraphToolEvents() {
-    (this.paragraphTools[0].onClick(() => {
-      let t = this.view.state.selection.main,
-        e = this.view.state.doc.lineAt(t.from),
-        i = this.view.state.doc.lineAt(t.to),
-        n = !1;
-      for (let r = e.number; r <= i.number; r++)
-        if (!this.view.state.doc.line(r).text.trimStart().startsWith("- ")) {
-          n = !0;
-          break;
-        }
-      if (n)
-        for (let r = e.number; r <= i.number; r++) {
-          let o = this.view.state.doc.line(r);
-          o.text.trimStart().startsWith("- ") ||
-            this.view.dispatch({
-              changes: {
-                from: o.from,
-                to: o.to,
-                insert:
-                  " ".repeat(o.text.length - o.text.trimStart().length) +
-                  "- " +
-                  o.text.trimStart(),
-              },
-            });
-        }
-      else
-        for (let r = e.number; r <= i.number; r++) {
-          let o = this.view.state.doc.line(r);
-          !o.text.trimStart().startsWith("- ") ||
-            this.view.dispatch({
-              changes: {
-                from: o.from,
-                to: o.to,
-                insert:
-                  o.text.slice(0, o.text.indexOf("- ")) +
-                  o.text.slice(o.text.indexOf("- ") + 2),
-              },
-            });
-        }
-    }),
-      this.paragraphTools[1].onClick(() => {
-        let t = this.view.state.selection.main,
-          e = this.view.state.doc.lineAt(t.from),
-          i = this.view.state.doc.lineAt(t.to),
-          n = !1,
-          r = (l) => {
-            let h = l.indexOf(". ");
-            return h > 0 && !isNaN(parseInt(l.slice(0, h)));
-          };
-        for (let l = e.number; l <= i.number; l++) {
-          let h = this.view.state.doc.line(l);
-          if (!r(h.text.trimStart())) {
-            n = !0;
-            break;
+    // Bullet list toggle
+    this.paragraphTools[0].onClick(() => {
+      if (!this.view || this.view.destroyed) return;
+      let doc = this.view.state.doc;
+      let sel = this.view.state.selection.main;
+      let firstLine = doc.lineAt(sel.from);
+      let lastLine = doc.lineAt(sel.to);
+      let needsAdd = false;
+      for (let r = firstLine.number; r <= lastLine.number; r++) {
+        if (!doc.line(r).text.trimStart().startsWith("- ")) { needsAdd = true; break; }
+      }
+      let changes = [];
+      for (let r = firstLine.number; r <= lastLine.number; r++) {
+        let line = doc.line(r);
+        let trimmed = line.text.trimStart();
+        let indent = line.text.length - trimmed.length;
+        if (needsAdd) {
+          if (!trimmed.startsWith("- ")) {
+            changes.push({ from: line.from, to: line.to, insert: " ".repeat(indent) + "- " + trimmed });
+          }
+        } else {
+          if (trimmed.startsWith("- ")) {
+            changes.push({ from: line.from, to: line.to, insert: " ".repeat(indent) + trimmed.slice(2) });
           }
         }
-        let o = {},
-          a = e.text.length - e.text.trimStart().length;
-        if (e.number > 1)
-          for (
-            let l = e.number - 1;
-            l > 0 && r(this.view.state.doc.line(l).text.trimStart());
-            l--
-          ) {
-            let h = this.view.state.doc.line(l).text,
-              c = h.length - h.trimStart().length;
-            if (c > a) {
-              o[c] = 1;
-              continue;
-            } else if (c === a) {
-              let f = parseInt(h.slice(0, h.indexOf(". ")));
-              o[a] || (o[a] = f + 1);
-            } else
-              ((a = c), (o[a] = parseInt(h.slice(0, h.indexOf(". "))) + 1));
+      }
+      if (changes.length > 0) {
+        this.view.dispatch({ changes, userEvent: "input" });
+      }
+      this.view.focus();
+    });
+
+    // Ordered list toggle
+    this.paragraphTools[1].onClick(() => {
+      if (!this.view || this.view.destroyed) return;
+      let doc = this.view.state.doc;
+      let sel = this.view.state.selection.main;
+      let firstLine = doc.lineAt(sel.from);
+      let lastLine = doc.lineAt(sel.to);
+      let isNumbered = (l) => {
+        let h = l.indexOf(". ");
+        return h > 0 && !isNaN(parseInt(l.slice(0, h)));
+      };
+      let needsAdd = false;
+      for (let l = firstLine.number; l <= lastLine.number; l++) {
+        if (!isNumbered(doc.line(l).text.trimStart())) { needsAdd = true; break; }
+      }
+      // Scan preceding numbered lines for continuation numbering
+      let counters = {};
+      let baseIndent = firstLine.text.length - firstLine.text.trimStart().length;
+      if (firstLine.number > 1) {
+        for (let l = firstLine.number - 1; l > 0 && isNumbered(doc.line(l).text.trimStart()); l--) {
+          let h = doc.line(l).text;
+          let c = h.length - h.trimStart().length;
+          if (c > baseIndent) { counters[c] = 1; continue; }
+          else if (c === baseIndent) {
+            let f = parseInt(h.slice(0, h.indexOf(". ")));
+            counters[baseIndent] || (counters[baseIndent] = f + 1);
+          } else {
+            baseIndent = c;
+            counters[baseIndent] = parseInt(h.slice(0, h.indexOf(". "))) + 1;
           }
-        if (n)
-          for (let l = e.number; l <= i.number; l++) {
-            let h = this.view.state.doc.line(l),
-              c = h.text,
-              f = h.text.length - h.text.trimStart().length;
-            (o[f] === void 0 && (o[f] = 1),
-              (c = r(h.text.trimStart())
-                ? o[f].toString() + h.text.slice(h.text.indexOf(". ") + 2)
-                : (c = o[f].toString() + ". " + h.text.trimStart())),
-              o[f]++);
-            for (let u in o) parseInt(u) > f && (o[u] = 1);
-            this.view.dispatch({
-              changes: { from: h.from, to: h.to, insert: " ".repeat(f) + c },
-            });
+        }
+      }
+      let changes = [];
+      if (needsAdd) {
+        for (let l = firstLine.number; l <= lastLine.number; l++) {
+          let line = doc.line(l);
+          let trimmed = line.text.trimStart();
+          let indent = line.text.length - trimmed.length;
+          counters[indent] === void 0 && (counters[indent] = 1);
+          let newText = isNumbered(trimmed)
+            ? counters[indent].toString() + trimmed.slice(trimmed.indexOf(". ") + 2)
+            : counters[indent].toString() + ". " + trimmed;
+          counters[indent]++;
+          for (let u in counters) parseInt(u) > indent && (counters[u] = 1);
+          changes.push({ from: line.from, to: line.to, insert: " ".repeat(indent) + newText });
+        }
+      } else {
+        for (let l = firstLine.number; l <= lastLine.number; l++) {
+          let line = doc.line(l);
+          let trimmed = line.text.trimStart();
+          let indent = line.text.length - trimmed.length;
+          changes.push({
+            from: line.from, to: line.to,
+            insert: " ".repeat(indent) + trimmed.slice(trimmed.indexOf(". ") + 2),
+          });
+        }
+      }
+      if (changes.length > 0) {
+        this.view.dispatch({ changes, userEvent: "input" });
+      }
+      this.view.focus();
+    });
+
+    // Blockquote toggle
+    this.paragraphTools[2].onClick(() => {
+      if (!this.view || this.view.destroyed) return;
+      let doc = this.view.state.doc;
+      let sel = this.view.state.selection.main;
+      let firstLine = doc.lineAt(sel.from);
+      let lastLine = doc.lineAt(sel.to);
+      let needsAdd = false;
+      for (let r = firstLine.number; r <= lastLine.number; r++) {
+        if (!doc.line(r).text.trimStart().startsWith("> ")) { needsAdd = true; break; }
+      }
+      let changes = [];
+      for (let r = firstLine.number; r <= lastLine.number; r++) {
+        let line = doc.line(r);
+        if (needsAdd) {
+          changes.push({ from: line.from, to: line.to, insert: "> " + line.text });
+        } else {
+          if (line.text.startsWith("> ")) {
+            changes.push({ from: line.from, to: line.to, insert: line.text.slice(2) });
+          } else {
+            // line might have leading whitespace before >
+            let trimmed = line.text.trimStart();
+            if (trimmed.startsWith("> ")) {
+              let indent = line.text.length - trimmed.length;
+              changes.push({ from: line.from, to: line.to, insert: " ".repeat(indent) + trimmed.slice(2) });
+            }
           }
-        else
-          for (let l = e.number; l <= i.number; l++) {
-            let h = this.view.state.doc.line(l),
-              c = h.text.length - h.text.trimStart().length;
-            this.view.dispatch({
-              changes: {
-                from: h.from,
-                to: h.to,
-                insert: " ".repeat(c) + h.text.slice(h.text.indexOf(". ") + 2),
-              },
-            });
-          }
-      }),
-      this.paragraphTools[2].onClick(() => {
-        let t = this.view.state.selection.main,
-          e = this.view.state.doc.lineAt(t.from),
-          i = this.view.state.doc.lineAt(t.to),
-          n = !1;
-        for (let r = e.number; r <= i.number; r++)
-          if (!this.view.state.doc.line(r).text.trimStart().startsWith("> ")) {
-            n = !0;
-            break;
-          }
-        if (n)
-          for (let r = e.number; r <= i.number; r++) {
-            let o = this.view.state.doc.line(r);
-            this.view.dispatch({
-              changes: { from: o.from, to: o.to, insert: "> " + o.text },
-            });
-          }
-        else
-          for (let r = e.number; r <= i.number; r++) {
-            let o = this.view.state.doc.line(r);
-            this.view.dispatch({
-              changes: { from: o.from, to: o.to, insert: o.text.slice(2) },
-            });
-          }
-      }));
+        }
+      }
+      if (changes.length > 0) {
+        this.view.dispatch({ changes, userEvent: "input" });
+      }
+      this.view.focus();
+    });
   }
   registerInsertToolEvents() {
     (this.insertTools[0].onClick(() => {
       let t = this.view.state.selection.main,
         e = dd(this.view.state.doc.sliceString(t.from, t.to));
-      this.view.dispatch({ changes: { from: t.from, to: t.to, insert: e } });
+      this.view.dispatch({ changes: { from: t.from, to: t.to, insert: e }, userEvent: "input" });
+      this.view.focus();
     }),
       this.insertTools[1].onClick(() => {
-        let t = this.view.state.selection.main,
-          e = this.view.state.doc.lineAt(t.from),
-          i = this.view.state.doc.lineAt(t.to);
-        for (let n = e.number; n <= i.number; n++) {
-          let r = this.view.state.doc.line(n);
-          this.view.dispatch({
-            changes: { from: r.from, to: r.to, insert: "> " + r.text },
-          });
+        let doc = this.view.state.doc;
+        let sel = this.view.state.selection.main;
+        let firstLine = doc.lineAt(sel.from);
+        let lastLine = doc.lineAt(sel.to);
+        let changes = [];
+        // First, add the callout header before the first line
+        changes.push({ from: firstLine.from, to: firstLine.from, insert: "> [!NOTE] Title\n" });
+        // Then wrap each selected line with "> "
+        for (let n = firstLine.number; n <= lastLine.number; n++) {
+          let line = doc.line(n);
+          changes.push({ from: line.from, to: line.to, insert: "> " + line.text });
         }
-        this.view.dispatch({
-          changes: {
-            from: e.from,
-            to: e.from,
-            insert: `> [!NOTE] Title
-`,
-          },
-        });
+        this.view.dispatch({ changes, userEvent: "input" });
+        this.view.focus();
       }),
       this.insertTools[2].onClick(() => {
         let t = new Na(this),
@@ -2506,6 +2444,7 @@ export class TabsModalEditorEngine {
 
 ` + n,
             },
+            userEvent: "input",
           })
         : this.view.dispatch({
             changes: {
@@ -2513,6 +2452,7 @@ export class TabsModalEditorEngine {
               to: this.view.state.selection.main.to,
               insert: n,
             },
+            userEvent: "input",
           });
     else {
       this.view.dispatch({
@@ -2524,8 +2464,9 @@ export class TabsModalEditorEngine {
 
 ` + n,
         },
+        userEvent: "input",
       });
-      return;
     }
+    this.view.focus();
   }
 };

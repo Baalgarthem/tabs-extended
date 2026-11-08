@@ -4,9 +4,16 @@
  * Interactive deployment script for tabs-extended plugin.
  */
 
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const { execSync } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
 let inquirer;
 try {
@@ -284,6 +291,4 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+main();
